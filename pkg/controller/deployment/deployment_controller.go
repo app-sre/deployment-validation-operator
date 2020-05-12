@@ -3,7 +3,7 @@ package deployment
 import (
 	"context"
 
-	"github.com/jmelis/dv-operator/pkg/validations"
+	"github.com/app-sre/dv-operator/pkg/validations"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"

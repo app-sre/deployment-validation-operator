@@ -1,4 +1,4 @@
-module github.com/jmelis/dv-operator
+module github.com/app-sre/dv-operator
 
 go 1.13
 
