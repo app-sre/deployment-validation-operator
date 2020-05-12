@@ -13,9 +13,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
-	"github.com/jmelis/dv-operator/pkg/apis"
-	"github.com/jmelis/dv-operator/pkg/controller"
-	"github.com/jmelis/dv-operator/version"
+	"github.com/app-sre/dv-operator/pkg/apis"
+	"github.com/app-sre/dv-operator/pkg/controller"
+	"github.com/app-sre/dv-operator/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"

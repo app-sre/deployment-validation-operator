@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/jmelis/dv-operator/pkg/controller/deployment"
+	"github.com/app-sre/dv-operator/pkg/controller/deployment"
 )
 
 func init() {
