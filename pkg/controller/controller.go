@@ -1,16 +1,24 @@
 package controller
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
+
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-// AddToManagerFuncs is a list of functions to add all Controllers to the Manager
-var AddToManagerFuncs []func(manager.Manager) error
+var desiredControllerKinds []runtime.Object = []runtime.Object{
+	&appsv1.Deployment{},
+	&appsv1.ReplicaSet{},
+}
 
 // AddToManager adds all Controllers to the Manager
 func AddToManager(m manager.Manager) error {
-	for _, f := range AddToManagerFuncs {
-		if err := f(m); err != nil {
+	for _, obj := range desiredControllerKinds {
+		c := NewGenericReconciler(m, obj)
+		err := c.AddToManager()
+		if err != nil {
 			return err
 		}
 	}

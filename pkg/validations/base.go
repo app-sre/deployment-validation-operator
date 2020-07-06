@@ -4,35 +4,49 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/prometheus/client_golang/prometheus"
-	appsv1 "k8s.io/api/apps/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
-var deploymentValidations []func(reconcile.Request, *appsv1.Deployment, bool)
-var replicaSetValidations []func(reconcile.Request, *appsv1.ReplicaSet, bool)
+var log = logf.Log.WithName("Validations")
 
-func getPromLabels(name, namespace string, instance interface{}) prometheus.Labels {
+type ValidationInterface interface {
+	AppliesTo() map[string]struct{}
+	Validate(reconcile.Request, string, interface{}, bool)
+	ValidateWithClient(client.Client)
+}
 
-	// this gets the kind which will evaluate to something like `*v1.Deployment`
-	kind := reflect.TypeOf(instance).String()
+var validations []ValidationInterface
 
-	// remove the `*` prefix from the kind
-	kind = strings.TrimPrefix(kind, "*")
-
+func getPromLabels(name, namespace, kind string) prometheus.Labels {
 	return prometheus.Labels{"namespace": namespace, "name": name, "kind": kind}
 }
 
-// DeploymentValidations runs validations on Deployments
-func DeploymentValidations(request reconcile.Request, instance *appsv1.Deployment, deleted bool) {
-	for _, validateFunc := range deploymentValidations {
-		validateFunc(request, instance, deleted)
+// AddValidation will add a validation to the list of validations
+func AddValidation(v ValidationInterface) {
+	validations = append(validations, v)
+}
+
+// RunValidations will run all the registered validations
+func RunValidations(request reconcile.Request, obj interface{}, isDeleted bool) {
+	kind := reflect.TypeOf(obj).String()
+	log.Info("Validation", "kind", kind)
+	kind = strings.SplitN(kind, ".", 2)[1]
+	for _, v := range validations {
+		log.Info("checking", "kind", kind)
+		if _, ok := v.AppliesTo()[kind]; ok {
+			log.Info("running", "validation", reflect.TypeOf(v).String())
+			v.Validate(request, kind, reflect.ValueOf(obj).Elem().Interface(), isDeleted)
+		}
 	}
 }
 
-// ReplicaSetValidations runs validations on ReplicaSets
-func ReplicaSetValidations(request reconcile.Request, instance *appsv1.ReplicaSet, deleted bool) {
-	for _, validateFunc := range replicaSetValidations {
-		validateFunc(request, instance, deleted)
+//func RunValidationsWithClient(kubeClient client.Client) {
+func RunValidationsWithClient(kubeClient client.Client) {
+	for _, v := range validations {
+		v.ValidateWithClient(kubeClient)
 	}
 }
