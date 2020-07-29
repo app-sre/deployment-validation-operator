@@ -4,6 +4,8 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	appsv1 "k8s.io/api/apps/v1"
 
 	v1 "k8s.io/api/core/v1"
@@ -11,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -19,11 +22,18 @@ func init() {
 }
 
 type RequestLimitValidation struct {
-	ctx context.Context
+	ctx    context.Context
+	metric *prometheus.GaugeVec
 }
 
 func newRequestLimitValidation() *RequestLimitValidation {
-	return &RequestLimitValidation{ctx: context.TODO()}
+	m := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "RequestLimitValidation",
+		Help: "resource does not have requests or limits.",
+	}, []string{"namespace", "name", "kind"})
+	metrics.Registry.MustRegister(m)
+
+	return &RequestLimitValidation{ctx: context.TODO(), metric: m}
 }
 
 func (r *RequestLimitValidation) AppliesTo() map[string]struct{} {
@@ -35,12 +45,12 @@ func (r *RequestLimitValidation) AppliesTo() map[string]struct{} {
 
 func (r *RequestLimitValidation) Validate(request reconcile.Request, kind string, obj interface{}, isDeleted bool) {
 	logger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name, "Kind", kind)
-	logger.Info("Validating limits")
+	logger.V(2).Info("Validating limits")
 
 	promLabels := getPromLabels(request.Name, request.Namespace, kind)
 
 	if isDeleted {
-		metricRequestsLimits.Delete(promLabels)
+		r.metric.Delete(promLabels)
 		return
 	}
 
@@ -50,8 +60,8 @@ func (r *RequestLimitValidation) Validate(request reconcile.Request, kind string
 		for _, c := range podTemplateSpec.Spec.Containers {
 			if c.Resources.Requests.Memory().IsZero() || c.Resources.Requests.Cpu().IsZero() ||
 				c.Resources.Limits.Memory().IsZero() || c.Resources.Limits.Cpu().IsZero() {
-				log.Error(nil, "does not have requests or limits set", kind, request.Name, request.Namespace)
-				metricRequestsLimits.With(promLabels).Set(1)
+				logger.Info("does not have requests or limits set")
+				r.metric.With(promLabels).Set(1)
 				return
 			}
 		}
@@ -63,7 +73,7 @@ func (r *RequestLimitValidation) ValidateWithClient(kubeClient client.Client) {
 	for _, listObj := range listObjs {
 		err := kubeClient.List(r.ctx, listObj, client.InNamespace(metav1.NamespaceAll))
 		if err != nil {
-			log.Error(err, "unable to list object")
+			log.Info("unable to list object", "error", err)
 		}
 		items := reflect.ValueOf(listObj).Elem().FieldByName("Items")
 		for i := 0; i < items.Len(); i++ {
