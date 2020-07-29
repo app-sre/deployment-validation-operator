@@ -3,6 +3,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strings"
 
 	"github.com/app-sre/dv-operator/pkg/validations"
 
@@ -30,8 +32,9 @@ type GenericReconciler struct {
 }
 
 func NewGenericReconciler(mgr manager.Manager, obj runtime.Object) *GenericReconciler {
-	gvk := obj.GetObjectKind().GroupVersionKind()
-	return &GenericReconciler{controllerManager: mgr, reconciledObj: obj, reconciledKind: gvk.Kind}
+	kind := reflect.TypeOf(obj).String()
+	kind = strings.SplitN(kind, ".", 2)[1]
+	return &GenericReconciler{controllerManager: mgr, reconciledObj: obj, reconciledKind: kind}
 }
 
 func (gr *GenericReconciler) AddToManager() error {
@@ -57,7 +60,7 @@ func (gr *GenericReconciler) AddToManager() error {
 func (gr *GenericReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	var log = logf.Log.WithName(fmt.Sprintf("%sController", gr.reconciledKind))
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Processing %s", gr.reconciledKind)
+	reqLogger.V(2).Info("Reconcile", "Kind", gr.reconciledKind)
 
 	instance := gr.reconciledObj.DeepCopyObject()
 	err := gr.client.Get(context.TODO(), request.NamespacedName, instance)
@@ -66,7 +69,8 @@ func (gr *GenericReconciler) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	deleted := err != nil && errors.IsNotFound(err)
-	validations.RunValidations(request, instance, deleted)
+	gvk := instance.GetObjectKind().GroupVersionKind()
+	validations.RunValidations(request, instance, gvk.Kind, deleted)
 
 	return reconcile.Result{}, nil
 }

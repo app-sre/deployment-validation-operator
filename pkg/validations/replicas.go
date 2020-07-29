@@ -4,12 +4,15 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	appsv1 "k8s.io/api/apps/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -18,11 +21,18 @@ func init() {
 }
 
 type ReplicaValidation struct {
-	ctx context.Context
+	ctx    context.Context
+	metric *prometheus.GaugeVec
 }
 
 func newReplicaValidation() *ReplicaValidation {
-	return &ReplicaValidation{ctx: context.TODO()}
+	m := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ReplicaValidation",
+		Help: "resource has less than 3 replicas.",
+	}, []string{"namespace", "name", "kind"})
+	metrics.Registry.MustRegister(m)
+
+	return &ReplicaValidation{ctx: context.TODO(), metric: m}
 }
 
 func (r *ReplicaValidation) AppliesTo() map[string]struct{} {
@@ -34,7 +44,7 @@ func (r *ReplicaValidation) AppliesTo() map[string]struct{} {
 
 func (r *ReplicaValidation) Validate(request reconcile.Request, kind string, obj interface{}, isDeleted bool) {
 	logger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name, "Kind", kind)
-	logger.Info("Validating replicas")
+	logger.V(2).Info("Validating replicas")
 
 	minReplicas := int64(3)
 	promLabels := getPromLabels(request.Name, request.Namespace, kind)
@@ -42,10 +52,10 @@ func (r *ReplicaValidation) Validate(request reconcile.Request, kind string, obj
 	replica_cnt := reflect.ValueOf(obj).FieldByName("Spec").FieldByName("Replicas").Elem().Int()
 	if replica_cnt > 0 {
 		if !isDeleted && replica_cnt < minReplicas {
-			metricReplicas.With(promLabels).Set(1)
-			logger.Error(nil, "has too few replicas", "current replicas", replica_cnt, "minimum replicas", minReplicas)
+			r.metric.With(promLabels).Set(1)
+			logger.Info("has too few replicas", "current replicas", replica_cnt, "minimum replicas", minReplicas)
 		} else {
-			metricReplicas.Delete(promLabels)
+			r.metric.Delete(promLabels)
 		}
 	}
 }
@@ -55,7 +65,7 @@ func (r *ReplicaValidation) ValidateWithClient(kubeClient client.Client) {
 	for _, listObj := range listObjs {
 		err := kubeClient.List(r.ctx, listObj, client.InNamespace(metav1.NamespaceAll))
 		if err != nil {
-			log.Error(err, "unable to list object")
+			log.Info("unable to list object", "error", err)
 		}
 		items := reflect.ValueOf(listObj).Elem().FieldByName("Items")
 		for i := 0; i < items.Len(); i++ {
