@@ -2,6 +2,7 @@ package validations
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -17,7 +18,12 @@ import (
 )
 
 func init() {
-	AddValidation(newReplicaValidation())
+	validation, err := newReplicaValidation()
+	if err != nil {
+		fmt.Printf("failed to add ReplicaValidation: %+v\n", err)
+	} else {
+		AddValidation(validation)
+	}
 }
 
 type ReplicaValidation struct {
@@ -25,14 +31,14 @@ type ReplicaValidation struct {
 	metric *prometheus.GaugeVec
 }
 
-func newReplicaValidation() *ReplicaValidation {
-	m := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "ReplicaValidation",
-		Help: "resource has less than 3 replicas.",
-	}, []string{"namespace", "name", "kind"})
+func newReplicaValidation() (*ReplicaValidation, error) {
+	m, err := newGaugeVecMetric("replica_validation", "resource has less than 3 replicas.", []string{"namespace", "name", "kind"})
+	if err != nil {
+		return nil, err
+	}
 	metrics.Registry.MustRegister(m)
 
-	return &ReplicaValidation{ctx: context.TODO(), metric: m}
+	return &ReplicaValidation{ctx: context.TODO(), metric: m}, nil
 }
 
 func (r *ReplicaValidation) AppliesTo() map[string]struct{} {

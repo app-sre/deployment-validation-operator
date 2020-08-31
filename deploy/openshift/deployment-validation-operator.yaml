@@ -1,0 +1,42 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: deployment-validation-operator
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: CatalogSource
+  metadata:
+    name: deployment-validation-operator-catalog
+  spec:
+    sourceType: grpc
+    image: ${IMAGE}:${IMAGE_TAG}
+    displayName: Deployment Validation Operator
+    publisher: AppSRE Team
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: Subscription
+  metadata:
+    name: deployment-validation-operator
+  spec:
+    channel: alpha
+    name: deployment-validation-operator
+    source: deployment-validation-operator-catalog
+    sourceNamespace: ${NAMESPACE}
+- apiVersion: operators.coreos.com/v1
+  kind: OperatorGroup
+  metadata:
+    name: deployment-validation-operator
+    namespace: $(NAMESPACE)
+parameters:
+- name: IMAGE
+  value: stage.quay.io/stage-app-sre/deployment-validation-operator-catalog
+  displayName: deployment-validation-operator catalog image
+  description: the image of the deployment-validation-operator catalog to deploy
+- name: IMAGE_TAG
+  value: "0.0.9"
+  displayName: deployment-validation-operator catalog version
+  description: the version of the deployment-validation-operator catalog to deploy
+- name: NAMESPACE
+  value: "app-sre"
+  displayNmae: namespace to deploy into
+  description: the namespace to deploy into

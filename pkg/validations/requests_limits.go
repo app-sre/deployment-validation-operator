@@ -2,6 +2,7 @@ package validations
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -18,7 +19,12 @@ import (
 )
 
 func init() {
-	AddValidation(newRequestLimitValidation())
+	validation, err := newRequestLimitValidation()
+	if err != nil {
+		fmt.Printf("failed to add RequestLimitValidation: %+v\n", err)
+	} else {
+		AddValidation(validation)
+	}
 }
 
 type RequestLimitValidation struct {
@@ -26,14 +32,14 @@ type RequestLimitValidation struct {
 	metric *prometheus.GaugeVec
 }
 
-func newRequestLimitValidation() *RequestLimitValidation {
-	m := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "RequestLimitValidation",
-		Help: "resource does not have requests or limits.",
-	}, []string{"namespace", "name", "kind"})
+func newRequestLimitValidation() (*RequestLimitValidation, error) {
+	m, err := newGaugeVecMetric("request_limit_validation", "resource does not have requests or limits.", []string{"namespace", "name", "kind"})
+	if err != nil {
+		return nil, err
+	}
 	metrics.Registry.MustRegister(m)
 
-	return &RequestLimitValidation{ctx: context.TODO(), metric: m}
+	return &RequestLimitValidation{ctx: context.TODO(), metric: m}, nil
 }
 
 func (r *RequestLimitValidation) AppliesTo() map[string]struct{} {
