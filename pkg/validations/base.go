@@ -25,11 +25,7 @@ func AddValidation(v ValidationInterface) {
 
 // RunValidations will run all the registered validations
 func RunValidations(request reconcile.Request, obj interface{}, kind string, isDeleted bool) {
-	//	kind := reflect.TypeOf(obj).String()
-	//gvk := obj.GetObjectKind().GroupVersionKind()
-	//kind := gvk.Kind
 	log.V(2).Info("Validation", "kind", kind)
-	//	kind = strings.SplitN(kind, ".", 2)[1]
 	for _, v := range validations {
 		log.V(2).Info("checking", "kind", kind)
 		if _, ok := v.AppliesTo()[kind]; ok {
