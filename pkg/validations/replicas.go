@@ -57,11 +57,13 @@ func (r *ReplicaValidation) Validate(request reconcile.Request, kind string, obj
 
 	replica_cnt := reflect.ValueOf(obj).FieldByName("Spec").FieldByName("Replicas").Elem().Int()
 	if replica_cnt > 0 {
-		if !isDeleted && replica_cnt < minReplicas {
+		if isDeleted {
+			r.metric.Delete(promLabels)
+		} else if replica_cnt < minReplicas {
 			r.metric.With(promLabels).Set(1)
 			logger.Info("has too few replicas", "current replicas", replica_cnt, "minimum replicas", minReplicas)
 		} else {
-			r.metric.Delete(promLabels)
+			r.metric.With(promLabels).Set(0)
 		}
 	}
 }
