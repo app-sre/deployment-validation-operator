@@ -1,3 +1,11 @@
+ifndef IMAGE
+IMAGE=quay.io/deployment-validation-operator/dv-operator
+endif
+
+ifndef IMAGE_TAG
+IMAGE_TAG=latest
+endif
+
 OUTDIR := _output
 
 all: ${OUTDIR}/manager
@@ -7,7 +15,10 @@ ${OUTDIR}/manager:
 
 container: export GOOS=linux
 container: clean ${OUTDIR}/manager
-	docker build -t stage.quay.io/stage-app-sre/dv-operator:latest -f ./Dockerfile .
+	docker build -t ${IMAGE}:${IMAGE_TAG} -f ./Dockerfile .
+
+push: container
+	docker push ${IMAGE}:${IMAGE_TAG}
 
 ${OUTDIR}:
 	mkdir -p ${OUTDIR}
