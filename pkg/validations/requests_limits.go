@@ -69,6 +69,8 @@ func (r *RequestLimitValidation) Validate(request reconcile.Request, kind string
 				logger.Info("does not have requests or limits set")
 				r.metric.With(promLabels).Set(1)
 				return
+			} else {
+				r.metric.With(promLabels).Set(0)
 			}
 		}
 	}
