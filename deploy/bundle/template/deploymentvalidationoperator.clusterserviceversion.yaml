@@ -1,0 +1,144 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: deployment-validation-operator-csv
+objects:
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: ClusterServiceVersion
+  metadata:
+    annotations:
+      capabilities: Basic Install
+      categories: Application Runtime, Monitoring, Security
+      certified: "false"
+      containerImage: ${IMAGE}:${IMAGE_TAG}
+      createdAt: 08/25/2020
+      support: Best Effort
+      repository: https://github.com/app-sre/dv-operator
+      description: |-
+        The deployment validation operator
+    name: deployment-validation-operator.v${VERSION}
+    namespace: placeholder
+  spec:
+    description: 'The Deployment Validator Operator for Kubernetes monitors workloads
+      on a cluster a provides suggestions for best practices.
+      '
+    displayName: Deployment Validation Operator
+    install:
+      spec:
+        deployments:
+        - name: deployment-validation-operator
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                k8s-app: deployment-validation-operator
+            strategy:
+              rollingUpdate:
+                maxSurge: 1
+                maxUnavailable: 0
+              type: RollingUpdate
+            template:
+              metadata:
+                labels:
+                  name: deployment-validation-operator
+                  k8s-app: deployment-validation-operator
+              spec:
+                containers:
+                - image: ${IMAGE}:${IMAGE_TAG}
+                  imagePullPolicy: Always
+                  name: deployment-validation-operator
+                  env:
+                  - name: WATCH_NAMESPACE
+                    value: ""
+                  - name: OPERATOR_NAME
+                    value: "deployment-validation-operator"
+                  - name: POD_NAME
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: metadata.name
+                restartPolicy: Always
+                serviceAccount: deployment-validation-operator
+                terminationGracePeriodSeconds: 30
+        clusterPermissions:
+        - rules:
+          - apiGroups:
+            - "*"
+            resources:
+            - "*"
+            verbs:
+            - get
+            - list
+            - watch
+          serviceAccountName: deployment-validation-operator
+        permissions:
+        - rules:
+          - apiGroups:
+            - ""
+            resources:
+            - configmaps
+            - services
+            - services/finalizers
+            verbs:
+            - get
+            - create
+            - list
+            - delete
+            - update
+            - watch
+            - patch
+          - apiGroups:
+            - apps
+            resourceNames:
+            - deployment-validation-operator
+            resources:
+            - deployments/finalizers
+            verbs:
+            - update
+          - apiGroups:
+            - monitoring.coreos.com
+            resources:
+            - servicemonitors
+            verbs:
+            - '*'
+          serviceAccountName: deployment-validation-operator
+      strategy: deployment
+    installModes:
+    - supported: true
+      type: OwnNamespace
+    - supported: true
+      type: SingleNamespace
+    - supported: true
+      type: AllNamespaces
+    - supported: false
+      type: MultiNamespace
+    keywords:
+    - dvo
+    labels:
+      alm-owner-dvo: deployment-validation-operator
+      operated-by: deployment-validation-operator
+    links:
+    - name: repository
+      url: https://github.com/app-sre/dv-operator
+    - name: containerImage
+      url: https://${IMAGE}:${IMAGE_TAG}
+    maturity: alpha
+    provider:
+      name: Red Hat
+    replaces: deployment-validation-operator.v${REPLACE_VERSION}
+    selector:
+      matchLabels:
+        alm-owner-dvo: deployment-validation-operator
+        operated-by: deployment-validation-operator
+    version: ${VERSION}
+parameters:
+- name: IMAGE
+  value: "quay.io/deployment-validation-operator/dv-operator"
+- name: IMAGE_TAG
+  value: "latest"
+- name: VERSION
+  value: ""
+  required: true
+- name: REPLACE_VERSION
+  value: ""
+  required: true
