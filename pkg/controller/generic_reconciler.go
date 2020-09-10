@@ -31,6 +31,7 @@ type GenericReconciler struct {
 	controllerManager manager.Manager
 }
 
+// NewGenericReconciler returns a GenericReconciler struct
 func NewGenericReconciler(mgr manager.Manager, obj runtime.Object) *GenericReconciler {
 	kind := reflect.TypeOf(obj).String()
 	kind = strings.SplitN(kind, ".", 2)[1]
@@ -42,7 +43,10 @@ func (gr *GenericReconciler) AddToManager() error {
 	gr.scheme = gr.controllerManager.GetScheme()
 
 	// Create a new controller
-	c, err := controller.New(fmt.Sprintf("%sController", gr.reconciledKind), gr.controllerManager, controller.Options{Reconciler: gr})
+	c, err := controller.New(
+		fmt.Sprintf("%sController", gr.reconciledKind),
+		gr.controllerManager,
+		controller.Options{Reconciler: gr})
 	if err != nil {
 		return err
 	}

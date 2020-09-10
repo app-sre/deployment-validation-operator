@@ -32,7 +32,10 @@ type ReplicaValidation struct {
 }
 
 func newReplicaValidation() (*ReplicaValidation, error) {
-	m, err := newGaugeVecMetric("replica_validation", "resource has less than 3 replicas.", []string{"namespace", "name", "kind"})
+	m, err := newGaugeVecMetric(
+		"replica_validation",
+		"resource has less than 3 replicas.",
+		[]string{"namespace", "name", "kind"})
 	if err != nil {
 		return nil, err
 	}
@@ -43,25 +46,29 @@ func newReplicaValidation() (*ReplicaValidation, error) {
 
 func (r *ReplicaValidation) AppliesTo() map[string]struct{} {
 	return map[string]struct{}{
-		"Deployment": struct{}{},
-		"ReplicaSet": struct{}{},
+		"Deployment": {},
+		"ReplicaSet": {},
 	}
 }
 
 func (r *ReplicaValidation) Validate(request reconcile.Request, kind string, obj interface{}, isDeleted bool) {
-	logger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name, "Kind", kind)
+	logger := log.WithValues(
+		"Request.Namespace", request.Namespace,
+		"Request.Name", request.Name,
+		"Kind", kind)
 	logger.V(2).Info("Validating replicas")
 
 	minReplicas := int64(3)
 	promLabels := getPromLabels(request.Name, request.Namespace, kind)
 
-	replica_cnt := reflect.ValueOf(obj).FieldByName("Spec").FieldByName("Replicas").Elem().Int()
-	if replica_cnt > 0 {
+	replicaCnt := reflect.ValueOf(obj).FieldByName("Spec").FieldByName("Replicas").Elem().Int()
+	if replicaCnt > 0 {
 		if isDeleted {
 			r.metric.Delete(promLabels)
-		} else if replica_cnt < minReplicas {
+		} else if replicaCnt < minReplicas {
 			r.metric.With(promLabels).Set(1)
-			logger.Info("has too few replicas", "current replicas", replica_cnt, "minimum replicas", minReplicas)
+			logger.Info("has too few replicas", "current replicas", replicaCnt, "minimum replicas",
+				minReplicas)
 		} else {
 			r.metric.With(promLabels).Set(0)
 		}
