@@ -25,3 +25,7 @@ ${OUTDIR}:
 
 clean:
 	rm -rf ${OUTDIR}
+
+lint:
+	GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.31.0
+	$(GOPATH)/bin/golangci-lint run ./.../

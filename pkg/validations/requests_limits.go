@@ -33,7 +33,10 @@ type RequestLimitValidation struct {
 }
 
 func newRequestLimitValidation() (*RequestLimitValidation, error) {
-	m, err := newGaugeVecMetric("request_limit_validation", "resource does not have requests or limits.", []string{"namespace", "name", "kind"})
+	m, err := newGaugeVecMetric(
+		"request_limit_validation",
+		"resource does not have requests or limits.",
+		[]string{"namespace", "name", "kind"})
 	if err != nil {
 		return nil, err
 	}
@@ -60,18 +63,23 @@ func (r *RequestLimitValidation) Validate(request reconcile.Request, kind string
 		return
 	}
 
-	replica_cnt := reflect.ValueOf(obj).FieldByName("Spec").FieldByName("Replicas").Elem().Int()
-	if replica_cnt > 0 {
-		podTemplateSpec := reflect.ValueOf(obj).FieldByName("Spec").FieldByName("Template").Interface().(v1.PodTemplateSpec)
+	replicaCnt := reflect.ValueOf(obj).FieldByName("Spec").FieldByName("Replicas").Elem().Int()
+	if replicaCnt > 0 {
+		podTemplateSpec := reflect.
+			ValueOf(obj).
+			FieldByName("Spec").
+			FieldByName("Template").
+			Interface().
+			(v1.PodTemplateSpec)
 		for _, c := range podTemplateSpec.Spec.Containers {
 			if c.Resources.Requests.Memory().IsZero() || c.Resources.Requests.Cpu().IsZero() ||
 				c.Resources.Limits.Memory().IsZero() || c.Resources.Limits.Cpu().IsZero() {
 				logger.Info("does not have requests or limits set")
 				r.metric.With(promLabels).Set(1)
 				return
-			} else {
-				r.metric.With(promLabels).Set(0)
 			}
+
+			r.metric.With(promLabels).Set(0)
 		}
 	}
 }
