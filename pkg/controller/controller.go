@@ -17,7 +17,7 @@ var desiredControllerKinds []runtime.Object = []runtime.Object{
 func AddToManager(m manager.Manager) error {
 	for _, obj := range desiredControllerKinds {
 		c := NewGenericReconciler(m, obj)
-		err := c.AddToManager()
+		err := c.AddToManager(m)
 		if err != nil {
 			return err
 		}

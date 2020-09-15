@@ -11,7 +11,7 @@ var log = logf.Log.WithName("Validations")
 
 type ValidationInterface interface {
 	AppliesTo() map[string]struct{}
-	Validate(reconcile.Request, string, interface{}, bool)
+	Validate(reconcile.Request, interface{}, string, bool)
 }
 
 var validations []ValidationInterface
@@ -28,7 +28,7 @@ func RunValidations(request reconcile.Request, obj interface{}, kind string, isD
 		log.V(2).Info("checking", "kind", kind)
 		if _, ok := v.AppliesTo()[kind]; ok {
 			log.V(2).Info("running", "validation", reflect.TypeOf(v).String())
-			v.Validate(request, kind, reflect.ValueOf(obj).Elem().Interface(), isDeleted)
+			v.Validate(request, obj, kind, isDeleted)
 		}
 	}
 }
