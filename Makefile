@@ -11,7 +11,7 @@ OUTDIR := _output
 all: ${OUTDIR}/manager
 
 ${OUTDIR}/manager:
-	GOARCH=amd64 go build -o ${OUTDIR}/manager cmd/manager/main.go
+	GOARCH=amd64 go build -mod vendor -o ${OUTDIR}/manager cmd/manager/main.go
 
 container: export GOOS=linux
 container: clean ${OUTDIR}/manager
