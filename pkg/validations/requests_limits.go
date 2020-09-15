@@ -6,14 +6,7 @@ import (
 	"reflect"
 
 	"github.com/prometheus/client_golang/prometheus"
-
-	appsv1 "k8s.io/api/apps/v1"
-
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -79,26 +72,6 @@ func (r *RequestLimitValidation) Validate(request reconcile.Request, kind string
 			}
 
 			r.metric.With(promLabels).Set(0)
-		}
-	}
-}
-
-func (r *RequestLimitValidation) ValidateWithClient(kubeClient client.Client) {
-	listObjs := []runtime.Object{&appsv1.DeploymentList{}, &appsv1.ReplicaSetList{}}
-	for _, listObj := range listObjs {
-		err := kubeClient.List(r.ctx, listObj, client.InNamespace(metav1.NamespaceAll))
-		if err != nil {
-			log.Info("unable to list object", "error", err)
-		}
-		items := reflect.ValueOf(listObj).Elem().FieldByName("Items")
-		for i := 0; i < items.Len(); i++ {
-			obj := items.Index(i)
-			objInterface := obj.Interface()
-			kind := reflect.TypeOf(objInterface).String()
-			req := reconcile.Request{}
-			req.Namespace = obj.FieldByName("Namespace").String()
-			req.Name = obj.FieldByName("Name").String()
-			r.Validate(req, kind, objInterface, false)
 		}
 	}
 }
