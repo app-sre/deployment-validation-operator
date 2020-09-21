@@ -4,10 +4,8 @@ import (
 	"testing"
 
 	"github.com/app-sre/dv-operator/pkg/testutils"
-	apps_v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -21,8 +19,6 @@ func TestGenericReconciler(t *testing.T) {
 
 	// Objects to track in the fake client.
 	objs := []runtime.Object{&deployment}
-	s := scheme.Scheme
-	s.AddKnownTypes(apps_v1.SchemeGroupVersion, &deployment)
 
 	// Create a fake client to mock API calls.
 	client := fake.NewFakeClient(objs...)
@@ -33,7 +29,6 @@ func TestGenericReconciler(t *testing.T) {
 
 	gr := &GenericReconciler{
 		client:         client,
-		scheme:         s,
 		reconciledKind: "Deployment",
 		reconciledObj:  &deployment}
 
