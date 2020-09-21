@@ -41,7 +41,7 @@ func TestDeploymentRequestLimitValidation(t *testing.T) {
 		{true, false, false, 1},
 		{false, true, false, 1},
 		{false, false, false, 1},
-		{false, false, true, 0}, // a bit weird, but this is what dv_tu.ToFloat64 returns
+		{false, false, true, 0}, // a bit weird, but this is what prom_tu.ToFloat64 returns
 	}
 
 	rl := newRequestLimitValidation()
