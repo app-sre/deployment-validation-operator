@@ -16,6 +16,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
+	dv_config "github.com/app-sre/dv-operator/config"
 	"github.com/app-sre/dv-operator/pkg/apis"
 	"github.com/app-sre/dv-operator/pkg/controller"
 	"github.com/app-sre/dv-operator/version"
@@ -52,6 +53,9 @@ func printVersion() {
 }
 
 func main() {
+	// Make sure the operator name is what we want
+	os.Setenv("OPERATOR_NAME", dv_config.OperatorName)
+
 	// Add the zap logger flag set to the CLI. The flag set must
 	// be added before calling pflag.Parse().
 	pflag.CommandLine.AddFlagSet(zap.FlagSet())
