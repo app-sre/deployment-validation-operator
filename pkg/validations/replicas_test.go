@@ -3,6 +3,7 @@ package validations
 import (
 	"testing"
 
+	"github.com/app-sre/dv-operator/pkg/testutils"
 	dv_tu "github.com/app-sre/dv-operator/pkg/testutils"
 	"github.com/prometheus/client_golang/prometheus"
 	prom_tu "github.com/prometheus/client_golang/prometheus/testutil"
@@ -54,7 +55,7 @@ func TestDeploymentReplicaValidation(t *testing.T) {
 			t.Errorf("Error creating deployment from template %v", err)
 		}
 
-		rv.Validate(request, &deployment, "Deployment", test.isDeleted)
+		rv.Validate(request, &deployment, testutils.ObjectKind(&deployment), test.isDeleted)
 		metric, err := rv.metric.GetMetricWith(
 			prometheus.Labels{"name": "foo", "namespace": "bar", "kind": "Deployment"})
 		if err != nil {
@@ -77,7 +78,7 @@ func TestReplicaSetReplicaValidation(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error creating ReplicaSet from template %v", err)
 	}
-	rv.Validate(request, &replicaSet, "ReplicaSet", false)
+	rv.Validate(request, &replicaSet, testutils.ObjectKind(&replicaSet), false)
 	metric, err := rv.metric.GetMetricWith(
 		prometheus.Labels{"name": "foo", "namespace": "bar", "kind": "ReplicaSet"})
 	if err != nil {

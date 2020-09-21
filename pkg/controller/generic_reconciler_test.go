@@ -29,7 +29,7 @@ func TestGenericReconciler(t *testing.T) {
 
 	gr := &GenericReconciler{
 		client:         client,
-		reconciledKind: "Deployment",
+		reconciledKind: testutils.ObjectKind(&deployment),
 		reconciledObj:  &deployment}
 
 	_, err = gr.Reconcile(request)

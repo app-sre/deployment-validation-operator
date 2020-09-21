@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
+	"reflect"
 	"runtime"
+	"strings"
 	"text/template"
 
 	"github.com/ghodss/yaml"
@@ -81,4 +83,9 @@ func createYamlManifest(objectType string, args *TemplateArgs) ([]byte, error) {
 func templatePath(objectName string) string {
 	_, thisFile, _, _ := runtime.Caller(0)
 	return path.Join(path.Dir(thisFile), fmt.Sprintf("templates/%s.yaml.tpl", objectName))
+}
+
+func ObjectKind(obj interface{}) string {
+	kind := reflect.TypeOf(obj).String()
+	return strings.SplitN(kind, ".", 2)[1]
 }

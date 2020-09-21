@@ -19,5 +19,5 @@ func TestRunValidations(t *testing.T) {
 		t.Errorf("Error creating deployment from template %v", err)
 	}
 
-	RunValidations(request, &deployment, "Deployment", false)
+	RunValidations(request, &deployment, testutils.ObjectKind(&deployment), false)
 }
