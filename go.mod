@@ -3,8 +3,10 @@ module github.com/app-sre/dv-operator
 go 1.13
 
 require (
+	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golangci/golangci-lint v1.31.0 // indirect
+	github.com/mcuadros/go-defaults v1.2.0
 	github.com/operator-framework/operator-sdk v0.17.0
 	github.com/prometheus/client_golang v1.6.0
 	github.com/sirupsen/logrus v1.6.0 // indirect

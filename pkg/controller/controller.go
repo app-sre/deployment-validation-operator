@@ -16,8 +16,8 @@ var desiredControllerKinds []runtime.Object = []runtime.Object{
 // AddToManager adds all Controllers to the Manager
 func AddToManager(m manager.Manager) error {
 	for _, obj := range desiredControllerKinds {
-		c := NewGenericReconciler(m, obj)
-		err := c.AddToManager()
+		c := NewGenericReconciler(obj)
+		err := c.AddToManager(m)
 		if err != nil {
 			return err
 		}

@@ -24,28 +24,25 @@ var _ reconcile.Reconciler = &GenericReconciler{}
 
 // GenericReconciler watches a defined object
 type GenericReconciler struct {
-	client            client.Client
-	scheme            *runtime.Scheme
-	reconciledKind    string
-	reconciledObj     runtime.Object
-	controllerManager manager.Manager
+	client         client.Client
+	reconciledKind string
+	reconciledObj  runtime.Object
 }
 
 // NewGenericReconciler returns a GenericReconciler struct
-func NewGenericReconciler(mgr manager.Manager, obj runtime.Object) *GenericReconciler {
+func NewGenericReconciler(obj runtime.Object) *GenericReconciler {
 	kind := reflect.TypeOf(obj).String()
 	kind = strings.SplitN(kind, ".", 2)[1]
-	return &GenericReconciler{controllerManager: mgr, reconciledObj: obj, reconciledKind: kind}
+	return &GenericReconciler{reconciledObj: obj, reconciledKind: kind}
 }
 
-func (gr *GenericReconciler) AddToManager() error {
-	gr.client = gr.controllerManager.GetClient()
-	gr.scheme = gr.controllerManager.GetScheme()
+func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
+	gr.client = mgr.GetClient()
 
 	// Create a new controller
 	c, err := controller.New(
 		fmt.Sprintf("%sController", gr.reconciledKind),
-		gr.controllerManager,
+		mgr,
 		controller.Options{Reconciler: gr})
 	if err != nil {
 		return err

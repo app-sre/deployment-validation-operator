@@ -1,12 +1,18 @@
+OPERATOR_NAME?=$(shell sed -n 's/.*OperatorName .*"\([^"]*\)".*/\1/p' config/config.go)
+OPERATOR_NAMESPACE?=$(shell sed -n 's/.*OperatorNamespace .*"\([^"]*\)".*/\1/p' config/config.go)
+
 ifndef IMAGE
-IMAGE=quay.io/deployment-validation-operator/dv-operator
+IMAGE=quay.io/deployment-validation-operator/${OPERATOR_NAME}
 endif
 
 ifndef IMAGE_TAG
 IMAGE_TAG=latest
 endif
 
+
 OUTDIR := _output
+TESTTARGETS := $(shell go list -e ./... | egrep -v "/(vendor)/")
+TESTOPTS :=
 
 all: ${OUTDIR}/manager
 
@@ -29,3 +35,7 @@ clean:
 lint:
 	GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.31.0
 	$(GOPATH)/bin/golangci-lint run ./.../
+
+
+gotest:
+	go test $(TESTOPTS) $(TESTTARGETS)
