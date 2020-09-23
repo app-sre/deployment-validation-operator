@@ -1,1 +1,5 @@
-_output/*
+# Build artifacts
+build/_output/*
+
+# Output of the go coverage tool
+*.out
