@@ -3,8 +3,8 @@ package validations
 import (
 	"testing"
 
-	"github.com/app-sre/dv-operator/pkg/testutils"
-	dv_tu "github.com/app-sre/dv-operator/pkg/testutils"
+	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
+	dv_tu "github.com/app-sre/deployment-validation-operator/pkg/testutils"
 	"github.com/prometheus/client_golang/prometheus"
 	prom_tu "github.com/prometheus/client_golang/prometheus/testutil"
 	"k8s.io/apimachinery/pkg/types"

@@ -3,7 +3,7 @@ package controller
 import (
 	"testing"
 
-	"github.com/app-sre/dv-operator/pkg/testutils"
+	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"

@@ -1,4 +1,4 @@
-module github.com/app-sre/dv-operator
+module github.com/app-sre/deployment-validation-operator
 
 go 1.13
 

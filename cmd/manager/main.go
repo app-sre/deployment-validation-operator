@@ -16,10 +16,10 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
-	dv_config "github.com/app-sre/dv-operator/config"
-	"github.com/app-sre/dv-operator/pkg/apis"
-	"github.com/app-sre/dv-operator/pkg/controller"
-	"github.com/app-sre/dv-operator/version"
+	dv_config "github.com/app-sre/deployment-validation-operator/config"
+	"github.com/app-sre/deployment-validation-operator/pkg/apis"
+	"github.com/app-sre/deployment-validation-operator/pkg/controller"
+	"github.com/app-sre/deployment-validation-operator/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
@@ -43,7 +43,7 @@ var (
 	metricsPort         int32 = 8383
 	operatorMetricsPort int32 = 8686
 )
-var log = logf.Log.WithName("DeploymentValidator")
+var log = logf.Log.WithName("DeploymentValidation")
 
 func printVersion() {
 	log.Info(fmt.Sprintf("Operator Version: %s", version.Version))
@@ -93,7 +93,7 @@ func main() {
 
 	ctx := context.TODO()
 	// Become the leader before proceeding
-	err = leader.Become(ctx, "dv-operator-lock")
+	err = leader.Become(ctx, "deployment-validation-operator-lock")
 	if err != nil {
 		log.Error(err, "Failed to get leader lock")
 		os.Exit(1)

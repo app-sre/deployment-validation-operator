@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/app-sre/dv-operator/pkg/validations"
+	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
