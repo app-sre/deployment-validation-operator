@@ -20,8 +20,10 @@ CSV=${MANIFEST_DIR}/deploymentvalidationoperator.clusterserviceversion.yaml
 all: image
 
 manifest:
-	mkdir -p ${MANIFEST_DIR}
-	oc process --local -o yaml --raw=true IMAGE=${OPERATOR_IMAGE} IMAGE_TAG=${OPERATOR_IMAGE_TAG} VERSION=${VERSION} REPLACE_VERSION=${REPLACE_VERSION} -f template/deploymentvalidationoperator.clusterserviceversion.yaml > ${CSV}
+	@mkdir -p $(MANIFEST_DIR) ; \
+	TEMPLATE=`mktemp` ; \
+	./generate-csv-template.py > $${TEMPLATE} ; \
+	oc process --local -o yaml --raw=true IMAGE=$(OPERATOR_IMAGE) IMAGE_TAG=$(OPERATOR_IMAGE_TAG) VERSION=$(VERSION) REPLACE_VERSION=$(REPLACE_VERSION) -f $${TEMPLATE} > $(CSV)
 
 bundle: manifest
 	docker build -t ${IMAGE}:${IMAGE_TAG} .

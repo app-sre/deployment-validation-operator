@@ -28,80 +28,11 @@ objects:
       spec:
         deployments:
         - name: deployment-validation-operator
-          spec:
-            replicas: 1
-            selector:
-              matchLabels:
-                k8s-app: deployment-validation-operator
-            strategy:
-              rollingUpdate:
-                maxSurge: 1
-                maxUnavailable: 0
-              type: RollingUpdate
-            template:
-              metadata:
-                labels:
-                  name: deployment-validation-operator
-                  k8s-app: deployment-validation-operator
-              spec:
-                containers:
-                - image: ${IMAGE}:${IMAGE_TAG}
-                  imagePullPolicy: Always
-                  name: deployment-validation-operator
-                  env:
-                  - name: WATCH_NAMESPACE
-                    value: ""
-                  - name: OPERATOR_NAME
-                    value: "deployment-validation-operator"
-                  - name: POD_NAME
-                    valueFrom:
-                      fieldRef:
-                        fieldPath: metadata.name
-                restartPolicy: Always
-                serviceAccount: deployment-validation-operator
-                terminationGracePeriodSeconds: 30
+          ### content of deploy/openshift/deployments.yaml
         clusterPermissions:
-        - rules:
-          - apiGroups:
-            - "*"
-            resources:
-            - "*"
-            verbs:
-            - get
-            - list
-            - watch
-          serviceAccountName: deployment-validation-operator
+          ### content of deploy/openshift/cluster-role.yaml
         permissions:
-        - rules:
-          - apiGroups:
-            - ""
-            resources:
-            - configmaps
-            - services
-            - services/finalizers
-            verbs:
-            - get
-            - create
-            - list
-            - delete
-            - update
-            - watch
-            - patch
-          - apiGroups:
-            - apps
-            resourceNames:
-            - deployment-validation-operator
-            resources:
-            - deployments/finalizers
-            verbs:
-            - update
-          - apiGroups:
-            - monitoring.coreos.com
-            resources:
-            - servicemonitors
-            verbs:
-            - '*'
-          serviceAccountName: deployment-validation-operator
+        ### content of deploy/openshift/role.yaml
       strategy: deployment
     installModes:
     - supported: true
