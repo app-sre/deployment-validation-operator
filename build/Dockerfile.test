@@ -1,0 +1,8 @@
+FROM registry.svc.ci.openshift.org/openshift/release:golang-1.15 AS builder
+
+RUN mkdir -p /workdir
+COPY . /workdir
+WORKDIR /workdir
+
+ENTRYPOINT  ["make"]
+CMD ["go-check", "test"]

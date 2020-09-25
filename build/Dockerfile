@@ -1,3 +1,10 @@
+FROM registry.svc.ci.openshift.org/openshift/release:golang-1.15 AS builder
+
+RUN mkdir -p /workdir
+COPY . /workdir
+WORKDIR /workdir
+RUN make
+
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
 ENV OPERATOR=/usr/local/bin/deployment-validation-operator \
@@ -5,7 +12,7 @@ ENV OPERATOR=/usr/local/bin/deployment-validation-operator \
     USER_NAME=deployment-validation-operator
 
 # install operator binary
-COPY build/_output/bin/deployment-validation-operator ${OPERATOR}
+COPY --from=builder /workdir/build/_output/bin/deployment-validation-operator ${OPERATOR}
 
 COPY build/bin /usr/local/bin
 RUN  /usr/local/bin/user_setup
