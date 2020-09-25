@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-make docker-login-and-push
+USER=$QUAY_USER make docker-login-and-push

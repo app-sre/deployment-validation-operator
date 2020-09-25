@@ -19,10 +19,7 @@ docker-test:
 
 .PHONY: docker-login-and-push
 docker-login-and-push: docker-login docker-build
-	${CONTAINER_ENGINE} --config="$${CONFIG_DIR}" push $(OPERATOR_IMAGE_URI); \
-	${CONTAINER_ENGINE} --config="$${CONFIG_DIR}" push $(OPERATOR_IMAGE_URI_LATEST)
-
-.PHONY: docker-login
-docker-login:
 	@CONFIG_DIR=`mktemp -d`; \
 	${CONTAINER_ENGINE} --config="$${CONFIG_DIR}" login -u="${QUAY_USER}" -p="${QUAY_TOKEN}" quay.io; \
+	${CONTAINER_ENGINE} --config="$${CONFIG_DIR}" push $(OPERATOR_IMAGE_URI); \
+	${CONTAINER_ENGINE} --config="$${CONFIG_DIR}" push $(OPERATOR_IMAGE_URI_LATEST)
