@@ -14,13 +14,13 @@ objects:
       containerImage: ${IMAGE}:${IMAGE_TAG}
       createdAt: 08/25/2020
       support: Best Effort
-      repository: https://github.com/app-sre/dv-operator
+      repository: https://github.com/app-sre/deployment-validation-operator
       description: |-
         The deployment validation operator
     name: deployment-validation-operator.v${VERSION}
     namespace: placeholder
   spec:
-    description: 'The Deployment Validator Operator for Kubernetes monitors workloads
+    description: 'The Deployment Validation Operator for Kubernetes monitors workloads
       on a cluster a provides suggestions for best practices.
       '
     displayName: Deployment Validation Operator
@@ -50,7 +50,7 @@ objects:
       operated-by: deployment-validation-operator
     links:
     - name: repository
-      url: https://github.com/app-sre/dv-operator
+      url: https://github.com/app-sre/deployment-validation-operator
     - name: containerImage
       url: https://${IMAGE}:${IMAGE_TAG}
     maturity: alpha
@@ -64,7 +64,7 @@ objects:
     version: ${VERSION}
 parameters:
 - name: IMAGE
-  value: "quay.io/deployment-validation-operator/dv-operator"
+  value: "quay.io/deployment-validation-operator/deployment-validation-operator"
 - name: IMAGE_TAG
   value: "latest"
 - name: VERSION

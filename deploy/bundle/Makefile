@@ -7,7 +7,7 @@ IMAGE_TAG=latest
 endif
 
 ifndef OPERATOR_IMAGE
-OPERATOR_IMAGE=quay.io/deployment-validation-operator/dv-operator
+OPERATOR_IMAGE=quay.io/deployment-validation-operator/deployment-validation-operator
 endif
 
 ifndef OPERATOR_IMAGE_TAG
