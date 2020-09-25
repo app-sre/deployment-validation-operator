@@ -1,8 +1,8 @@
-# Deployment Validator Operator
+# Deployment Validation Operator
 
 ## Description
 
-The Deployment Validator Operator (DVO) checks deployments and other resources against a curated collection of best practices.
+The Deployment Validation Operator (DVO) checks deployments and other resources against a curated collection of best practices.
 
 These best practices focus mainly on ensuring that the applications are fault-tolerant.
 
@@ -12,7 +12,26 @@ This operator doesn't define any CRDs at the moment. It has been bootstrapped wi
 
 ## Deployment
 
-TODO
+### Manual installation
+
+There are manifests to install the operator under the [`deploy/openshift`](deploy/openshift) directory. A typical installation would go as follows:
+
+* Create the `deployment-validation-operator` namespace/project
+* Create the service account, roles and role bindings
+* Create the operator deployment
+
+```
+oc new-project deployment-validation-operator
+for manifest in service-account.yaml \
+                role.yaml \
+                cluster-role.yaml \
+                role-binding.yaml \
+                cluster-role-binding.yaml \
+                operator.yaml
+do
+    oc create -f deploy/openshift/$manifest
+done
+```
 
 ## Validations and Metrics
 
@@ -38,9 +57,20 @@ dv_requests_limits{kind="v1.Deployment",name="onereplica-deployment",namespace="
 dv_requests_limits{kind="v1.ReplicaSet",name="onereplica-deployment-5969f7b486",namespace="default"} 1
 ```
 
+## Tests
+
+You can run the unit tests via
+
+```
+make test
+```
+
+We use [openshift boilerplate](https://github.com/openshift/boilerplate) to manage our make targets. See this [doc](https://github.com/openshift/boilerplate/blob/master/boilerplate/openshift/golang-osd-operator/README.md) for further information.
+
 ## Roadmap
 
 - Configuration CR that will allow enabling/disabling validations.
+- e2e tests
 
 Planned validations:
 
@@ -50,5 +80,4 @@ Planned validations:
 - PDB enabled
 - Anti-affinity configured
 - Triggers (DeploymentConfig only)
-- Usage of Deprecated APIs
 - Usage of Deprecated objects
