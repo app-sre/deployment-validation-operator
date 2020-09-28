@@ -72,4 +72,3 @@ parameters:
   required: true
 - name: REPLACE_VERSION
   value: ""
-  required: true
