@@ -24,6 +24,9 @@ manifest:
 	TEMPLATE=`mktemp` ; \
 	./generate-csv-template.py > $${TEMPLATE} ; \
 	oc process --local -o yaml --raw=true IMAGE=$(OPERATOR_IMAGE) IMAGE_TAG=$(OPERATOR_IMAGE_TAG) VERSION=$(VERSION) REPLACE_VERSION=$(REPLACE_VERSION) -f $${TEMPLATE} > $(CSV)
+	@if [ "${REPLACE_VERSION}" == "" ]; then \
+	  sed -i.bak "/replaces/d" $(CSV); \
+	fi
 
 bundle: manifest
 	docker build -t ${IMAGE}:${IMAGE_TAG} .
