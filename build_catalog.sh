@@ -1,14 +1,18 @@
 #!/bin/bash
 
-if [ -z "${BUNDLE_IMAGE_NAME}" ]; then
-  echo "BUNDLE_IMAGE_NAME is not set"
-  exit 1
-fi
+count=0
+for var in BUNDLE_IMAGE_NAME \
+           CATALOG_IMAGE_NAME \
+           QUAY_USER \
+           QUAY_TOKEN
+do
+    if [ ! "${!var}" ]; then
+        echo "$var is not set"
+        count=$((count + 1))
+    fi
+done
 
-if [ -z "${CATALOG_IMAGE_NAME}" ]; then
-  echo "CATALOG_IMAGE_NAME is not set"
-  exit 1
-fi
+[ $count -gt 0 ] && exit 1
 
 num_commits=$(git rev-list $(git rev-list --max-parents=0 HEAD)..HEAD --count)
 current_commit=$(git rev-parse --short=7 HEAD)
