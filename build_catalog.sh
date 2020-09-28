@@ -1,5 +1,15 @@
 #!/bin/bash
 
+if [ -z "${BUNDLE_IMAGE_NAME}" ]; then
+  echo "BUNDLE_IMAGE_NAME is not set"
+  exit 1
+fi
+
+if [ -z "${CATALOG_IMAGE_NAME}" ]; then
+  echo "CATALOG_IMAGE_NAME is not set"
+  exit 1
+fi
+
 num_commits=$(git rev-list $(git rev-list --max-parents=0 HEAD)..HEAD --count)
 current_commit=$(git rev-parse --short=7 HEAD)
 version="0.1.$num_commits-$current_commit"
@@ -28,7 +38,10 @@ fi
 
 # Build/push the new bundle
 pushd deploy/bundle
-  IMAGE=$BUNDLE_IMAGE_NAME IMAGE_TAG=$current_commit VERSION=$version REPLACE_VERSION=$prev_version make bundle
+  if [[ $prev_version != "" ]]; then
+    prev="REPLACE_VERSION=$prev_version"
+  fi
+  IMAGE=$BUNDLE_IMAGE_NAME IMAGE_TAG=$current_commit VERSION=$version $prev make bundle
   docker tag $BUNDLE_IMAGE_NAME:$current_commit $BUNDLE_IMAGE_NAME:latest
   $docker_cmd push $BUNDLE_IMAGE_NAME:$current_commit
   $docker_cmd push $BUNDLE_IMAGE_NAME:latest
@@ -41,7 +54,7 @@ chmod u+x ./opm
 # Create/push a new catalog via opm
 $docker_cmd pull $CATALOG_IMAGE_NAME:latest && exists=1 || exists=0
 if [ $exists -eq 1 ]; then
-    from_arg="--from-index $CATALOG_IMAGE_NAME:latest"
+  from_arg="--from-index $CATALOG_IMAGE_NAME:latest"
 fi
 ./opm index add --bundles $BUNDLE_IMAGE_NAME:$current_commit $from_arg --tag $CATALOG_IMAGE_NAME:$current_commit --build-tool docker
 docker tag $CATALOG_IMAGE_NAME:$current_commit $CATALOG_IMAGE_NAME:latest
