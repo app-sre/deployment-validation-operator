@@ -26,6 +26,7 @@ manifest:
 	oc process --local -o yaml --raw=true IMAGE=$(OPERATOR_IMAGE) IMAGE_TAG=$(OPERATOR_IMAGE_TAG) VERSION=$(VERSION) REPLACE_VERSION=$(REPLACE_VERSION) -f $${TEMPLATE} > $(CSV)
 	@if [ "${REPLACE_VERSION}" == "" ]; then \
 	  sed -i.bak "/replaces/d" $(CSV); \
+	  rm -f $(CSV).bak; \
 	fi
 
 bundle: manifest
