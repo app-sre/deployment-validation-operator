@@ -64,7 +64,7 @@ objects:
     version: ${VERSION}
 parameters:
 - name: IMAGE
-  value: "quay.io/deployment-validation-operator/deployment-validation-operator"
+  value: "quay.io/app-sre/deployment-validation-operator"
 - name: IMAGE_TAG
   value: "latest"
 - name: VERSION

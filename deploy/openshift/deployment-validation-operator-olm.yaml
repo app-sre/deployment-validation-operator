@@ -29,7 +29,7 @@ objects:
     namespace: $(NAMESPACE)
 parameters:
 - name: IMAGE
-  value: quay.io/deployment-validation-operator/deployment-validation-operator-catalog
+  value: quay.io/app-sre/deployment-validation-operator-catalog
   displayName: deployment-validation-operator catalog image
   description: the image of the deployment-validation-operator catalog to deploy
   required: true

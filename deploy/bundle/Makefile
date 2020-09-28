@@ -1,5 +1,5 @@
 ifndef IMAGE
-IMAGE=quay.io/deployment-validation-operator/deployment-validation-operator-bundle
+IMAGE=quay.io/app-sre/deployment-validation-operator-bundle
 endif
 
 ifndef IMAGE_TAG
@@ -7,7 +7,7 @@ IMAGE_TAG=latest
 endif
 
 ifndef OPERATOR_IMAGE
-OPERATOR_IMAGE=quay.io/deployment-validation-operator/deployment-validation-operator
+OPERATOR_IMAGE=quay.io/app-sre/deployment-validation-operator
 endif
 
 ifndef OPERATOR_IMAGE_TAG
