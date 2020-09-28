@@ -1,12 +1,12 @@
-include boilerplate/generated-includes.mk
-
 GOLANGCI_LINT_CONFIG = .golangci.yml
-IMAGE_REGISTRY ?= quay.io
-IMAGE_REPOSITORY ?= deployment-validation-operator
-IMAGE_NAME ?= ${OPERATOR_NAME}
-OPERATOR_IMAGE_URI_TEST=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):test
+IMAGE_REPOSITORY ?= app-sre
 QUAY_USER ?=
 QUAY_TOKEN ?=
+
+# This include must go below the above definitions
+include boilerplate/generated-includes.mk
+
+OPERATOR_IMAGE_URI_TEST=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):test
 
 .PHONY: boilerplate-update
 boilerplate-update:
