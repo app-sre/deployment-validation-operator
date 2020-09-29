@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 
 count=0
 for var in BUNDLE_IMAGE_NAME \
@@ -18,6 +19,7 @@ num_commits=$(git rev-list $(git rev-list --max-parents=0 HEAD)..HEAD --count)
 current_commit=$(git rev-parse --short=7 HEAD)
 version="0.1.$num_commits-$current_commit"
 opm_version="1.14.0"
+yq_version="3.4.0"
 
 # Login to docker
 docker_conf="$PWD/.docker"
@@ -34,7 +36,11 @@ if [ $exists -eq 1 ]; then
   tmp_dir=$(mktemp -d -t sa-XXXXXXXXXX)
   pushd $tmp_dir
     docker export tmp_$$ | tar -xf -
-    prev_version=`find . -name *.clusterserviceversion.* | xargs cat - | yq r - metadata.name`
+    curl -Lo ./yq https://github.com/mikefarah/yq/releases/download/$yq_version/yq_linux_amd64 && chmod +x ./yq
+    prev_version=`find . -name *.clusterserviceversion.* | xargs cat - | ./yq r - metadata.name`
+    if [[ "$prev_version" == "" ]]; then
+      exit 1
+    fi
   popd
   rm -rf $tmp_dir
   docker rm tmp_$$
@@ -43,9 +49,9 @@ fi
 # Build/push the new bundle
 pushd deploy/bundle
   if [[ $prev_version != "" ]]; then
-    prev="REPLACE_VERSION=$prev_version"
+    prev="export REPLACE_VERSION=$prev_version"
   fi
-  IMAGE=$BUNDLE_IMAGE_NAME IMAGE_TAG=$current_commit VERSION=$version $prev make bundle
+  (export IMAGE=$BUNDLE_IMAGE_NAME && export IMAGE_TAG=$current_commit && export VERSION=$version && $prev; make bundle)
   docker tag $BUNDLE_IMAGE_NAME:$current_commit $BUNDLE_IMAGE_NAME:latest
   $docker_cmd push $BUNDLE_IMAGE_NAME:$current_commit
   $docker_cmd push $BUNDLE_IMAGE_NAME:latest
