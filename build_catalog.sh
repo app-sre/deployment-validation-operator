@@ -33,7 +33,7 @@ docker_cmd="docker --config=$docker_conf"
 $docker_cmd login -u="$QUAY_USER" -p="$QUAY_TOKEN" quay.io
 
 # Find the CSV version from the previous bundle
-log "Pulling lastest bundle image $BUNDLE_IMAGE"
+log "Pulling latest bundle image $BUNDLE_IMAGE"
 $docker_cmd pull $BUNDLE_IMAGE:latest && exists=1 || exists=0
 
 if [ $exists -eq 1 ]; then
@@ -60,7 +60,7 @@ pushd deploy/bundle
     export REPLACE_VERSION=$prev_version
   fi
   export BUNDLE_IMAGE_TAG=$current_commit
-  export OPERATOR_IMAGE_TAG=$current_commit
+  export OPERATOR_IMAGE_TAG=$version
   export VERSION=$version
   make bundle
   docker tag $BUNDLE_IMAGE:$current_commit $BUNDLE_IMAGE:latest
