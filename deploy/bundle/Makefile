@@ -1,9 +1,9 @@
-ifndef IMAGE
-IMAGE=quay.io/app-sre/deployment-validation-operator-bundle
+ifndef BUNDLE_IMAGE
+BUNDLE_IMAGE=quay.io/app-sre/deployment-validation-operator-bundle
 endif
 
-ifndef IMAGE_TAG
-IMAGE_TAG=latest
+ifndef BUNDLE_IMAGE_TAG
+BUNDLE_IMAGE_TAG=latest
 endif
 
 ifndef OPERATOR_IMAGE
@@ -30,10 +30,10 @@ manifest:
 	fi
 
 bundle: manifest
-	docker build -t ${IMAGE}:${IMAGE_TAG} .
+	docker build -t ${BUNDLE_IMAGE}:${BUNDLE_IMAGE_TAG} .
 
 push: bundle
-	docker push ${IMAGE}:${IMAGE_TAG}
+	docker push ${BUNDLE_IMAGE}:${BUNDLE_IMAGE_TAG}
 
 clean:
 	rm -rf ${MANIFEST_DIR}
