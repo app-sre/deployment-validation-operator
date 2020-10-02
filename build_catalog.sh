@@ -60,7 +60,7 @@ pushd deploy/bundle
     export REPLACE_VERSION=$prev_version
   fi
   export BUNDLE_IMAGE_TAG=$current_commit
-  export OPERATOR_IMAGE_TAG=$version
+  export OPERATOR_IMAGE_TAG=v$version
   export VERSION=$version
   make bundle
   docker tag $BUNDLE_IMAGE:$current_commit $BUNDLE_IMAGE:latest
