@@ -24,7 +24,11 @@ COMMIT_NUMBER=$(shell git rev-list `git rev-list --parents HEAD | egrep "^[a-f0-
 CURRENT_COMMIT=$(shell git rev-parse --short=7 HEAD)
 OPERATOR_VERSION=$(VERSION_MAJOR).$(VERSION_MINOR).$(COMMIT_NUMBER)-$(CURRENT_COMMIT)
 
-IMG?=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):v$(OPERATOR_VERSION)
+# upstream-diff - set IMG from two sub-components which allows more commonality in use
+OPERATOR_IMAGE=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME)
+OPERATOR_IMAGE_TAG=v$(OPERATOR_VERSION)
+IMG?=$(OPERATOR_IMAGE):$(OPERATOR_IMAGE_TAG)
+
 OPERATOR_IMAGE_URI=${IMG}
 OPERATOR_IMAGE_URI_LATEST=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):latest
 OPERATOR_DOCKERFILE ?=build/Dockerfile
@@ -35,10 +39,10 @@ MAINPACKAGE=./cmd/manager
 # Containers may default GOFLAGS=-mod=vendor which would break us since
 # we're using modules.
 unexport GOFLAGS
-# rporresm - don't set this to Linux, there are Mac OS X in the world
+# upstream-diff - don't set this to Linux, there are Mac OS X in the world
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
-# rporresm - we want to use vendor
+# upstream-diff - we want to use vendor
 GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 GOFLAGS=-mod=vendor
 
 GOBUILDFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
@@ -99,7 +103,7 @@ op-generate:
 .PHONY: generate
 generate: op-generate go-generate
 
-# rporresm: Force GOOS=linux as we may want to build containers in darwin
+# upstream-diff: Force GOOS=linux as we may want to build containers in darwin
 .PHONY: go-build
 go-build: go-check go-test ## Build binary
 	${GOENV} GOOS=linux go build ${GOBUILDFLAGS} -o ${BINFILE} ${MAINPACKAGE}

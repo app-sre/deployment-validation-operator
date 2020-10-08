@@ -12,7 +12,12 @@ for var in BUNDLE_IMAGE \
            QUAY_USER \
            QUAY_TOKEN \
            CONTAINER_ENGINE \
-           CONFIG_DIR
+           CONFIG_DIR \
+           CURRENT_COMMIT \
+           OPERATOR_VERSION \
+           GOOS \
+           GOARCH \
+           OPM_VERSION
 do
   if [ ! "${!var}" ]; then
     log "$var is not set"
@@ -52,7 +57,6 @@ pushd deploy/bundle
     export REPLACE_VERSION=$prev_version
   fi
   export BUNDLE_IMAGE_TAG=$CURRENT_COMMIT
-#  export OPERATOR_IMAGE_TAG=v$version
   export VERSION=$OPERATOR_VERSION
   make bundle
   ${CONTAINER_ENGINE} tag $BUNDLE_IMAGE:$CURRENT_COMMIT $BUNDLE_IMAGE:latest
