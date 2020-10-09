@@ -9,13 +9,13 @@ OPM_VERSION = v1.14.0
 BUNDLE_DEPLOY_DIR=deploy/bundle
 MANIFEST_DIR=$(BUNDLE_DEPLOY_DIR)/manifests
 CSV=$(MANIFEST_DIR)/deploymentvalidationoperator.clusterserviceversion.yaml
-BUNDLE_IMAGE?=$(OPERATOR_IMAGE)-bundle
-CATALOG_IMAGE?=$(OPERATOR_IMAGE)-catalog
-
 CONFIG_DIR=.docker
 
 # This include must go below the above definitions
 include boilerplate/generated-includes.mk
+
+BUNDLE_IMAGE?=$(OPERATOR_IMAGE)-bundle
+CATALOG_IMAGE?=$(OPERATOR_IMAGE)-catalog
 
 OPERATOR_IMAGE_URI_TEST=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):test
 
