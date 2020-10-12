@@ -26,6 +26,15 @@ follows:
 | `coverage`                | (Code coverage)[#code-coverage] analysis and reporting.                                                         |
 | `build`                   | Code compilation and bundle generation.                                                                         |
 
+In addition to configuring these test targets, make sure your
+`build_root` stanza is configured to use the configuration from your
+repository, which is provided by this convention:
+
+```yaml
+build_root:
+  from_repository: true
+```
+
 ### app-sre
 
 The `build-push` target builds and pushes the operator and OLM registry images,
@@ -46,5 +55,15 @@ run code coverage analysis per [this SOP](https://github.com/openshift/ops-sop/b
 - ensures the proper version of `golangci-lint` is installed, and
 - runs it against
 - a `golangci.yml` config.
+
+## Checks on generated code
+
+The convention embeds default checks to ensure generated code generation is current, committed, and unaltered.
+To trigger the check, you can use `make generate-check` provided your Makefile properly includes the boilerplate-generated include `boilerplate/generated-includes.mk`.
+
+Checks consist of : 
+* Checking all files are committed to ensure a safe point to revert to in case of error
+* Running the `make generate` command to regenerate the needed code
+* Checking if this results in any new uncommitted files in the git project or if all is clean.
 
 ## More coming soon

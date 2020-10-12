@@ -16,6 +16,10 @@ osdk_version() {
     $osdk version | sed 's/operator-sdk version: "*\([^,"]*\)"*,.*/\1/'
 }
 
+if [ "$BOILERPLATE_SET_X" ]; then
+  set -x
+fi
+
 # Only used for error messages
 _lib=${BASH_SOURCE##*/}
 
@@ -42,3 +46,9 @@ if [[ "$HERE" == "$CONVENTION_ROOT/"* ]]; then
   [[ -n "$CONVENTION_NAME" ]] || err "$_lib couldn't discover the name of the sourcing convention"
 fi
 
+if [ -z "$BOILERPLATE_GIT_REPO" ]; then
+  export BOILERPLATE_GIT_REPO=git@github.com:openshift/boilerplate.git
+fi
+if [ -z "$BOILERPLATE_GIT_CLONE" ]; then
+  export BOILERPLATE_GIT_CLONE="git clone $BOILERPLATE_GIT_REPO"
+fi
