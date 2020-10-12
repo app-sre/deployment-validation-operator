@@ -55,7 +55,8 @@ bundle: manifest
 
 .PHONY: catalog
 catalog: docker-login bundle
-	./build_catalog.sh
+	./create_catalog.sh
 
+.PHONY: clean
 clean:
 	rm -rf $(MANIFEST_DIR) $(CONFIG_DIR)
