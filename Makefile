@@ -1,6 +1,7 @@
 .EXPORT_ALL_VARIABLES:
 
 GOLANGCI_LINT_CONFIG = .golangci.yml
+GOFLAGS_MOD = -mod=vendor
 IMAGE_REPOSITORY ?= app-sre
 QUAY_USER ?=
 QUAY_TOKEN ?=
