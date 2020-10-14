@@ -47,6 +47,9 @@ GOBUILDFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPAT
 # Relevant issue - https://github.com/golangci/golangci-lint/issues/734
 GOLANGCI_LINT_CACHE ?= /tmp/golangci-cache
 
+# app-sre: allow custom config linter
+GOLANGCI_LINT_CONFIG ?= ${CONVENTION_DIR}/golangci.yml
+
 TESTTARGETS := $(shell ${GOENV} go list -e ./... | egrep -v "/(vendor)/")
 # ex, -v
 TESTOPTS :=
@@ -85,10 +88,11 @@ docker-push:
 .PHONY: push
 push: docker-push
 
+# app-sre: allow customer linter config
 .PHONY: go-check
 go-check: ## Golang linting and other static analysis
 	${CONVENTION_DIR}/ensure.sh golangci-lint
-	GOLANGCI_LINT_CACHE=${GOLANGCI_LINT_CACHE} golangci-lint run -c ${CONVENTION_DIR}/golangci.yml ./...
+	GOLANGCI_LINT_CACHE=${GOLANGCI_LINT_CACHE} golangci-lint run -c ${GOLANGCI_LINT_CONFIG} ./...
 
 .PHONY: go-generate
 go-generate:
