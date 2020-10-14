@@ -8,8 +8,10 @@ source $CONVENTION_ROOT/_lib/common.sh
 # Expect POST
 [[ "$1" == "POST" ]] || err "Got a parameter I don't understand: '$1'. Did the infrastructure change?"
 
-echo "Copying .codecov.yml to your repository root."
-cp ${HERE}/.codecov.yml $REPO_ROOT
+for f in .codecov.yml .ci-operator.yaml; do
+    echo "Copying $f to your repository root."
+    cp ${HERE}/$f $REPO_ROOT
+done
 
 cat <<EOF
 =====================
@@ -28,6 +30,6 @@ include boilerplate/generated-includes.mk
 - Make sure you are properly integrated with codecov.io:
   https://github.com/openshift/ops-sop/blob/93d100347746ce04ad552591136818f82043c648/services/codecov.md#generate-the-codecovio-token
 
-- Make sure your prow and app-sre pipeline configurations use the standard
-  targets described in the README.
+- Make sure your prow and app-sre pipeline configurations use the
+  build_root configuration and standard targets described in the README.
 EOF

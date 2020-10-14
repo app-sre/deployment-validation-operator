@@ -4,3 +4,10 @@ run:
   concurrency: 10
   # timeout for analysis, e.g. 30s, 5m, default is 1m
   timeout: 2m
+
+issues:
+  # We want to make sure we get a full report every time. Setting these
+  # to zero disables the limit.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+

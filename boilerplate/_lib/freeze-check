@@ -2,9 +2,8 @@
 
 set -e
 
-if [ "$BOILERPLATE_FREEZE_CHECK_DEBUG" ]; then
-  set -x
-fi
+REPO_ROOT=$(git rev-parse --show-toplevel)
+source $REPO_ROOT/boilerplate/_lib/common.sh
 
 # Validate that no subscribed boilerplate artifacts have been changed.
 # PR checks may wish to gate on this.
@@ -29,14 +28,12 @@ fi
 # seriously ticked off if something went wrong and lost my in-flight
 # changes.
 if ! [ -z "$(git status --porcelain)" ]; then
-  echo "Can't validate boilerplate in a dirty repository. Please commit your changes and try again."
-  exit 1
+  err "Can't validate boilerplate in a dirty repository. Please commit your changes and try again."
 fi
 
 # We glean the last boilerplate commit from the
 # last-boilerplate-commit file, which gets laid down by the main
 # `update` driver each time it runs.
-REPO_ROOT=$(git rev-parse --show-toplevel)
 LBCF=${REPO_ROOT}/boilerplate/_data/last-boilerplate-commit
 if ! [[ -f "$LBCF" ]]; then
   echo "Couldn't discover last boilerplate commit! Assuming you're bootstrapping."
@@ -45,9 +42,6 @@ fi
 LBC=$(cat $LBCF)
 
 # Download just that commit
-if [ -z "$BOILERPLATE_GIT_REPO" ]; then
-  BOILERPLATE_GIT_REPO=git@github.com:openshift/boilerplate.git
-fi
 echo "Fetching $LBC from $BOILERPLATE_GIT_REPO"
 # boilerplate/update cleans up this temp dir
 TMPD=$(mktemp -d)
@@ -66,11 +60,11 @@ boilerplate/update $TMPD
 
 # Okay, if anything has changed, that's bad.
 if [[ $(git status --porcelain | wc -l) -ne 0 ]]; then
-  echo "Your boilerplate is dirty!"
-  echo "Run 'git diff' to see what we think you shouldn't have changed."
-  echo "You can commit those changes to pass this check."
-  echo "Or you can run 'git reset --hard HEAD' to get back to where you were before."
-  exit 1
+  err "Your boilerplate is dirty!
+Run 'git diff' to see what we think you shouldn't have changed.
+You can commit those changes to pass this check.
+Or you can run 'git reset --hard HEAD' to get back to where you were before."
+
 fi
 
 echo "Your boilerplate is clean!"

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -eo pipefail
 
 ###
 # Run operator-sdk generate commands appropriate to the version of
@@ -20,10 +20,6 @@ VER=$(osdk_version $OSDK)
 # This explicitly lists the versions we know about. We don't support
 # anything outside of that.
 case $VER in
-  'v0.8.2')
-      $OSDK generate openapi
-      $OSDK generate k8s
-      ;;
   'v0.15.1'|'v0.16.0'|'v0.17.0'|'v0.17.1')
       $OSDK generate crds
       $OSDK generate k8s
