@@ -3,3 +3,8 @@ build/_output/*
 
 # Output of the go coverage tool
 *.out
+
+# docker login
+.docker/*
+
+deploy/bundle/manifests/*

@@ -1,105 +1,186 @@
 #!/bin/bash
-set -e
 
-function log ()
-{
-  echo "######## $1 ########"
+function log() {
+    echo "$(date "+%Y-%m-%d %H:%M:%S") -- $1"
 }
 
 count=0
 for var in BUNDLE_IMAGE \
            CATALOG_IMAGE \
-           QUAY_USER \
-           QUAY_TOKEN
+           CONTAINER_ENGINE \
+           CONFIG_DIR \
+           CURRENT_COMMIT \
+           COMMIT_NUMBER \
+           OPERATOR_VERSION \
+           OPERATOR_NAME \
+           CSV \
+           GOOS \
+           GOARCH \
+           OPM_VERSION \
+           BUNDLE_VERSIONS_REPO \
+           BRANCH_CHANNEL
 do
-  if [ ! "${!var}" ]; then
-    log "$var is not set"
-    count=$((count + 1))
-  fi
+    if [ ! "${!var}" ]; then
+      log "$var is not set"
+      count=$((count + 1))
+    fi
 done
 
-[ $count -gt 0 ] && exit 1
+[[ $count -gt 0 ]] && exit 1
 
-num_commits=$(git rev-list $(git rev-list --max-parents=0 HEAD)..HEAD --count)
-current_commit=$(git rev-parse --short=7 HEAD)
-version="0.1.$num_commits-$current_commit"
-opm_version="1.14.0"
+# We shouln't need set -u as we have checked for the vars before
+# but let's play safe
+set -euo pipefail
 
-# Login to docker
-docker_conf="$PWD/.docker"
-mkdir -p "$docker_conf"
-docker_cmd="docker --config=$docker_conf"
+# General vars to modify behaviour of the script
+DRY_RUN=${DRY_RUN:-true}
+DELETE_TEMP_DIR=${DELETE_TEMP_DIR:-true}
+REMOVE_UNDEPLOYED=${REMOVE_UNDEPLOYED:-false}
 
-$docker_cmd login -u="$QUAY_USER" -p="$QUAY_TOKEN" quay.io
+temp_dir=$(mktemp -d)
+[[ "$DELETE_TEMP_DIR" == "true" ]] && trap 'rm -rf $temp_dir' EXIT
 
-# Find the CSV version from the previous bundle
-log "Pulling latest bundle image $BUNDLE_IMAGE"
-$docker_cmd pull $BUNDLE_IMAGE:latest && exists=1 || exists=0
+engine_cmd="$CONTAINER_ENGINE --config=$CONFIG_DIR"
 
-if [ $exists -eq 1 ]; then
-  log "Extracting previous version from bundle image"
-  docker create --name="tmp_$$" $BUNDLE_IMAGE:latest sh
-  tmp_dir=$(mktemp -d -t sa-XXXXXXXXXX)
-  pushd $tmp_dir
-    docker export tmp_$$ | tar -xf -
-    prev_version=`find . -name *.clusterserviceversion.* | xargs cat - | python3 -c 'import sys,yaml; print(yaml.safe_load(sys.stdin.read())["metadata"]["name"])'`
-    if [[ "$prev_version" == "" ]]; then
-      log "Unable to find previous bundle version"
-      exit 1
-    fi
-    log "Found previous bundle version $prev_version"
-  popd
-  rm -rf $tmp_dir
-  docker rm tmp_$$
-fi
+# clone bundle repo containing current version
+saas_operator_dir_base="$temp_dir/saas-operator-dir"
+bundle_versions_file="$saas_operator_dir_base/$OPERATOR_NAME/${OPERATOR_NAME}-versions.txt"
+bundle_versions_package_file="$saas_operator_dir_base/$OPERATOR_NAME/${OPERATOR_NAME}.package.yaml"
 
-# Build/push the new bundle
-pushd deploy/bundle
-  log "Creating bundle $BUNDLE_IMAGE:$current_commit"
-  if [[ $prev_version != "" ]]; then
-    export REPLACE_VERSION=$prev_version
-  fi
-  export BUNDLE_IMAGE_TAG=$current_commit
-  export OPERATOR_IMAGE_TAG=v$version
-  export VERSION=$version
-  make bundle
-  docker tag $BUNDLE_IMAGE:$current_commit $BUNDLE_IMAGE:latest
-
-  log "Pushing the bundle $BUNDLE_IMAGE:$current_commit to repository"
-  $docker_cmd push $BUNDLE_IMAGE:$current_commit
-  # Do not push the latest tag here.  If there is a problem creating the catalog then
-  # pushing the latest tag here will mean subsequent runs will be extracting a bundle
-  # version that isn't referenced in the catalog.  This will result in all future
-  # catalog creation failing to be created.
-popd
-
-# Download opm build
-curl -L https://github.com/operator-framework/operator-registry/releases/download/v$opm_version/linux-amd64-opm -o ./opm
-chmod u+x ./opm
-
-# Create/push a new catalog via opm
-log "Pulling existing latest catalog $CATALOG_IMAGE"
-$docker_cmd pull $CATALOG_IMAGE:latest && exists=1 || exists=0
-if [ $exists -eq 1 ]; then
-  from_arg="--from-index $CATALOG_IMAGE:latest"
-fi
-
-if [[ "$from_arg" == "" ]]; then
-  log "Creating new catalog $CATALOG_IMAGE"
+log "Cloning $BUNDLE_VERSIONS_REPO"
+if [[ -n "${APP_SRE_BOT_PUSH_USER:-}" && "${APP_SRE_BOT_PUSH_TOKEN:-}" ]]; then
+    bundle_versions_repo_url="https://${APP_SRE_BOT_PUSH_USER}:${APP_SRE_BOT_PUSH_TOKEN}@$BUNDLE_VERSIONS_REPO"
 else
-  log "Updating existing catalog $CATALOG_IMAGE"
+    bundle_versions_repo_url="https://$BUNDLE_VERSIONS_REPO"
 fi
 
-./opm index add --bundles $BUNDLE_IMAGE:$current_commit $from_arg --tag $CATALOG_IMAGE:$current_commit --build-tool docker
-if [ $? -ne 0 ]; then
-  exit 1
+git clone --branch "$BRANCH_CHANNEL" "$bundle_versions_repo_url" "$saas_operator_dir_base"
+
+prev_operator_version=""
+removed_versions=""
+if [[ -f "$bundle_versions_file" ]]; then
+    log "$bundle_versions_file exists. We'll use to determine current version"
+    if [[ "$REMOVE_UNDEPLOYED" == "true" ]]; then
+        log "Checking if we have to remove any versions more recent than deployed hash"
+        # TODO: Move this out of here
+        deployed_hash=$(
+            curl -s "https://gitlab.cee.redhat.com/service/app-interface/-/raw/master/data/services/deployment-validation-operator/cicd/saas.yaml" | \
+                docker run --rm -i quay.io/app-sre/yq -r '.resourceTemplates[]|select(.name="deployment-validation-operator").targets[]|select(.namespace["$ref"]=="/openshift/app-sre-stage-01/namespaces/app-sre-dvo-per-cluster.yml")|.ref'
+        )
+
+        log "Current deployed hash is $deployed_hash"
+
+        new_bundle_versions_file=$(mktemp -p "$temp_dir")
+        delete=false
+        # Sort based on commit number
+        for version in $(sort -t . -k 3 -g "$bundle_versions_file"); do
+            if [[ "$delete" == false ]]; then
+                echo "$version" >> "$new_bundle_versions_file"
+
+                short_hash=$(echo "$version" | cut -d- -f2)
+
+                if [[ "$deployed_hash" == "${short_hash}"* ]]; then
+                    log "found deployed hash in the bundle versions repository"
+                    delete=true
+                fi
+            else
+                log "Adding $version to removed versions"
+                removed_versions="$version $removed_versions"
+            fi
+        done
+        [[ -n "$removed_versions" ]] && log "The following versions will be removed: $removed_versions"
+        cp "$new_bundle_versions_file" "$bundle_versions_file"
+    fi
+    prev_operator_version=$(tail -n 1 "$bundle_versions_file")
+else
+    log "No $bundle_versions_file exist. This is the first time the operator is built"
+    new_bundle_versions_file="$bundle_versions_file"
+    touch "$bundle_versions_file"
 fi
-docker tag $CATALOG_IMAGE:$current_commit $CATALOG_IMAGE:latest
 
-log "Pushing catalog $CATALOG_IMAGE:$current_commit to repository"
-$docker_cmd push $CATALOG_IMAGE:$current_commit
+if [[ "$OPERATOR_VERSION" == "$prev_operator_version" ]]; then
+    log "stopping script as $OPERATOR_VERSION version was already built, so no need to rebuild it"
+    exit 0
+fi
 
-# Only put the latest tags once everything else has succeeded
-log "Pushing latest tags for $BUNDLE_IMAGE and $CATALOG_IMAGE"
-$docker_cmd push $CATALOG_IMAGE:latest
-$docker_cmd push $BUNDLE_IMAGE:latest
+log "Creating bundle image $BUNDLE_IMAGE:$CURRENT_COMMIT"
+
+mkdir -p "$MANIFEST_DIR"
+template=$(mktemp -p "$temp_dir")
+./"$BUNDLE_DEPLOY_DIR"/generate-csv-template.py > "$template"
+oc process --local -o yaml --raw=true \
+    IMAGE="$OPERATOR_IMAGE" \
+    IMAGE_TAG="$OPERATOR_IMAGE_TAG" \
+    VERSION="$OPERATOR_VERSION" \
+    REPLACE_VERSION="$prev_operator_version" \
+    -f "$template" > "$CSV"
+
+if [[ "$prev_operator_version" == "" ]]; then \
+    sed -i.bak "/replaces/d" "$CSV"
+    rm -f "$CSV.bak"
+fi
+
+$CONTAINER_ENGINE build -t "$BUNDLE_IMAGE:$CURRENT_COMMIT" "$BUNDLE_DEPLOY_DIR"
+$CONTAINER_ENGINE tag "$BUNDLE_IMAGE:$CURRENT_COMMIT" "$BUNDLE_IMAGE:latest"
+
+# opm won't get anything locally, so we need to push the bundle
+log "Pushing $BUNDLE_IMAGE:$CURRENT_COMMIT"
+$engine_cmd push "$BUNDLE_IMAGE:$CURRENT_COMMIT"
+
+if [[ -z "${OPM_EXECUTABLE:-}" ]]; then
+    curl -s -L "https://github.com/operator-framework/operator-registry/releases/download/$OPM_VERSION/${GOOS}-${GOARCH}-opm" -o "$temp_dir/opm"
+    chmod u+x "$temp_dir/opm"
+    OPM_EXECUTABLE="$temp_dir/opm"
+fi
+
+from_arg=""
+if [[ "$prev_operator_version" ]]; then
+    prev_commit=$(echo "$prev_operator_version" | cut -d"-" -f 2)
+    from_arg="--from-index $CATALOG_IMAGE:$prev_commit"
+fi
+
+log "Creating catalog using opm"
+$OPM_EXECUTABLE index add --bundles "$BUNDLE_IMAGE:$CURRENT_COMMIT" \
+                          --tag "$CATALOG_IMAGE:$CURRENT_COMMIT" \
+                          --build-tool "$(basename $CONTAINER_ENGINE)" \
+                          $from_arg
+$CONTAINER_ENGINE tag "$CATALOG_IMAGE:$CURRENT_COMMIT" "$CATALOG_IMAGE:latest"
+
+# create package yaml
+log "Storing current state in the $BUNDLE_VERSIONS_REPO repository"
+
+cat <<EOF > "$bundle_versions_package_file"
+packageName: $OPERATOR_NAME
+channels:
+- name: $BRANCH_CHANNEL
+  currentCSV: $OPERATOR_NAME.v$OPERATOR_VERSION
+EOF
+
+# add, commit & push
+log "Adding the current version $OPERATOR_VERSION to the bundle versions file"
+echo "$OPERATOR_VERSION" >> "$bundle_versions_file"
+
+cd "$saas_operator_dir_base/$OPERATOR_NAME"
+git add .
+message="add version $OPERATOR_VERSION"
+[[ "$prev_operator_version" ]] && message="$message
+
+replaces $prev_operator_version"
+
+[[ "$removed_versions" ]] && message="$message
+
+removed versions: $removed_versions"
+
+git commit -m "$message"
+log "Pushing the repository changes to $BRANCH_CHANNEL in $BUNDLE_VERSIONS_REPO"
+[[ "$DRY_RUN" == "false" ]] && git push origin "$BRANCH_CHANNEL"
+cd -
+
+log "Pushing $CATALOG_IMAGE:$CURRENT_COMMIT"
+[[ "$DRY_RUN" == "false" ]] && $engine_cmd push "$CATALOG_IMAGE:$CURRENT_COMMIT"
+
+log "Pushing $CATALOG_IMAGE:latest"
+[[ "$DRY_RUN" == "false" ]] && $engine_cmd push "$CATALOG_IMAGE:latest"
+
+log "Pushing $BUNDLE_IMAGE:latest"
+[[ "$DRY_RUN" == "false" ]] && $engine_cmd push "$BUNDLE_IMAGE:latest"
