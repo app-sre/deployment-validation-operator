@@ -134,7 +134,7 @@ fi
 
 from_arg=""
 if [[ "$prev_operator_version" ]]; then
-    prev_commit=$(echo "$prev_operator_version" | cut -d"-" -f 2)
+    prev_commit=${prev_operator_version#*-}
     from_arg="--from-index $CATALOG_IMAGE:$prev_commit"
 fi
 
