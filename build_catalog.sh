@@ -48,7 +48,7 @@ bundle_versions_file="$saas_operator_dir_base/$OPERATOR_NAME/${OPERATOR_NAME}-ve
 bundle_versions_package_file="$saas_operator_dir_base/$OPERATOR_NAME/${OPERATOR_NAME}.package.yaml"
 
 log "Cloning $BUNDLE_VERSIONS_REPO"
-if [[ -n "${APP_SRE_BOT_PUSH_USER:-}" && "${APP_SRE_BOT_PUSH_TOKEN:-}" ]]; then
+if [[ -n "${APP_SRE_BOT_PUSH_USER:-}" && -n "${APP_SRE_BOT_PUSH_TOKEN:-}" ]]; then
     bundle_versions_repo_url="https://${APP_SRE_BOT_PUSH_USER}:${APP_SRE_BOT_PUSH_TOKEN}@$BUNDLE_VERSIONS_REPO"
 else
     bundle_versions_repo_url="https://$BUNDLE_VERSIONS_REPO"
