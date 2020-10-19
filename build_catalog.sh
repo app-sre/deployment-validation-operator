@@ -94,7 +94,6 @@ if [[ -f "$bundle_versions_file" ]]; then
     prev_operator_version=$(tail -n 1 "$bundle_versions_file")
 else
     log "No $bundle_versions_file exist. This is the first time the operator is built"
-    new_bundle_versions_file="$bundle_versions_file"
     touch "$bundle_versions_file"
 fi
 
