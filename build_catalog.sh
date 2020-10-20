@@ -58,7 +58,7 @@ git clone --branch "$BRANCH_CHANNEL" "$bundle_versions_repo_url" "$saas_operator
 
 prev_operator_version=""
 removed_versions=""
-if [[ -f "$bundle_versions_file" ]]; then
+if [[ -s "$bundle_versions_file" ]]; then
     log "$bundle_versions_file exists. We'll use to determine current version"
     if [[ "$REMOVE_UNDEPLOYED" == "true" ]]; then
         log "Checking if we have to remove any versions more recent than deployed hash"
