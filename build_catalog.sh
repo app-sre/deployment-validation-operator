@@ -125,7 +125,7 @@ log "Pushing $BUNDLE_IMAGE:$CURRENT_COMMIT"
 $engine_cmd push "$BUNDLE_IMAGE:$CURRENT_COMMIT"
 
 # We need an up to date version of opm executable
-opm_local_executable=$(which opm)
+opm_local_executable=$(which opm || true)
 if [[ "$opm_local_executable" ]]; then
     opm_local_version=$(opm version | sed 's/.*OpmVersion:"//;s/".*//')
 fi
