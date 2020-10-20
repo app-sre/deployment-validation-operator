@@ -93,7 +93,6 @@ if [[ -s "$bundle_versions_file" ]]; then
     prev_operator_version=$(tail -n 1 "$bundle_versions_file")
 else
     log "No $bundle_versions_file exist. This is the first time the operator is built"
-    touch "$bundle_versions_file"
 fi
 
 if [[ "$OPERATOR_VERSION" == "$prev_operator_version" ]]; then
@@ -125,10 +124,19 @@ $CONTAINER_ENGINE tag "$BUNDLE_IMAGE:$CURRENT_COMMIT" "$BUNDLE_IMAGE:latest"
 log "Pushing $BUNDLE_IMAGE:$CURRENT_COMMIT"
 $engine_cmd push "$BUNDLE_IMAGE:$CURRENT_COMMIT"
 
-if [[ -z "${OPM_EXECUTABLE:-}" ]]; then
+# We need an up to date version of opm executable
+opm_local_executable=$(which opm)
+if [[ "$opm_local_executable" ]]; then
+    opm_local_version=$(opm version | sed 's/.*OpmVersion:"//;s/".*//')
+fi
+
+if [[ -n "$opm_local_executable" && "$opm_local_version" == "$OPM_VERSION" ]]; then
+    log "Using local opm version $opm_local_executable"
+else
+    log "Downloading opm version $OPM_VERSION"
     curl -s -L "https://github.com/operator-framework/operator-registry/releases/download/$OPM_VERSION/${GOOS}-${GOARCH}-opm" -o "$temp_dir/opm"
     chmod u+x "$temp_dir/opm"
-    OPM_EXECUTABLE="$temp_dir/opm"
+    opm_local_executable="$temp_dir/opm"
 fi
 
 from_arg=""
@@ -138,10 +146,10 @@ if [[ "$prev_operator_version" ]]; then
 fi
 
 log "Creating catalog using opm"
-$OPM_EXECUTABLE index add --bundles "$BUNDLE_IMAGE:$CURRENT_COMMIT" \
-                          --tag "$CATALOG_IMAGE:$CURRENT_COMMIT" \
-                          --build-tool "$(basename $CONTAINER_ENGINE)" \
-                          $from_arg
+$opm_local_executable index add --bundles "$BUNDLE_IMAGE:$CURRENT_COMMIT" \
+                                --tag "$CATALOG_IMAGE:$CURRENT_COMMIT" \
+                                --build-tool "$(basename $CONTAINER_ENGINE)" \
+                                $from_arg
 $CONTAINER_ENGINE tag "$CATALOG_IMAGE:$CURRENT_COMMIT" "$CATALOG_IMAGE:latest"
 
 # create package yaml
