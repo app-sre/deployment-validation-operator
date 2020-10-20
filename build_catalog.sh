@@ -37,7 +37,7 @@ DRY_RUN=${DRY_RUN:-true}
 DELETE_TEMP_DIR=${DELETE_TEMP_DIR:-true}
 REMOVE_UNDEPLOYED=${REMOVE_UNDEPLOYED:-false}
 
-temp_dir=$(mktemp -d)
+temp_dir=$(mktemp -d --suffix "-$(basename $0)")
 [[ "$DELETE_TEMP_DIR" == "true" ]] && trap 'rm -rf $temp_dir' EXIT
 
 engine_cmd="$CONTAINER_ENGINE --config=$CONFIG_DIR"
@@ -69,7 +69,7 @@ if [[ -s "$bundle_versions_file" ]]; then
 
         log "Current deployed hash is $deployed_hash"
 
-        new_bundle_versions_file=$(mktemp -p "$temp_dir")
+        new_bundle_versions_file=$(mktemp -p "$temp_dir" new_bundle_versions_file.XXXX)
         delete=false
         # Sort based on commit number
         for version in $(sort -t . -k 3 -g "$bundle_versions_file"); do
@@ -108,14 +108,14 @@ catalog_image_latest="$CATALOG_IMAGE:${BRANCH_CHANNEL}-latest"
 
 # Build bundle
 mkdir -p "$MANIFEST_DIR"
-template=$(mktemp -p "$temp_dir")
-./"$BUNDLE_DEPLOY_DIR"/generate-csv-template.py > "$template"
+csv_template=$(mktemp -p "$temp_dir" csv_template.XXXX)
+./"$BUNDLE_DEPLOY_DIR"/generate-csv-template.py > "$csv_template"
 oc process --local -o yaml --raw=true \
     IMAGE="$OPERATOR_IMAGE" \
     IMAGE_TAG="$OPERATOR_IMAGE_TAG" \
     VERSION="$OPERATOR_VERSION" \
     REPLACE_VERSION="$prev_operator_version" \
-    -f "$template" > "$CSV"
+    -f "$csv_template" > "$CSV"
 
 if [[ "$prev_operator_version" == "" ]]; then \
     sed -i.bak "/ *replaces:/d" "$CSV"
