@@ -118,7 +118,7 @@ oc process --local -o yaml --raw=true \
     -f "$template" > "$CSV"
 
 if [[ "$prev_operator_version" == "" ]]; then \
-    sed -i.bak "/replaces/d" "$CSV"
+    sed -i.bak "/ *replaces:/d" "$CSV"
     rm -f "$CSV.bak"
 fi
 
