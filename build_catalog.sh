@@ -45,7 +45,6 @@ engine_cmd="$CONTAINER_ENGINE --config=$CONFIG_DIR"
 # clone bundle repo containing current version
 saas_operator_dir_base="$temp_dir/saas-operator-dir"
 bundle_versions_file="$saas_operator_dir_base/$OPERATOR_NAME/${OPERATOR_NAME}-versions.txt"
-bundle_versions_package_file="$saas_operator_dir_base/$OPERATOR_NAME/${OPERATOR_NAME}.package.yaml"
 
 log "Cloning $BUNDLE_VERSIONS_REPO"
 if [[ -n "${APP_SRE_BOT_PUSH_USER:-}" && -n "${APP_SRE_BOT_PUSH_TOKEN:-}" ]]; then
@@ -147,13 +146,6 @@ $CONTAINER_ENGINE tag "$CATALOG_IMAGE:$CURRENT_COMMIT" "$CATALOG_IMAGE:latest"
 
 # create package yaml
 log "Storing current state in the $BUNDLE_VERSIONS_REPO repository"
-
-cat <<EOF > "$bundle_versions_package_file"
-packageName: $OPERATOR_NAME
-channels:
-- name: $BRANCH_CHANNEL
-  currentCSV: $OPERATOR_NAME.v$OPERATOR_VERSION
-EOF
 
 # add, commit & push
 log "Adding the current version $OPERATOR_VERSION to the bundle versions file"
