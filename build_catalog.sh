@@ -100,8 +100,13 @@ if [[ "$OPERATOR_VERSION" == "$prev_operator_version" ]]; then
     exit 0
 fi
 
-log "Creating bundle image $BUNDLE_IMAGE:$CURRENT_COMMIT"
+# image:tag definitions
+bundle_image_current_commit="$BUNDLE_IMAGE:${BRANCH_CHANNEL}-$CURRENT_COMMIT"
+bundle_image_latest="$BUNDLE_IMAGE:${BRANCH_CHANNEL}-latest"
+catalog_image_current_commit="$CATALOG_IMAGE:${BRANCH_CHANNEL}-$CURRENT_COMMIT"
+catalog_image_latest="$CATALOG_IMAGE:${BRANCH_CHANNEL}-latest"
 
+# Build bundle
 mkdir -p "$MANIFEST_DIR"
 template=$(mktemp -p "$temp_dir")
 ./"$BUNDLE_DEPLOY_DIR"/generate-csv-template.py > "$template"
@@ -117,14 +122,20 @@ if [[ "$prev_operator_version" == "" ]]; then \
     rm -f "$CSV.bak"
 fi
 
-$CONTAINER_ENGINE build -t "$BUNDLE_IMAGE:$CURRENT_COMMIT" "$BUNDLE_DEPLOY_DIR"
-$CONTAINER_ENGINE tag "$BUNDLE_IMAGE:$CURRENT_COMMIT" "$BUNDLE_IMAGE:latest"
+# opm won't get anything locally, so we need to push the bundle even in dry run mode
+# we will use a different tag to make sure those leftovers are clearly recognized
+# TODO: remove this tag if we're in dry-run mode in the cleanup trap script
+[[ "$DRY_RUN" == "false" ]] || bundle_image_current_commit="${bundle_image_current_commit}-dryrun"
+log "Creating bundle image $bundle_image_current_commit"
+$CONTAINER_ENGINE build -t "$bundle_image_current_commit" "$BUNDLE_DEPLOY_DIR"
 
-# opm won't get anything locally, so we need to push the bundle
-log "Pushing $BUNDLE_IMAGE:$CURRENT_COMMIT"
-$engine_cmd push "$BUNDLE_IMAGE:$CURRENT_COMMIT"
+log "Pushing bundle image $bundle_image_current_commit"
+$engine_cmd push "$bundle_image_current_commit"
 
-# We need an up to date version of opm executable
+log "Tagging bundle image $bundle_image_current_commit as $bundle_image_latest"
+$CONTAINER_ENGINE tag "$bundle_image_current_commit" "$bundle_image_latest"
+
+# We need an up-to-date version of opm executable
 opm_local_executable=$(which opm || true)
 if [[ "$opm_local_executable" ]]; then
     opm_local_version=$(opm version | sed 's/.*OpmVersion:"//;s/".*//')
@@ -142,15 +153,17 @@ fi
 from_arg=""
 if [[ "$prev_operator_version" ]]; then
     prev_commit=${prev_operator_version#*-}
-    from_arg="--from-index $CATALOG_IMAGE:$prev_commit"
+    from_arg="--from-index $CATALOG_IMAGE:${BRANCH_CHANNEL}-$prev_commit"
 fi
 
-log "Creating catalog using opm"
-$opm_local_executable index add --bundles "$BUNDLE_IMAGE:$CURRENT_COMMIT" \
-                                --tag "$CATALOG_IMAGE:$CURRENT_COMMIT" \
+log "Creating catalog image $catalog_image_current_commit using opm"
+$opm_local_executable index add --bundles "$bundle_image_current_commit" \
+                                --tag "$catalog_image_current_commit" \
                                 --build-tool "$(basename $CONTAINER_ENGINE)" \
                                 $from_arg
-$CONTAINER_ENGINE tag "$CATALOG_IMAGE:$CURRENT_COMMIT" "$CATALOG_IMAGE:latest"
+
+log "Tagging catalog image $catalog_image_current_commit as $catalog_image_latest"
+$CONTAINER_ENGINE tag "$catalog_image_current_commit" "$catalog_image_latest"
 
 # create package yaml
 log "Storing current state in the $BUNDLE_VERSIONS_REPO repository"
@@ -175,11 +188,11 @@ log "Pushing the repository changes to $BRANCH_CHANNEL in $BUNDLE_VERSIONS_REPO"
 [[ "$DRY_RUN" == "false" ]] && git push origin "$BRANCH_CHANNEL"
 cd -
 
-log "Pushing $CATALOG_IMAGE:$CURRENT_COMMIT"
-[[ "$DRY_RUN" == "false" ]] && $engine_cmd push "$CATALOG_IMAGE:$CURRENT_COMMIT"
+log "Pushing catalog image $catalog_image_current_commit"
+[[ "$DRY_RUN" == "false" ]] && $engine_cmd push "$catalog_image_current_commit"
 
-log "Pushing $CATALOG_IMAGE:latest"
-[[ "$DRY_RUN" == "false" ]] && $engine_cmd push "$CATALOG_IMAGE:latest"
+log "Pushing bundle image $catalog_image_latest"
+[[ "$DRY_RUN" == "false" ]] && $engine_cmd push "$catalog_image_latest"
 
-log "Pushing $BUNDLE_IMAGE:latest"
-[[ "$DRY_RUN" == "false" ]] && $engine_cmd push "$BUNDLE_IMAGE:latest"
+log "Pushing bundle image $bundle_image_latest"
+[[ "$DRY_RUN" == "false" ]] && $engine_cmd push "$bundle_image_latest"
