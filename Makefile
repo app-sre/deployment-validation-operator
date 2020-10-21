@@ -41,5 +41,5 @@ docker-login:
 	@${CONTAINER_ENGINE} --config=$(CONFIG_DIR) login -u="${QUAY_USER}" -p="${QUAY_TOKEN}" quay.io
 
 .PHONY: catalog
-catalog: docker-login
-	@./build_catalog.sh
+channel-catalog: docker-login
+	@./build_channel_catalog.sh
