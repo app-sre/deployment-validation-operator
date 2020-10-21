@@ -18,7 +18,10 @@ for var in BUNDLE_IMAGE \
            GOARCH \
            OPM_VERSION \
            BUNDLE_VERSIONS_REPO \
-           BRANCH_CHANNEL
+           BRANCH_CHANNEL \
+           APP_INTERFACE_USERNAME \
+           APP_INTERFACE_PASSWORD \
+           APP_INTERFACE_BASE_URL
 do
     if [ ! "${!var}" ]; then
       log "$var is not set"
@@ -61,10 +64,13 @@ if [[ -s "$bundle_versions_file" ]]; then
     log "$bundle_versions_file exists. We'll use to determine current version"
     if [[ "$REMOVE_UNDEPLOYED" == "true" ]]; then
         log "Checking if we have to remove any versions more recent than deployed hash"
-        # TODO: Move this out of here
+        # this will need to be modified if at any point we move to a canary like deployment
+        # where not all environments are deployed with the same operator version
         deployed_hash=$(
-            curl -s "https://gitlab.cee.redhat.com/service/app-interface/-/raw/master/data/services/deployment-validation-operator/cicd/saas.yaml" | \
-                docker run --rm -i quay.io/app-sre/yq -r '.resourceTemplates[]|select(.name="deployment-validation-operator").targets[]|select(.namespace["$ref"]=="/openshift/app-sre-stage-01/namespaces/app-sre-dvo-per-cluster.yml")|.ref'
+            curl -s -H "Authorization: Basic $(echo -n $APP_INTERFACE_USERNAME:$APP_INTERFACE_PASSWORD | base64)" \
+                -g "https://$APP_INTERFACE_BASE_URL/graphql?query={saas_files:saas_files_v1{name,resourceTemplates{name,targets{namespace{environment{name,labels}},ref}}}}" | \
+                jq -r '.data.saas_files[] | select(.name=="saas-'$OPERATOR_NAME'") | .resourceTemplates[].targets[] | select(.namespace.environment.labels | contains("\"type\":\"production\"")) | .ref' | \
+                uniq
         )
 
         log "Current deployed hash is $deployed_hash"
