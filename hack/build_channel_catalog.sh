@@ -168,6 +168,8 @@ $opm_local_executable index add --bundles "$bundle_image_current_commit" \
                                 --build-tool "$(basename $CONTAINER_ENGINE)" \
                                 $from_arg
 
+# TODO: Check opm catalog works fine
+
 log "Tagging catalog image $catalog_image_current_commit as $catalog_image_latest"
 $CONTAINER_ENGINE tag "$catalog_image_current_commit" "$catalog_image_latest"
 
