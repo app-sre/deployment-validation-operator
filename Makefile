@@ -42,4 +42,4 @@ docker-login:
 
 .PHONY: catalog
 channel-catalog: docker-login
-	@./build_channel_catalog.sh
+	@./hack/build_channel_catalog.sh
