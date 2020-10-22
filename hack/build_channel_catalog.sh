@@ -150,8 +150,9 @@ fi
 if [[ -n "$opm_local_executable" && "$opm_local_version" == "$OPM_VERSION" ]]; then
     log "Using local opm version $opm_local_executable"
 else
-    log "Downloading opm version $OPM_VERSION"
-    curl -s -L "https://github.com/operator-framework/operator-registry/releases/download/$OPM_VERSION/${GOOS}-${GOARCH}-opm" -o "$temp_dir/opm"
+    opm_download_url="https://github.com/operator-framework/operator-registry/releases/download/$OPM_VERSION/${GOOS}-${GOARCH}-opm"
+    log "Downloading opm from $opm_download_url to $temp_dir/opm"
+    curl -s -L "$opm_download_url" -o "$temp_dir/opm"
     chmod u+x "$temp_dir/opm"
     opm_local_executable="$temp_dir/opm"
 fi
