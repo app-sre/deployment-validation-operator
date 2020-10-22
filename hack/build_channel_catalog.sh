@@ -97,6 +97,7 @@ if [[ -s "$bundle_versions_file" ]]; then
         cp "$new_bundle_versions_file" "$bundle_versions_file"
     fi
     prev_operator_version=$(tail -n 1 "$bundle_versions_file")
+    log "Previous operator version is $prev_operator_version"
 else
     log "No $bundle_versions_file exist. This is the first time the operator is built"
 fi
