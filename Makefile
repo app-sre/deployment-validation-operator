@@ -16,8 +16,8 @@ CONFIG_DIR = .docker
 # This include must go below the above definitions
 include boilerplate/generated-includes.mk
 
-BUNDLE_IMAGE ?= $(OPERATOR_IMAGE)-bundle
-CATALOG_IMAGE ?= $(OPERATOR_IMAGE)-catalog
+BUNDLE_IMAGE = $(OPERATOR_IMAGE)-bundle
+CATALOG_IMAGE = $(OPERATOR_IMAGE)-catalog
 
 OPERATOR_IMAGE_URI_TEST = $(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):test
 
