@@ -49,13 +49,14 @@ engine_cmd="$CONTAINER_ENGINE --config=$CONFIG_DIR"
 saas_operator_dir_base="$temp_dir/saas-operator-dir"
 bundle_versions_file="$saas_operator_dir_base/$OPERATOR_NAME/${OPERATOR_NAME}-versions.txt"
 
-log "Cloning $BUNDLE_VERSIONS_REPO"
-if [[ -n "${APP_SRE_BOT_PUSH_USER:-}" && -n "${APP_SRE_BOT_PUSH_TOKEN:-}" ]]; then
-    bundle_versions_repo_url="https://${APP_SRE_BOT_PUSH_USER}:${APP_SRE_BOT_PUSH_TOKEN}@$BUNDLE_VERSIONS_REPO"
+if [[ -n "${APP_SRE_BOT_PUSH_TOKEN:-}" ]]; then
+    log "Using APP_SRE_BOT_PUSH_TOKEN credentials to authenticate"
+    bundle_versions_repo_url="https://app:${APP_SRE_BOT_PUSH_TOKEN}@$BUNDLE_VERSIONS_REPO"
 else
     bundle_versions_repo_url="https://$BUNDLE_VERSIONS_REPO"
 fi
 
+log "Cloning $BRANCH_CHANNEL branch from $BUNDLE_VERSIONS_REPO into $saas_operator_dir_base"
 git clone --branch "$BRANCH_CHANNEL" "$bundle_versions_repo_url" "$saas_operator_dir_base"
 
 prev_operator_version=""
