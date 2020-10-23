@@ -36,7 +36,7 @@ done
 set -euo pipefail
 
 # General vars to modify behaviour of the script
-DRY_RUN=${DRY_RUN:-true}
+DRY_RUN=${DRY_RUN:-false}
 DELETE_TEMP_DIR=${DELETE_TEMP_DIR:-true}
 REMOVE_UNDEPLOYED=${REMOVE_UNDEPLOYED:-false}
 
