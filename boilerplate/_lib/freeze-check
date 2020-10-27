@@ -49,7 +49,7 @@ cd $TMPD
 git init
 # TODO(efried): DRY this remote. Make it configurable?
 git remote add origin $BOILERPLATE_GIT_REPO
-git fetch origin $(cat $LBCF)
+git fetch origin $(cat $LBCF) --tags
 git reset --hard FETCH_HEAD
 
 # Now invoke the update script, bypassing the exec step because we
