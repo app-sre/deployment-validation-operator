@@ -101,6 +101,7 @@ if [[ -s "$bundle_versions_file" ]]; then
     log "Previous operator version is $prev_operator_version"
 else
     log "No $bundle_versions_file exist. This is the first time the operator is built"
+    mkdir -p "$(dirname $bundle_versions_file)"
 fi
 
 if [[ "$OPERATOR_VERSION" == "$prev_operator_version" ]]; then

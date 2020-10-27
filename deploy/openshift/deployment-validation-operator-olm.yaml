@@ -26,7 +26,7 @@ objects:
   kind: OperatorGroup
   metadata:
     name: deployment-validation-operator
-    namespace: $(NAMESPACE)
+    namespace: ${NAMESPACE}
 parameters:
 - name: IMAGE
   value: quay.io/app-sre/deployment-validation-operator-catalog
@@ -42,6 +42,6 @@ parameters:
   value: staging
 - name: NAMESPACE
   value: ""
-  displayNmae: namespace to deploy into
+  displayName: namespace to deploy into
   description: the namespace to deploy into
   required: true
