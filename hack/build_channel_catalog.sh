@@ -35,6 +35,8 @@ done
 # but let's play safe
 set -euo pipefail
 
+log "Building $OPERATOR_NAME version $OPERATOR_VERSION in branch $BRANCH_CHANNEL"
+
 # General vars to modify behaviour of the script
 DRY_RUN=${DRY_RUN:-false}
 DELETE_TEMP_DIR=${DELETE_TEMP_DIR:-true}
@@ -131,19 +133,6 @@ if [[ "$prev_operator_version" == "" ]]; then \
     rm -f "$CSV.bak"
 fi
 
-# opm won't get anything locally, so we need to push the bundle even in dry run mode
-# we will use a different tag to make sure those leftovers are clearly recognized
-# TODO: remove this tag if we're in dry-run mode in the cleanup trap script
-[[ "$DRY_RUN" == "false" ]] || bundle_image_current_commit="${bundle_image_current_commit}-dryrun"
-log "Creating bundle image $bundle_image_current_commit"
-$CONTAINER_ENGINE build -t "$bundle_image_current_commit" "$BUNDLE_DEPLOY_DIR"
-
-log "Pushing bundle image $bundle_image_current_commit"
-$engine_cmd push "$bundle_image_current_commit"
-
-log "Tagging bundle image $bundle_image_current_commit as $bundle_image_latest"
-$CONTAINER_ENGINE tag "$bundle_image_current_commit" "$bundle_image_latest"
-
 # We need an up-to-date version of opm executable
 opm_local_executable=$(which opm || true)
 if [[ "$opm_local_executable" ]]; then
@@ -160,6 +149,32 @@ else
     opm_local_executable="$temp_dir/opm"
 fi
 
+image_builder=$(basename "$CONTAINER_ENGINE")
+if [[ "$image_builder" != "docker" && "$image_builder" != "podman" ]]; then
+    # opm error messages are obscure. Let's make this clear
+    log "image_builder $image_builder is not one of docker or podman"
+    exit 1
+fi
+
+# opm won't get anything locally, so we need to push the bundle even in dry run mode
+# we will use a different tag to make sure those leftovers are clearly recognized
+# TODO: remove this tag if we're in dry-run mode in the cleanup trap script
+[[ "$DRY_RUN" == "false" ]] || bundle_image_current_commit="${bundle_image_current_commit}-dryrun"
+log "Creating bundle image $bundle_image_current_commit"
+
+# TODO: use opm to build this
+$CONTAINER_ENGINE build -t "$bundle_image_current_commit" "$BUNDLE_DEPLOY_DIR"
+
+log "Pushing bundle image $bundle_image_current_commit"
+$engine_cmd push "$bundle_image_current_commit"
+
+# Make sure this is run after pushing the image
+log "Validating bundle $bundle_image_current_commit"
+$opm_local_executable alpha bundle validate --tag "$bundle_image_current_commit"  --image-builder "$image_builder"
+
+log "Tagging bundle image $bundle_image_current_commit as $bundle_image_latest"
+$CONTAINER_ENGINE tag "$bundle_image_current_commit" "$bundle_image_latest"
+
 from_arg=""
 if [[ "$prev_operator_version" ]]; then
     prev_commit=${prev_operator_version#*-}
@@ -169,10 +184,50 @@ fi
 log "Creating catalog image $catalog_image_current_commit using opm"
 $opm_local_executable index add --bundles "$bundle_image_current_commit" \
                                 --tag "$catalog_image_current_commit" \
-                                --build-tool "$(basename $CONTAINER_ENGINE)" \
+                                --build-tool "$image_builder" \
                                 $from_arg
 
-# TODO: Check opm catalog works fine
+# Check that catalog works fine
+grpcurl_local_executable=$(which grpcurl || true)
+if [[ "$grpcurl_local_executable" ]]; then
+    grpcurl_local_version=$(grpcurl -version 2>&1 | cut -d " " -f 2)
+fi
+
+if [[ -n "$grpcurl_local_executable" && "$grpcurl_local_version" == "$GRPCURL_VERSION" ]]; then
+    log "Using local grpcurl version $grpcurl_local_executable"
+else
+    [[ "$GOOS" == "darwin" ]] && os=osx
+    [[ "$GOARCH" == "386" ]] && arch=x86_32
+    [[ "$GOARCH" == "amd64" ]] && arch=x86_64
+    grpcurl_download_url="https://github.com/fullstorydev/grpcurl/releases/download/v$GRPCURL_VERSION/grpcurl_${GRPCURL_VERSION}_${os}_${arch}.tar.gz"
+    log "Downloading opm from $grpcurl_download_url to $temp_dir/grpcurl"
+    curl -s -L "$grpcurl_download_url" | tar -xzf - -C "$temp_dir" grpcurl
+    chmod u+x "$temp_dir/grpcurl"
+    grpcurl_local_executable="$temp_dir/grpcurl"
+fi
+
+log "Checking that catalog we have built returns the correct version $OPERATOR_VERSION"
+
+free_port=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
+
+log "Running $catalog_image_current_commit and exposing $free_port"
+catalog_container_id=$($CONTAINER_ENGINE run -d -p "$free_port:50051" "$catalog_image_current_commit")
+
+log "Getting current version from running catalog"
+current_version_from_catalog=$(
+    $grpcurl_local_executable -plaintext -d '{"name": "'"$OPERATOR_NAME"'"}' \
+        "localhost:$free_port" api.Registry/GetPackage | \
+            jq -r '.channels[] | select(.name=="alpha") | .csvName' | \
+            sed "s/$OPERATOR_NAME\.//"
+)
+
+log "Removing docker container $catalog_container_id"
+$CONTAINER_ENGINE rm -f "$catalog_container_id"
+
+if [[ "$current_version_from_catalog" != "v$OPERATOR_VERSION" ]]; then
+    log "Version from catalog $current_version_from_catalog != v$OPERATOR_VERSION"
+    exit 1
+fi
 
 log "Tagging catalog image $catalog_image_current_commit as $catalog_image_latest"
 $CONTAINER_ENGINE tag "$catalog_image_current_commit" "$catalog_image_latest"
