@@ -1,4 +1,5 @@
-FROM registry.svc.ci.openshift.org/openshift/release:golang-1.15 AS builder
+# Manually keep this in sync with Dockerfile until boilerplate supports it
+FROM quay.io/app-sre/boilerplate:image-v0.2.0 AS builder
 
 RUN mkdir -p /workdir
 COPY . /workdir
