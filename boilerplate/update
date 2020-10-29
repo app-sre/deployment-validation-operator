@@ -140,6 +140,9 @@ if [ ! -f "$CONFIG_FILE" ]; then
   exit 1
 fi
 
+# The most recent build image tag. Export this for individual `update` scripts.
+export LATEST_IMAGE_TAG=$(cd $BP_CLONE; git describe --tags --abbrev=0 --match image-v*)
+
 # Prepare the "nexus makefile include".
 NEXUS_MK="${CONVENTION_ROOT}/generated-includes.mk"
 cat <<EOF>"${NEXUS_MK}"

@@ -119,11 +119,11 @@ python-venv:
 	$(eval PYTHON := .venv/bin/python3)
 
 .PHONY: generate-check
-generate-check: 
-	@$(MAKE) -s isclean --no-print-directory 
+generate-check:
+	@$(MAKE) -s isclean --no-print-directory
 	@$(MAKE) -s generate --no-print-directory
 	@$(MAKE) -s isclean --no-print-directory || (echo 'Files after generation are different than committed ones. Please commit updated and unaltered generated files' >&2 && exit 1)
-	@echo "All generated files are up-to-date and unaltered" 
+	@echo "All generated files are up-to-date and unaltered"
 
 .PHONY: yaml-validate
 yaml-validate: python-venv
@@ -132,6 +132,14 @@ yaml-validate: python-venv
 .PHONY: olm-deploy-yaml-validate
 olm-deploy-yaml-validate: python-venv
 	${PYTHON} ${CONVENTION_DIR}/validate-yaml.py $(shell git ls-files 'deploy/*.yaml' 'deploy/*.yml')
+
+.PHONY: prow-config
+prow-config:
+	${CONVENTION_DIR}/prow-config ${RELEASE_CLONE}
+
+.PHONY: codecov-secret-mapping
+codecov-secret-mapping:
+	${CONVENTION_DIR}/codecov-secret-mapping ${RELEASE_CLONE}
 
 ######################
 # Targets used by prow
@@ -154,13 +162,6 @@ test: go-test
 .PHONY: coverage
 coverage:
 	${CONVENTION_DIR}/codecov.sh
-
-# build: Code compilation and bundle generation. This should do as much
-# of what app-sre does as possible, so that there are no surprises after
-# a PR is merged.
-# TODO: Include generating (but not pushing) the bundle
-.PHONY: build
-build: docker-build
 
 #########################
 # Targets used by app-sre

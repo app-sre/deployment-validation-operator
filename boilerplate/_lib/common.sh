@@ -1,5 +1,5 @@
 err() {
-  echo "$@" >&2
+  echo "==ERROR== $@" >&2
   exit 1
 }
 
@@ -14,6 +14,10 @@ osdk_version() {
     #       operator-sdk version: "v0.16.0", commit: "55f1446c5f472e7d8e308dcdf36d0d7fc44fc4fd", go version: "go1.13.8 linux/amd64"
     # Peel out the version number, accounting for the optional quotes.
     $osdk version | sed 's/operator-sdk version: "*\([^,"]*\)"*,.*/\1/'
+}
+
+repo_name() {
+    (git -C $1 config --get remote.upstream.url || git -C $1 config --get remote.origin.url) | sed 's,.*:,,; s/\.git$//'
 }
 
 if [ "$BOILERPLATE_SET_X" ]; then
@@ -47,8 +51,14 @@ if [[ "$HERE" == "$CONVENTION_ROOT/"* ]]; then
 fi
 
 if [ -z "$BOILERPLATE_GIT_REPO" ]; then
-  export BOILERPLATE_GIT_REPO=git@github.com:openshift/boilerplate.git
+  export BOILERPLATE_GIT_REPO=https://github.com/openshift/boilerplate.git
 fi
 if [ -z "$BOILERPLATE_GIT_CLONE" ]; then
   export BOILERPLATE_GIT_CLONE="git clone $BOILERPLATE_GIT_REPO"
 fi
+
+# The namespace of the ImageStream by which prow will import the image.
+IMAGE_NAMESPACE=openshift
+IMAGE_NAME=boilerplate
+# The public image location
+IMAGE_PULL_PATH=quay.io/app-sre/$IMAGE_NAME:$LATEST_IMAGE_TAG
