@@ -196,6 +196,9 @@ fi
 if [[ -n "$grpcurl_local_executable" && "$grpcurl_local_version" == "$GRPCURL_VERSION" ]]; then
     log "Using local grpcurl version $grpcurl_local_executable"
 else
+    # mappings from https://github.com/fullstorydev/grpcurl/blob/master/.goreleaser.yml
+    os=$GOOS
+    arch=$GOARCH
     [[ "$GOOS" == "darwin" ]] && os=osx
     [[ "$GOARCH" == "386" ]] && arch=x86_32
     [[ "$GOARCH" == "amd64" ]] && arch=x86_64
