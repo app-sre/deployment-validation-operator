@@ -8,3 +8,12 @@ build/_output/*
 .docker/*
 
 deploy/bundle/manifests/*
+
+# Vim
+.sw[a-p]
+.*.sw[a-p]
+*.orig
+
+# Boilerplate
+.venv/*
+.operator-sdk/*
