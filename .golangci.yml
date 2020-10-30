@@ -4,22 +4,12 @@ run:
 linters:
   disable-all: true
   enable:
-  - deadcode
-  - errcheck
-  - gosimple
-  - govet
-  - ineffassign
-  - staticcheck
-  - structcheck
-  - typecheck
-  - unused
   - gofmt
   - goimports
   - golint
   - misspell
   - unused
   - gocyclo
-  - varcheck
   - maligned
   - interfacer
   - unconvert
@@ -35,6 +25,3 @@ linters-settings:
   lll:
     line-length: 120
     tab-width: 8
-
-  gofmt:
-    simplify: false
