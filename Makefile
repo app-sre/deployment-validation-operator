@@ -2,7 +2,7 @@
 
 BUNDLE_VERSIONS_REPO = gitlab.cee.redhat.com/service/saas-deployment-validation-operator-bundle.git
 GOFLAGS_MOD = -mod=vendor
-GOLANGCI_LINT_CONFIG = .golangci.yml
+GOLANGCI_OPTIONAL_CONFIG = .golangci.yml
 IMAGE_REPOSITORY ?= app-sre
 QUAY_USER ?=
 QUAY_TOKEN ?=
