@@ -28,7 +28,7 @@ VER=$(osdk_version $OSDK)
 # This explicitly lists the versions we know about. We don't support
 # anything outside of that.
 case $VER in
-  'v0.15.1'|'v0.16.0'|'v0.17.0'|'v0.17.1')
+  'v0.15.1'|'v0.16.0'|'v0.17.0'|'v0.17.1'|'v0.17.2'|'v0.18.2')
       $OSDK generate crds
       $OSDK generate k8s
       ;;

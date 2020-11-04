@@ -28,14 +28,6 @@ release_process_args "$@"
 
 release_validate_invocation
 
-# Due to the DPTP-1640 workaround, we need to be even stricter, since we have
-# to copy in the ImageStreamTag config.
-# TODO: Get rid of this check, and $ci_config, and its usage in the config
-# dump, once DPTP-1640 is resolved.
-ci_config=$REPO_ROOT/.ci-operator.yaml
-[[ -s $ci_config ]] || err "
-.ci-operator.yaml not found! Do you need to 'make boilerplate-update'?"
-
 release_prep_clone
 
 cd $RELEASE_CLONE
@@ -57,14 +49,10 @@ $0 $RELEASE_CLONE"
 # TODO: Edit it instead, replacing only the relevant sections. This would allow
 # the consumer to preserve any additional checks they want in prow.
 cat <<EOF > $config_dir/$config
-base_images:
-  temporarily_needed_to_make_this_image_appear_in_all_build_clusters_see_jira_dptp_1640:
-$(sed -n '2,5s/^/  /p' $ci_config)
 build_root:
   from_repository: true
 images:
 - dockerfile_path: build/Dockerfile
-  from: src
   to: unused
 resources:
   '*':

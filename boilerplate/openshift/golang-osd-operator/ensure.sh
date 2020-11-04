@@ -65,10 +65,16 @@ operator-sdk)
                 exit 1
                 ;;
         esac
-        echo "Downloading $binary"
-        curl -OJL https://github.com/operator-framework/operator-sdk/releases/download/${wantver}/${binary}
-        chmod +x ${binary}
-        osdk=${binary}
+        # The boilerplate backing image sets up binaries with the full
+        # name in /usr/local/bin, so look for the right one of those
+        if which $binary; then
+            osdk=$(realpath $(which $binary))
+        else
+            echo "Downloading $binary"
+            curl -OJL https://github.com/operator-framework/operator-sdk/releases/download/${wantver}/${binary}
+            chmod +x ${binary}
+            osdk=${binary}
+        fi
     fi
     # Create (or overwrite) the symlink to the binary we discovered or
     # downloaded above.
