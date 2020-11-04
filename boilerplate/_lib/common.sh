@@ -17,7 +17,10 @@ osdk_version() {
 }
 
 repo_name() {
-    (git -C $1 config --get remote.upstream.url || git -C $1 config --get remote.origin.url) | sed 's,.*:,,; s/\.git$//'
+    # Account for remotes which are
+    # - upstream or origin
+    # - ssh ("git@host.com:org/name.git") or https ("https://host.com/org/name.git")
+    (git -C $1 config --get remote.upstream.url || git -C $1 config --get remote.origin.url) | sed 's,git@[^:]*:,,; s,https://[^/]*/,,; s/\.git$//'
 }
 
 if [ "$BOILERPLATE_SET_X" ]; then
