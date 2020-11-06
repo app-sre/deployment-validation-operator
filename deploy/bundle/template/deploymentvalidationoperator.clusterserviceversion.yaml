@@ -56,7 +56,6 @@ objects:
     maturity: alpha
     provider:
       name: Red Hat
-    replaces: deployment-validation-operator.v${REPLACE_VERSION}
     selector:
       matchLabels:
         alm-owner-dvo: deployment-validation-operator
@@ -70,5 +69,3 @@ parameters:
 - name: VERSION
   value: ""
   required: true
-- name: REPLACE_VERSION
-  value: ""
