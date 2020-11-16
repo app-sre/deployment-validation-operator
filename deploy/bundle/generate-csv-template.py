@@ -5,6 +5,13 @@ import os
 import sys
 import yaml
 import pathlib
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-r", "--replaces", help="Replaces version", type=str)
+parser.add_argument('-s','--skip', action='append',
+        help='Skips version (can be specified multiple times)')
+args = parser.parse_args()
 
 root = pathlib.Path(__file__).parent.absolute() / '../..'
 manifest_dir = root / 'deploy/openshift'
@@ -46,6 +53,15 @@ with open(manifest_dir / 'operator.yaml', 'r') as stream:
 
 csv['spec']['install']['spec']['deployments'][0]['spec']['template']['spec']['containers'][0]['image'] = \
     '${IMAGE}:${IMAGE_TAG}'
+
+if args.replaces:
+    csv['spec']['replaces'] = f'deployment-validation-operator.v{args.replaces}'
+
+if args.skip:
+    csv['spec']['skips'] = [
+        f'deployment-validation-operator.v{version}' for version in
+        sorted(args.skip, key=lambda v: int(v.split('.')[2].split('-')[0]))
+    ]
 
 now = datetime.datetime.now()
 csv['metadata']['annotations']['createdAt'] = \

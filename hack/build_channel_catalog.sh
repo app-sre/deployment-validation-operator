@@ -1,7 +1,19 @@
 #!/bin/bash
 
+set -euo pipefail
+
+# General vars to modify behaviour of the script
+DRY_RUN=${DRY_RUN:-false}
+DELETE_TEMP_DIR=${DELETE_TEMP_DIR:-true}
+BRANCH=${BRANCH:-master}
+SET_X=${SET_X:-false}
+
+[[ "$SET_X" != "false" ]] && set -x
+
 function log() {
-    echo "$(date "+%Y-%m-%d %H:%M:%S") -- $1"
+    msg="$(date "+%Y-%m-%d %H:%M:%S")"
+    [[ "$DRY_RUN" != "false" ]] && msg="$msg -- DRY-RUN"
+    echo "$msg -- $1"
 }
 
 count=0
@@ -17,13 +29,9 @@ for var in BUNDLE_IMAGE \
            GOOS \
            GOARCH \
            OPM_VERSION \
-           BUNDLE_VERSIONS_REPO \
-           BRANCH_CHANNEL \
-           APP_INTERFACE_USERNAME \
-           APP_INTERFACE_PASSWORD \
-           APP_INTERFACE_BASE_URL
+           BUNDLE_VERSIONS_REPO
 do
-    if [ ! "${!var}" ]; then
+    if [ ! "${!var:-}" ]; then
       log "$var is not set"
       count=$((count + 1))
     fi
@@ -31,18 +39,17 @@ done
 
 [[ $count -gt 0 ]] && exit 1
 
-# We shouln't need set -u as we have checked for the vars before
-# but let's play safe
-set -euo pipefail
+# Check we are running an opm supported container engine
+image_builder=$(basename "$CONTAINER_ENGINE")
+if [[ "$image_builder" != "docker" && "$image_builder" != "podman" ]]; then
+    # opm error messages are obscure. Let's make this clear
+    log "image_builder $image_builder is not one of docker or podman"
+    exit 1
+fi
 
-log "Building $OPERATOR_NAME version $OPERATOR_VERSION in branch $BRANCH_CHANNEL"
+log "Building $OPERATOR_NAME version $OPERATOR_VERSION"
 
-# General vars to modify behaviour of the script
-DRY_RUN=${DRY_RUN:-false}
-DELETE_TEMP_DIR=${DELETE_TEMP_DIR:-true}
-REMOVE_UNDEPLOYED=${REMOVE_UNDEPLOYED:-false}
-
-temp_dir=$(mktemp -d --suffix "-$(basename $0)")
+temp_dir=$(mktemp -d --suffix "-$(basename "$0")")
 [[ "$DELETE_TEMP_DIR" == "true" ]] && trap 'rm -rf $temp_dir' EXIT
 
 engine_cmd="$CONTAINER_ENGINE --config=$CONFIG_DIR"
@@ -58,52 +65,46 @@ else
     bundle_versions_repo_url="https://$BUNDLE_VERSIONS_REPO"
 fi
 
-log "Cloning $BRANCH_CHANNEL branch from $BUNDLE_VERSIONS_REPO into $saas_operator_dir_base"
-git clone --branch "$BRANCH_CHANNEL" "$bundle_versions_repo_url" "$saas_operator_dir_base"
+log "Cloning $BUNDLE_VERSIONS_REPO into $saas_operator_dir_base"
+git clone --branch "$BRANCH" "$bundle_versions_repo_url" "$saas_operator_dir_base"
 
+# if the line contains SKIP it will not be included
 prev_operator_version=""
-removed_versions=""
+prev_good_operator_version=""
+skip_versions=()
 if [[ -s "$bundle_versions_file" ]]; then
     log "$bundle_versions_file exists. We'll use to determine current version"
-    if [[ "$REMOVE_UNDEPLOYED" == "true" ]]; then
-        log "Checking if we have to remove any versions more recent than deployed hash"
-        # this will need to be modified if at any point we move to a canary like deployment
-        # where not all environments are deployed with the same operator version
-        deployed_hash=$(
-            curl -s -H "Authorization: Basic $(echo -n $APP_INTERFACE_USERNAME:$APP_INTERFACE_PASSWORD | base64)" \
-                -g "https://$APP_INTERFACE_BASE_URL/graphql?query={saas_files:saas_files_v1{name,resourceTemplates{name,targets{namespace{environment{name,labels}},ref}}}}" | \
-                jq -r '.data.saas_files[] | select(.name=="saas-'$OPERATOR_NAME'") | .resourceTemplates[].targets[] | select(.namespace.environment.labels | contains("\"type\":\"production\"")) | .ref' | \
-                uniq
-        )
 
-        log "Current deployed hash is $deployed_hash"
+    prev_operator_version=$(tail -n 1 "$bundle_versions_file" | awk '{print $1}')
 
-        new_bundle_versions_file=$(mktemp -p "$temp_dir" new_bundle_versions_file.XXXX)
-        delete=false
-        # Sort based on commit number
-        for version in $(sort -t . -k 3 -g "$bundle_versions_file"); do
-            if [[ "$delete" == false ]]; then
-                echo "$version" >> "$new_bundle_versions_file"
+    # we traverse the bundle versions file backwards
+    # we cannot use pipes here or we would lose the inner variables changes
+    while read -r line; do
+        if [[ "$line" == *SKIP* ]]; then
+            version=$(echo "$line" | awk '{print $1}')
+            skip_versions+=("$version")
+        else
+            prev_good_operator_version="$line"
+            break
+        fi
+    done < <(sort -r -t . -k 3 -g "$bundle_versions_file")
 
-                short_hash=$(echo "$version" | cut -d- -f2)
-
-                if [[ "$deployed_hash" == "${short_hash}"* ]]; then
-                    log "found deployed hash in the bundle versions repository"
-                    delete=true
-                fi
-            else
-                log "Adding $version to removed versions"
-                removed_versions="$version $removed_versions"
-            fi
-        done
-        [[ -n "$removed_versions" ]] && log "The following versions will be removed: $removed_versions"
-        cp "$new_bundle_versions_file" "$bundle_versions_file"
+    if [[ -z "$prev_good_operator_version" ]]; then
+        # This means that we have skipped all the available versions. In this case we're going to use the last
+        # SKIP version as the prev_good_operator_version to have something to feed replaces in the CSV
+        log "No unskipped version in $bundle_versions_file. We'll use the last skipped one: ${skip_versions[0]}"
+        prev_good_operator_version="${skip_versions[0]}"
     fi
-    prev_operator_version=$(tail -n 1 "$bundle_versions_file")
+
     log "Previous operator version is $prev_operator_version"
+    log "Previous good operator version is $prev_good_operator_version"
+    [[ ${#skip_versions[@]} -gt 0 ]] && log "We will be skipping: ${skip_versions[*]}"
 else
     log "No $bundle_versions_file exist. This is the first time the operator is built"
-    mkdir -p "$(dirname $bundle_versions_file)"
+    if [[ ! -d "$(dirname "$bundle_versions_file")" ]]; then
+        log "Operator directory doesn't exist in versions repository. Exiting"
+        exit 1
+    fi
 fi
 
 if [[ "$OPERATOR_VERSION" == "$prev_operator_version" ]]; then
@@ -112,26 +113,28 @@ if [[ "$OPERATOR_VERSION" == "$prev_operator_version" ]]; then
 fi
 
 # image:tag definitions
-bundle_image_current_commit="$BUNDLE_IMAGE:${BRANCH_CHANNEL}-$CURRENT_COMMIT"
-bundle_image_latest="$BUNDLE_IMAGE:${BRANCH_CHANNEL}-latest"
-catalog_image_current_commit="$CATALOG_IMAGE:${BRANCH_CHANNEL}-$CURRENT_COMMIT"
-catalog_image_latest="$CATALOG_IMAGE:${BRANCH_CHANNEL}-latest"
+bundle_image_current_commit="$BUNDLE_IMAGE:$CURRENT_COMMIT"
+bundle_image_latest="$BUNDLE_IMAGE:latest"
+catalog_image_current_commit="$CATALOG_IMAGE:$CURRENT_COMMIT"
+catalog_image_latest="$CATALOG_IMAGE:latest"
 
 # Build bundle
 mkdir -p "$MANIFEST_DIR"
 csv_template=$(mktemp -p "$temp_dir" csv_template.XXXX)
-./"$BUNDLE_DEPLOY_DIR"/generate-csv-template.py > "$csv_template"
+generate_csv_template_args=""
+[[ -n "$prev_good_operator_version" ]] && generate_csv_template_args="--replaces $prev_good_operator_version"
+if [[ ${#skip_versions[@]} -gt 0 ]]; then
+    for version in "${skip_versions[@]}"; do
+        generate_csv_template_args="$generate_csv_template_args --skip $version"
+    done
+fi
+
+./"$BUNDLE_DEPLOY_DIR"/generate-csv-template.py $generate_csv_template_args > "$csv_template"
 oc process --local -o yaml --raw=true \
     IMAGE="$OPERATOR_IMAGE" \
     IMAGE_TAG="$OPERATOR_IMAGE_TAG" \
     VERSION="$OPERATOR_VERSION" \
-    REPLACE_VERSION="$prev_operator_version" \
     -f "$csv_template" > "$CSV"
-
-if [[ "$prev_operator_version" == "" ]]; then \
-    sed -i.bak "/ *replaces:/d" "$CSV"
-    rm -f "$CSV.bak"
-fi
 
 # We need an up-to-date version of opm executable
 opm_local_executable=$(which opm || true)
@@ -147,13 +150,6 @@ else
     curl -s -L "$opm_download_url" -o "$temp_dir/opm"
     chmod u+x "$temp_dir/opm"
     opm_local_executable="$temp_dir/opm"
-fi
-
-image_builder=$(basename "$CONTAINER_ENGINE")
-if [[ "$image_builder" != "docker" && "$image_builder" != "podman" ]]; then
-    # opm error messages are obscure. Let's make this clear
-    log "image_builder $image_builder is not one of docker or podman"
-    exit 1
 fi
 
 # opm won't get anything locally, so we need to push the bundle even in dry run mode
@@ -178,7 +174,7 @@ $CONTAINER_ENGINE tag "$bundle_image_current_commit" "$bundle_image_latest"
 from_arg=""
 if [[ "$prev_operator_version" ]]; then
     prev_commit=${prev_operator_version#*-}
-    from_arg="--from-index $CATALOG_IMAGE:${BRANCH_CHANNEL}-$prev_commit"
+    from_arg="--from-index $CATALOG_IMAGE:$prev_commit"
 fi
 
 log "Creating catalog image $catalog_image_current_commit using opm"
@@ -249,13 +245,10 @@ message="add version $OPERATOR_VERSION"
 
 replaces $prev_operator_version"
 
-[[ "$removed_versions" ]] && message="$message
-
-removed versions: $removed_versions"
-
 git commit -m "$message"
-log "Pushing the repository changes to $BRANCH_CHANNEL in $BUNDLE_VERSIONS_REPO"
-[[ "$DRY_RUN" == "false" ]] && git push origin "$BRANCH_CHANNEL"
+
+log "Pushing the repository changes to $BUNDLE_VERSIONS_REPO"
+[[ "$DRY_RUN" == "false" ]] && git push origin master
 cd -
 
 log "Pushing catalog image $catalog_image_current_commit"

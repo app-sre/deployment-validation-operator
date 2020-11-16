@@ -10,7 +10,7 @@ objects:
     name: deployment-validation-operator-catalog
   spec:
     sourceType: grpc
-    image: ${IMAGE}:${CHANNEL}-${IMAGE_TAG}
+    image: ${IMAGE}:${IMAGE_TAG}
     displayName: Deployment Validation Operator
     publisher: AppSRE Team
 - apiVersion: operators.coreos.com/v1alpha1
@@ -38,8 +38,6 @@ parameters:
   displayName: deployment-validation-operator catalog version
   description: the version of the deployment-validation-operator catalog to deploy
   required: true
-- name: CHANNEL
-  value: staging
 - name: NAMESPACE
   value: ""
   displayName: namespace to deploy into
