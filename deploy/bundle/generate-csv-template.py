@@ -58,10 +58,8 @@ if args.replaces:
     csv['spec']['replaces'] = f'deployment-validation-operator.v{args.replaces}'
 
 if args.skip:
-    csv['spec']['skips'] = [
-        f'deployment-validation-operator.v{version}' for version in
-        sorted(args.skip, key=lambda v: int(v.split('.')[2].split('-')[0]))
-    ]
+    csv['metadata']['annotations']['olm.skipRange'] = ' || '.join(
+        sorted(args.skip, key=lambda v: int(v.split('.')[2].split('-')[0])))
 
 now = datetime.datetime.now()
 csv['metadata']['annotations']['createdAt'] = \
