@@ -25,10 +25,12 @@ for var in BUNDLE_IMAGE \
            COMMIT_NUMBER \
            OPERATOR_VERSION \
            OPERATOR_NAME \
-           CSV \
+           OPERATOR_IMAGE \
+           OPERATOR_IMAGE_TAG \
            GOOS \
            GOARCH \
            OPM_VERSION \
+           GRPCURL_VERSION \
            BUNDLE_VERSIONS_REPO
 do
     if [ ! "${!var:-}" ]; then
@@ -39,6 +41,54 @@ done
 
 [[ $count -gt 0 ]] && exit 1
 
+temp_dir=$(mktemp -d --suffix "-$(basename "$0")")
+[[ "$DELETE_TEMP_DIR" == "true" ]] && trap 'rm -rf $temp_dir' EXIT
+
+# Check we have the needed commands
+# opm
+opm_local_executable=$(which opm || true)
+if [[ "$opm_local_executable" ]]; then
+    opm_local_version=$(opm version | sed 's/.*OpmVersion:"//;s/".*//')
+fi
+
+if [[ -n "$opm_local_executable" && "$opm_local_version" == "$OPM_VERSION" ]]; then
+    log "Using local opm version $opm_local_executable"
+else
+    opm_download_url="https://github.com/operator-framework/operator-registry/releases/download/$OPM_VERSION/${GOOS}-${GOARCH}-opm"
+    log "Downloading opm from $opm_download_url to $temp_dir/opm"
+    curl -s -L "$opm_download_url" -o "$temp_dir/opm"
+    chmod u+x "$temp_dir/opm"
+    opm_local_executable="$temp_dir/opm"
+fi
+
+# grpcurl
+grpcurl_local_executable=$(which grpcurl || true)
+if [[ "$grpcurl_local_executable" ]]; then
+    grpcurl_local_version=$(grpcurl -version 2>&1 | cut -d " " -f 2)
+fi
+
+if [[ -n "$grpcurl_local_executable" && "$grpcurl_local_version" == "$GRPCURL_VERSION" ]]; then
+    log "Using local grpcurl version $grpcurl_local_executable"
+else
+    # mappings from https://github.com/fullstorydev/grpcurl/blob/master/.goreleaser.yml
+    os=$GOOS
+    arch=$GOARCH
+    [[ "$GOOS" == "darwin" ]] && os=osx
+    [[ "$GOARCH" == "386" ]] && arch=x86_32
+    [[ "$GOARCH" == "amd64" ]] && arch=x86_64
+    grpcurl_download_url="https://github.com/fullstorydev/grpcurl/releases/download/v$GRPCURL_VERSION/grpcurl_${GRPCURL_VERSION}_${os}_${arch}.tar.gz"
+    log "Downloading opm from $grpcurl_download_url to $temp_dir/grpcurl"
+    curl -s -L "$grpcurl_download_url" | tar -xzf - -C "$temp_dir" grpcurl
+    chmod u+x "$temp_dir/grpcurl"
+    grpcurl_local_executable="$temp_dir/grpcurl"
+fi
+
+# ./hack/generate-operator-bundle-contents.py
+if [[ ! -x "./hack/generate-operator-bundle-contents.py" ]]; then
+    echo "./hack/generate-operator-bundle-contents.py is either missing or non-executable"
+    exit 1
+fi
+
 # Check we are running an opm supported container engine
 image_builder=$(basename "$CONTAINER_ENGINE")
 if [[ "$image_builder" != "docker" && "$image_builder" != "podman" ]]; then
@@ -47,10 +97,8 @@ if [[ "$image_builder" != "docker" && "$image_builder" != "podman" ]]; then
     exit 1
 fi
 
+# This is where the action starts
 log "Building $OPERATOR_NAME version $OPERATOR_VERSION"
-
-temp_dir=$(mktemp -d --suffix "-$(basename "$0")")
-[[ "$DELETE_TEMP_DIR" == "true" ]] && trap 'rm -rf $temp_dir' EXIT
 
 engine_cmd="$CONTAINER_ENGINE --config=$CONFIG_DIR"
 
@@ -119,8 +167,7 @@ catalog_image_current_commit="$CATALOG_IMAGE:$CURRENT_COMMIT"
 catalog_image_latest="$CATALOG_IMAGE:latest"
 
 # Build bundle
-mkdir -p "$MANIFEST_DIR"
-csv_template=$(mktemp -p "$temp_dir" csv_template.XXXX)
+bundle_temp_dir=$(mktemp -d -p "$temp_dir" bundle.XXXX)
 generate_csv_template_args=""
 [[ -n "$prev_good_operator_version" ]] && generate_csv_template_args="--replaces $prev_good_operator_version"
 if [[ ${#skip_versions[@]} -gt 0 ]]; then
@@ -129,37 +176,28 @@ if [[ ${#skip_versions[@]} -gt 0 ]]; then
     done
 fi
 
-./"$BUNDLE_DEPLOY_DIR"/generate-csv-template.py $generate_csv_template_args > "$csv_template"
-oc process --local -o yaml --raw=true \
-    IMAGE="$OPERATOR_IMAGE" \
-    IMAGE_TAG="$OPERATOR_IMAGE_TAG" \
-    VERSION="$OPERATOR_VERSION" \
-    -f "$csv_template" > "$CSV"
-
-# We need an up-to-date version of opm executable
-opm_local_executable=$(which opm || true)
-if [[ "$opm_local_executable" ]]; then
-    opm_local_version=$(opm version | sed 's/.*OpmVersion:"//;s/".*//')
-fi
-
-if [[ -n "$opm_local_executable" && "$opm_local_version" == "$OPM_VERSION" ]]; then
-    log "Using local opm version $opm_local_executable"
-else
-    opm_download_url="https://github.com/operator-framework/operator-registry/releases/download/$OPM_VERSION/${GOOS}-${GOARCH}-opm"
-    log "Downloading opm from $opm_download_url to $temp_dir/opm"
-    curl -s -L "$opm_download_url" -o "$temp_dir/opm"
-    chmod u+x "$temp_dir/opm"
-    opm_local_executable="$temp_dir/opm"
-fi
+manifests_temp_dir=$(mktemp -d -p "$bundle_temp_dir" manifests.XXXX)
+./hack/generate-operator-bundle-contents.py --name "$OPERATOR_NAME" \
+                                            --version "$OPERATOR_VERSION" \
+                                            --image "$OPERATOR_IMAGE" \
+                                            --image-tag "$OPERATOR_IMAGE_TAG" \
+                                            --output-dir "$manifests_temp_dir" \
+                                            $generate_csv_template_args
 
 # opm won't get anything locally, so we need to push the bundle even in dry run mode
 # we will use a different tag to make sure those leftovers are clearly recognized
 # TODO: remove this tag if we're in dry-run mode in the cleanup trap script
 [[ "$DRY_RUN" == "false" ]] || bundle_image_current_commit="${bundle_image_current_commit}-dryrun"
 log "Creating bundle image $bundle_image_current_commit"
-
-# TODO: use opm to build this
-$CONTAINER_ENGINE build -t "$bundle_image_current_commit" "$BUNDLE_DEPLOY_DIR"
+pushd "$bundle_temp_dir"
+opm alpha bundle build --directory "$manifests_temp_dir" \
+                       --channels alpha \
+                       --default alpha \
+                       --package "$OPERATOR_NAME" \
+                       --tag "$bundle_image_current_commit" \
+                       --image-builder "$image_builder" \
+                       --overwrite
+popd
 
 log "Pushing bundle image $bundle_image_current_commit"
 $engine_cmd push "$bundle_image_current_commit"
@@ -184,27 +222,6 @@ $opm_local_executable index add --bundles "$bundle_image_current_commit" \
                                 $from_arg
 
 # Check that catalog works fine
-grpcurl_local_executable=$(which grpcurl || true)
-if [[ "$grpcurl_local_executable" ]]; then
-    grpcurl_local_version=$(grpcurl -version 2>&1 | cut -d " " -f 2)
-fi
-
-if [[ -n "$grpcurl_local_executable" && "$grpcurl_local_version" == "$GRPCURL_VERSION" ]]; then
-    log "Using local grpcurl version $grpcurl_local_executable"
-else
-    # mappings from https://github.com/fullstorydev/grpcurl/blob/master/.goreleaser.yml
-    os=$GOOS
-    arch=$GOARCH
-    [[ "$GOOS" == "darwin" ]] && os=osx
-    [[ "$GOARCH" == "386" ]] && arch=x86_32
-    [[ "$GOARCH" == "amd64" ]] && arch=x86_64
-    grpcurl_download_url="https://github.com/fullstorydev/grpcurl/releases/download/v$GRPCURL_VERSION/grpcurl_${GRPCURL_VERSION}_${os}_${arch}.tar.gz"
-    log "Downloading opm from $grpcurl_download_url to $temp_dir/grpcurl"
-    curl -s -L "$grpcurl_download_url" | tar -xzf - -C "$temp_dir" grpcurl
-    chmod u+x "$temp_dir/grpcurl"
-    grpcurl_local_executable="$temp_dir/grpcurl"
-fi
-
 log "Checking that catalog we have built returns the correct version $OPERATOR_VERSION"
 
 free_port=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
@@ -259,3 +276,5 @@ log "Pushing bundle image $catalog_image_latest"
 
 log "Pushing bundle image $bundle_image_latest"
 [[ "$DRY_RUN" == "false" ]] && $engine_cmd push "$bundle_image_latest"
+
+exit 0

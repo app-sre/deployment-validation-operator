@@ -1,71 +1,57 @@
 ---
-apiVersion: v1
-kind: Template
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
 metadata:
-  name: deployment-validation-operator-csv
-objects:
-- apiVersion: operators.coreos.com/v1alpha1
-  kind: ClusterServiceVersion
-  metadata:
-    annotations:
-      capabilities: Basic Install
-      categories: Application Runtime, Monitoring, Security
-      certified: "false"
-      containerImage: ${IMAGE}:${IMAGE_TAG}
-      createdAt: 08/25/2020
-      support: Best Effort
-      repository: https://github.com/app-sre/deployment-validation-operator
-      description: |-
-        The deployment validation operator
-    name: deployment-validation-operator.v${VERSION}
-    namespace: placeholder
-  spec:
-    description: 'The Deployment Validation Operator for Kubernetes monitors workloads
-      on a cluster a provides suggestions for best practices.
-      '
-    displayName: Deployment Validation Operator
-    install:
-      spec:
-        deployments:
-        - name: deployment-validation-operator
-          ### content of deploy/openshift/deployments.yaml
-        clusterPermissions:
-          ### content of deploy/openshift/cluster-role.yaml
-        permissions:
-        ### content of deploy/openshift/role.yaml
-      strategy: deployment
-    installModes:
-    - supported: true
-      type: OwnNamespace
-    - supported: true
-      type: SingleNamespace
-    - supported: true
-      type: AllNamespaces
-    - supported: false
-      type: MultiNamespace
-    keywords:
-    - dvo
-    labels:
+  annotations:
+    capabilities: Basic Install
+    categories: Application Runtime, Monitoring, Security
+    certified: "false"
+    # containerImage: ${IMAGE}:${IMAGE_TAG}
+    createdAt: 08/25/2020
+    support: Best Effort
+    repository: https://github.com/app-sre/deployment-validation-operator
+    description: |-
+      The deployment validation operator
+  # name: deployment-validation-operator.v${VERSION}
+spec:
+  description: 'The Deployment Validation Operator for Kubernetes monitors workloads
+    on a cluster a provides suggestions for best practices.
+    '
+  displayName: Deployment Validation Operator
+  install:
+    spec:
+      deployments:
+      - name: deployment-validation-operator
+        ### content of deploy/openshift/deployments.yaml
+      clusterPermissions:
+        ### content of deploy/openshift/cluster-role.yaml
+      permissions:
+      ### content of deploy/openshift/role.yaml
+    strategy: deployment
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: true
+    type: AllNamespaces
+  - supported: false
+    type: MultiNamespace
+  keywords:
+  - dvo
+  labels:
+    alm-owner-dvo: deployment-validation-operator
+    operated-by: deployment-validation-operator
+  links:
+  - name: repository
+    url: https://github.com/app-sre/deployment-validation-operator
+  - name: containerImage
+    # url: https://${IMAGE}:${IMAGE_TAG}
+  maturity: alpha
+  provider:
+    name: Red Hat
+  selector:
+    matchLabels:
       alm-owner-dvo: deployment-validation-operator
       operated-by: deployment-validation-operator
-    links:
-    - name: repository
-      url: https://github.com/app-sre/deployment-validation-operator
-    - name: containerImage
-      url: https://${IMAGE}:${IMAGE_TAG}
-    maturity: alpha
-    provider:
-      name: Red Hat
-    selector:
-      matchLabels:
-        alm-owner-dvo: deployment-validation-operator
-        operated-by: deployment-validation-operator
-    version: ${VERSION}
-parameters:
-- name: IMAGE
-  value: "quay.io/app-sre/deployment-validation-operator"
-- name: IMAGE_TAG
-  value: "latest"
-- name: VERSION
-  value: ""
-  required: true
+  # version: ${VERSION}

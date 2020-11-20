@@ -1,17 +1,11 @@
-.EXPORT_ALL_VARIABLES:
-
 BUNDLE_VERSIONS_REPO = gitlab.cee.redhat.com/service/saas-deployment-validation-operator-bundle.git
 GOFLAGS_MOD = -mod=vendor
 GOLANGCI_OPTIONAL_CONFIG = .golangci.yml
 IMAGE_REPOSITORY ?= app-sre
 QUAY_USER ?=
 QUAY_TOKEN ?=
-OPM_VERSION = v1.14.2
+OPM_VERSION = v1.15.2
 GRPCURL_VERSION = 1.7.0
-
-BUNDLE_DEPLOY_DIR = deploy/bundle
-MANIFEST_DIR = $(BUNDLE_DEPLOY_DIR)/manifests
-CSV = $(MANIFEST_DIR)/deploymentvalidationoperator.clusterserviceversion.yaml
 CONFIG_DIR = .docker
 
 # This include must go below the above definitions
@@ -43,4 +37,19 @@ docker-login:
 
 .PHONY: catalog
 channel-catalog: docker-login
-	@./hack/build_channel_catalog.sh
+	@BUNDLE_IMAGE="${BUNDLE_IMAGE}" \
+	CATALOG_IMAGE="${CATALOG_IMAGE}" \
+	CONTAINER_ENGINE="${CONTAINER_ENGINE}" \
+	CONFIG_DIR="${CONFIG_DIR}" \
+	CURRENT_COMMIT="${CURRENT_COMMIT}" \
+	COMMIT_NUMBER="${COMMIT_NUMBER}" \
+	OPERATOR_VERSION="${OPERATOR_VERSION}" \
+	OPERATOR_NAME="${OPERATOR_NAME}" \
+	OPERATOR_IMAGE="${OPERATOR_IMAGE}" \
+	OPERATOR_IMAGE_TAG="${OPERATOR_IMAGE_TAG}" \
+	GOOS="${GOOS}" \
+	GOARCH="${GOARCH}" \
+	OPM_VERSION="${OPM_VERSION}" \
+	GRPCURL_VERSION="${GRPCURL_VERSION}" \
+	BUNDLE_VERSIONS_REPO="${BUNDLE_VERSIONS_REPO}" \
+	./hack/build_channel_catalog.sh
