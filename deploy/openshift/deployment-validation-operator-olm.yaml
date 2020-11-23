@@ -18,7 +18,7 @@ objects:
   metadata:
     name: deployment-validation-operator
   spec:
-    channel: alpha
+    channel: ${CHANNEL}
     name: deployment-validation-operator
     source: deployment-validation-operator-catalog
     sourceNamespace: ${NAMESPACE}
@@ -42,4 +42,9 @@ parameters:
   value: ""
   displayName: namespace to deploy into
   description: the namespace to deploy into
+  required: true
+- name: CHANNEL
+  value: "alpha"
+  displayName: OLM subscription channel
+  description: OLM subscription channel
   required: true

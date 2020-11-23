@@ -7,8 +7,6 @@ build/_output/*
 # docker login
 .docker/*
 
-deploy/bundle/manifests/*
-
 # Vim
 .sw[a-p]
 .*.sw[a-p]
