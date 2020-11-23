@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(add_help=False)
 required = parser.add_argument_group('required arguments')
 
 required.add_argument('-n', '--name', help='operator name', type=str, required=True)
-required.add_argument('-v', '--version', help='operator version', type=str, required=True)
+required.add_argument('-c', '--current-version', help='operator version', type=str, required=True)
 required.add_argument('-i', '--image', help='operator image', type=str, required=True)
 required.add_argument('-t', '--image-tag', help='operator image tag', type=str, required=True)
 required.add_argument('-o', '--output-dir', help='output directory', type=str, required=True)
@@ -65,8 +65,8 @@ with open(manifest_dir / 'operator.yaml', 'r') as stream:
 
 csv['spec']['install']['spec']['deployments'][0]['spec']['template']['spec']['containers'][0]['image'] = \
     csv['metadata']['annotations']['containerImage'] = f'{args.image}:{args.image_tag}'
-csv['metadata']['name'] = f'{args.name}.v{args.version}'
-csv['spec']['version'] = args.version
+csv['metadata']['name'] = f'{args.name}.v{args.current_version}'
+csv['spec']['version'] = args.current_version
 csv['spec']['links'][1]['url'] = f'https://{args.image}:{args.image_tag}'
 
 if args.replaces:
@@ -81,6 +81,6 @@ csv['metadata']['annotations']['createdAt'] = \
     now.strftime('%Y-%m-%dT%H:%M:%SZ')
 
 csv_filename = pathlib.Path(args.output_dir) / \
-    f'{args.name}.v{args.version}.clusterserviceversion.yaml'
+    f'{args.name}.v{args.current_version}.clusterserviceversion.yaml'
 with open(csv_filename, 'w') as output_file:
     yaml.dump(csv, output_file, default_flow_style=False)

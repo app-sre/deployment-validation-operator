@@ -178,7 +178,7 @@ fi
 
 manifests_temp_dir=$(mktemp -d -p "$bundle_temp_dir" manifests.XXXX)
 ./hack/generate-operator-bundle-contents.py --name "$OPERATOR_NAME" \
-                                            --version "$OPERATOR_VERSION" \
+                                            --current-version "$OPERATOR_VERSION" \
                                             --image "$OPERATOR_IMAGE" \
                                             --image-tag "$OPERATOR_IMAGE_TAG" \
                                             --output-dir "$manifests_temp_dir" \
