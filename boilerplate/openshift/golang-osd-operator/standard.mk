@@ -101,6 +101,10 @@ go-generate:
 .PHONY: op-generate
 op-generate:
 	${CONVENTION_DIR}/operator-sdk-generate.sh
+	# HACK: Due to an OLM bug in 3.11, we need to remove the
+	# spec.validation.openAPIV3Schema.type from CRDs. Remove once
+	# 3.11 is no longer supported.
+	find deploy/ -name '*_crd.yaml' | xargs -n1 -I{} yq d -i {} spec.validation.openAPIV3Schema.type
 	# Don't forget to commit generated files
 
 .PHONY: generate

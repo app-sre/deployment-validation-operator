@@ -3,7 +3,9 @@ run:
   # default concurrency is a available CPU number
   concurrency: 10
   # timeout for analysis, e.g. 30s, 5m, default is 1m
-  timeout: 2m
+  # We're using a somewhat resource-constrained container in the CI
+  # environment, so make this longish.
+  timeout: 10m
 
 issues:
   # We want to make sure we get a full report every time. Setting these
