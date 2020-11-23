@@ -1,3 +1,5 @@
+## Commented fields in this template will be filled by
+## hack/generate-operator-bundle-contents.py
 ---
 apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
