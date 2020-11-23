@@ -27,10 +27,21 @@ VER=$(osdk_version $OSDK)
 
 # This explicitly lists the versions we know about. We don't support
 # anything outside of that.
+# NOTE: We are gluing to CRD v1beta1 for the moment. Support for v1
+# needs to be considered carefully in the context of
+# - Hive v3 (which doesn't support v1)
+# - When OCP will remove support for v1beta1 (currently we know it's
+# deprecated in 4.6, but don't know when it's actually removed).
 case $VER in
-  'v0.15.1'|'v0.16.0'|'v0.17.0'|'v0.17.1'|'v0.17.2'|'v0.18.2')
-      $OSDK generate crds
-      $OSDK generate k8s
+  'v0.15.1'|'v0.16.0')
+      # No-op: just declare support for these osdk versions.
+      ;;
+  'v0.17.0'|'v0.17.1'|'v0.17.2'|'v0.18.2')
+      # The --crd-version flag was introduced in 0.17. v1beta1 is the
+      # default until 0.18, but let's be explicit.
+      _osdk_generate_crds_flags='--crd-version v1beta1'
       ;;
   *) err "Unsupported operator-sdk version $VER" ;;
 esac
+$OSDK generate crds $_osdk_generate_crds_flags
+$OSDK generate k8s
