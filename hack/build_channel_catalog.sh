@@ -192,13 +192,13 @@ $HERE/generate-operator-bundle-contents.py --name "$OPERATOR_NAME" \
 [[ "$DRY_RUN" == "false" ]] || bundle_image_current_commit="${bundle_image_current_commit}-dryrun"
 log "Creating bundle image $bundle_image_current_commit"
 pushd "$bundle_temp_dir"
-opm alpha bundle build --directory "$manifests_temp_dir" \
-                       --channels "$CHANNEL" \
-                       --default "$CHANNEL" \
-                       --package "$OPERATOR_NAME" \
-                       --tag "$bundle_image_current_commit" \
-                       --image-builder "$image_builder" \
-                       --overwrite
+$opm_local_executable alpha bundle build --directory "$manifests_temp_dir" \
+                                         --channels "$CHANNEL" \
+                                         --default "$CHANNEL" \
+                                         --package "$OPERATOR_NAME" \
+                                         --tag "$bundle_image_current_commit" \
+                                         --image-builder "$image_builder" \
+                                         --overwrite
 popd
 
 log "Pushing bundle image $bundle_image_current_commit"
