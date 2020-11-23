@@ -85,8 +85,9 @@ else
 fi
 
 # ./hack/generate-operator-bundle-contents.py
-if [[ ! -x "./hack/generate-operator-bundle-contents.py" ]]; then
-    echo "./hack/generate-operator-bundle-contents.py is either missing or non-executable"
+HERE=${0%/*}
+if [[ ! -x "$HERE/generate-operator-bundle-contents.py" ]]; then
+    echo "$HERE/generate-operator-bundle-contents.py is either missing or non-executable"
     exit 1
 fi
 
@@ -178,12 +179,12 @@ if [[ ${#skip_versions[@]} -gt 0 ]]; then
 fi
 
 manifests_temp_dir=$(mktemp -d -p "$bundle_temp_dir" manifests.XXXX)
-./hack/generate-operator-bundle-contents.py --name "$OPERATOR_NAME" \
-                                            --current-version "$OPERATOR_VERSION" \
-                                            --image "$OPERATOR_IMAGE" \
-                                            --image-tag "$OPERATOR_IMAGE_TAG" \
-                                            --output-dir "$manifests_temp_dir" \
-                                            $generate_csv_template_args
+$HERE/generate-operator-bundle-contents.py --name "$OPERATOR_NAME" \
+                                           --current-version "$OPERATOR_VERSION" \
+                                           --image "$OPERATOR_IMAGE" \
+                                           --image-tag "$OPERATOR_IMAGE_TAG" \
+                                           --output-dir "$manifests_temp_dir" \
+                                           $generate_csv_template_args
 
 # opm won't get anything locally, so we need to push the bundle even in dry run mode
 # we will use a different tag to make sure those leftovers are clearly recognized
