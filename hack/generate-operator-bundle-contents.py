@@ -31,7 +31,7 @@ root = pathlib.Path(__file__).parent.absolute() / '..'
 manifest_dir = root / 'deploy/openshift'
 csv_template_dir = root / 'deploy/bundle/template'
 
-with open(csv_template_dir / 'deploymentvalidationoperator.clusterserviceversion.yaml',
+with open(csv_template_dir / f'{args.name}.clusterserviceversion.yaml',
         'r') as stream:
     csv = yaml.safe_load(stream)
 
