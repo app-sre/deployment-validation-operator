@@ -37,7 +37,7 @@ docker-login:
 
 .PHONY: catalog
 channel-catalog: docker-login
-	@BUNDLE_IMAGE="${BUNDLE_IMAGE}" \
+	BUNDLE_IMAGE="${BUNDLE_IMAGE}" \
 	CATALOG_IMAGE="${CATALOG_IMAGE}" \
 	CONTAINER_ENGINE="${CONTAINER_ENGINE}" \
 	CONFIG_DIR="${CONFIG_DIR}" \
