@@ -31,6 +31,7 @@ for var in BUNDLE_IMAGE \
            GOARCH \
            OPM_VERSION \
            GRPCURL_VERSION \
+           CHANNEL \
            BUNDLE_VERSIONS_REPO
 do
     if [ ! "${!var:-}" ]; then
@@ -191,8 +192,8 @@ manifests_temp_dir=$(mktemp -d -p "$bundle_temp_dir" manifests.XXXX)
 log "Creating bundle image $bundle_image_current_commit"
 pushd "$bundle_temp_dir"
 opm alpha bundle build --directory "$manifests_temp_dir" \
-                       --channels alpha \
-                       --default alpha \
+                       --channels "$CHANNEL" \
+                       --default "$CHANNEL" \
                        --package "$OPERATOR_NAME" \
                        --tag "$bundle_image_current_commit" \
                        --image-builder "$image_builder" \

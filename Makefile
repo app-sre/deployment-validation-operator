@@ -7,6 +7,7 @@ QUAY_TOKEN ?=
 OPM_VERSION = v1.15.2
 GRPCURL_VERSION = 1.7.0
 CONFIG_DIR = .docker
+CHANNEL ?= alpha
 
 # This include must go below the above definitions
 include boilerplate/generated-includes.mk
@@ -52,4 +53,5 @@ channel-catalog: docker-login
 	OPM_VERSION="${OPM_VERSION}" \
 	GRPCURL_VERSION="${GRPCURL_VERSION}" \
 	BUNDLE_VERSIONS_REPO="${BUNDLE_VERSIONS_REPO}" \
+	CHANNEL="${CHANNEL}" \
 	./hack/build_channel_catalog.sh
