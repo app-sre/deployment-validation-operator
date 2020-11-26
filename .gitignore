@@ -15,3 +15,5 @@ build/_output/*
 # Boilerplate
 .venv/*
 .operator-sdk/*
+.grpcurl/*
+.opm/*
