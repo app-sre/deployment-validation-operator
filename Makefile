@@ -1,4 +1,4 @@
-BUNDLE_VERSIONS_REPO = gitlab.cee.redhat.com/service/saas-deployment-validation-operator-bundle.git
+BUNDLE_VERSIONS_REPO = gitlab.cee.redhat.com/service/saas-operator-versions.git
 GOFLAGS_MOD = -mod=vendor
 GOLANGCI_OPTIONAL_CONFIG = .golangci.yml
 IMAGE_REPOSITORY ?= app-sre
