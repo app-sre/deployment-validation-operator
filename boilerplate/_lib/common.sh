@@ -16,6 +16,25 @@ osdk_version() {
     $osdk version | sed 's/operator-sdk version: "*\([^,"]*\)"*,.*/\1/'
 }
 
+## opm_version BINARY
+#
+# Print the version of the specified opm BINARY
+opm_version() {
+    local opm=$1
+    # `opm version` output looks like:
+    #    Version: version.Version{OpmVersion:"v1.15.2", GitCommit:"fded0bf", BuildDate:"2020-11-18T14:21:24Z", GoOs:"darwin", GoArch:"amd64"}
+    $opm version | sed 's/.*OpmVersion:"//;s/".*//'
+}
+
+## grpcurl_version BINARY
+#
+# Print the version of the specified grpcurl BINARY
+grpcurl_version() {
+    local grpcurl=$1
+    # `grpcurl -version` output looks like:  grpcurl 1.7.0
+    $grpcurl -version 2>&1 | cut -d " " -f 2
+}
+
 repo_name() {
     # Account for remotes which are
     # - upstream or origin
