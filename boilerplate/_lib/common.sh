@@ -3,6 +3,13 @@ err() {
   exit 1
 }
 
+banner() {
+    echo
+    echo "=============================="
+    echo "$@"
+    echo "=============================="
+}
+
 ## osdk_version BINARY
 #
 # Print the version of the specified operator-sdk BINARY
@@ -40,6 +47,16 @@ repo_name() {
     # - upstream or origin
     # - ssh ("git@host.com:org/name.git") or https ("https://host.com/org/name.git")
     (git -C $1 config --get remote.upstream.url || git -C $1 config --get remote.origin.url) | sed 's,git@[^:]*:,,; s,https://[^/]*/,,; s/\.git$//'
+}
+
+## current_branch REPO
+#
+# Outputs the name of the current branch in the REPO directory
+current_branch() {
+    (
+        cd $1
+        git rev-parse --abbrev-ref HEAD
+    )
 }
 
 if [ "$BOILERPLATE_SET_X" ]; then
@@ -82,5 +99,10 @@ fi
 # The namespace of the ImageStream by which prow will import the image.
 IMAGE_NAMESPACE=openshift
 IMAGE_NAME=boilerplate
+# LATEST_IMAGE_TAG may be set by `update`, in which case that's the
+# value we want to use.
+if [[ -z "$LATEST_IMAGE_TAG" ]]; then
+    LATEST_IMAGE_TAG=$(cat ${CONVENTION_ROOT}/_data/backing-image-tag)
+fi
 # The public image location
 IMAGE_PULL_PATH=quay.io/app-sre/$IMAGE_NAME:$LATEST_IMAGE_TAG
