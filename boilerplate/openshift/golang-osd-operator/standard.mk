@@ -196,7 +196,7 @@ build-push:
 	hack/app_sre_build_deploy.sh
 
 .PHONY: opm-build-push
-opm-build-push: docker-login-and-push
+opm-build-push: docker-push
 	OLM_BUNDLE_IMAGE="${OLM_BUNDLE_IMAGE}" \
 	OLM_CATALOG_IMAGE="${OLM_CATALOG_IMAGE}" \
 	CONTAINER_ENGINE="${CONTAINER_ENGINE}" \
