@@ -1,10 +1,12 @@
-include boilerplate/generated-includes.mk
-
 GOFLAGS_MOD = -mod=vendor
 GOLANGCI_OPTIONAL_CONFIG = .golangci.yml
 IMAGE_REPOSITORY ?= app-sre
 REGISTRY_USER = $(QUAY_USER)
 REGISTRY_TOKEN = $(QUAY_TOKEN)
+
+# This include must go below the above definitions
+include boilerplate/generated-includes.mk
+
 OPERATOR_IMAGE_URI_TEST = $(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):test
 
 .PHONY: boilerplate-update
