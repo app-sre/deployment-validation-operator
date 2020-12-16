@@ -186,10 +186,16 @@ for convention in $(scrubbed_conventions $CONFIG_FILE); do
   echo ""
 done
 
-# If all that went well, lay down the last-boilerplate-commit file,
-# which allows freeze-check to work.
-echo "Registering commit hash..."
+# If all that went well, record some metadata.
 mkdir -p ${CONVENTION_ROOT}/_data
+# - The last-boilerplate-commit file, which allows freeze-check to work.
+echo "Registering commit hash..."
 bp_commit=$(cd ${BP_CLONE} && git rev-parse HEAD)
 echo ${bp_commit} > ${CONVENTION_ROOT}/_data/last-boilerplate-commit
+
+# - The boilerplate backing image tag. This is used to run containerized
+#   local builds/tests.
+echo "Registering image tag..."
+echo $LATEST_IMAGE_TAG > ${CONVENTION_ROOT}/_data/backing-image-tag
+
 echo "Done"
