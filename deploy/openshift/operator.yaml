@@ -6,7 +6,7 @@ metadata:
   name: deployment-validation-operator
   namespace: deployment-validation-operator
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: deployment-validation-operator
