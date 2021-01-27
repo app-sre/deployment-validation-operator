@@ -22,6 +22,10 @@ objects:
     name: deployment-validation-operator
     source: deployment-validation-operator-catalog
     sourceNamespace: ${NAMESPACE}
+    config:
+      env:
+      - name: NAMESPACE_IGNORE_PATTERN
+        value: ${NAMESPACE_IGNORE_PATTERN}
 - apiVersion: operators.coreos.com/v1
   kind: OperatorGroup
   metadata:
@@ -48,3 +52,7 @@ parameters:
   displayName: OLM subscription channel
   description: OLM subscription channel
   required: true
+- name: NAMESPACE_IGNORE_PATTERN
+  value: ""
+  displayName: Namespace ignore pattern
+  description: A golang regex to ignore checks from matching patterns
