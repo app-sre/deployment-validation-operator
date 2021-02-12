@@ -60,7 +60,7 @@ func (r *RequestLimitValidation) Validate(request reconcile.Request, obj interfa
 			Interface().(core_v1.PodTemplateSpec)
 		for _, c := range podTemplateSpec.Spec.Containers {
 			if c.Resources.Requests.Memory().IsZero() || c.Resources.Requests.Cpu().IsZero() ||
-				c.Resources.Limits.Memory().IsZero() || c.Resources.Limits.Cpu().IsZero() {
+				c.Resources.Limits.Memory().IsZero() {
 				logger.Info("does not have requests or limits set")
 				r.metric.With(promLabels).Set(1)
 				return

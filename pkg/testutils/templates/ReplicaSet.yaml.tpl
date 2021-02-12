@@ -118,7 +118,6 @@ spec:
         resources:
           {{- if .ResourceLimits }}
           limits:
-            cpu: "1"
             memory: 1Gi
           {{- end }}
           {{- if .ResourceRequests }}
