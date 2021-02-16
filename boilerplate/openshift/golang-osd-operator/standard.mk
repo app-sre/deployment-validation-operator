@@ -39,7 +39,7 @@ REGISTRY_TOKEN ?=
 CONTAINER_ENGINE_CONFIG_DIR = .docker
 
 BINFILE=build/_output/bin/$(OPERATOR_NAME)
-MAINPACKAGE=./cmd/manager
+MAINPACKAGE ?= ./cmd/manager
 
 GOOS?=$(shell go env GOOS)
 GOARCH?=$(shell go env GOARCH)
@@ -57,7 +57,9 @@ GOLANGCI_LINT_CACHE ?= /tmp/golangci-cache
 
 GOLANGCI_OPTIONAL_CONFIG ?=
 
+ifeq ($(origin TESTTARGETS), undefined)
 TESTTARGETS := $(shell ${GOENV} go list -e ./... | egrep -v "/(vendor)/")
+endif
 # ex, -v
 TESTOPTS :=
 

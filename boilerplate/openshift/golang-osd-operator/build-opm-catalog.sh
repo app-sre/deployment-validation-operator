@@ -286,7 +286,7 @@ function add_current_version_to_bundle_versions_file() {
 
     git commit -m "$message"
 
-    log "Pushing the repository changes to $OLM_BUNDLE_VERSIONS_REPO into branch $OLM_BUNDLE_VERSIONS_REPO_BRANCH"
+    log "Pushing the repository changes to $OLM_BUNDLE_VERSIONS_REPO into $OLM_BUNDLE_VERSIONS_REPO_BRANCH branch"
     [[ "$DRY_RUN" == "false" ]] && git push origin "$OLM_BUNDLE_VERSIONS_REPO_BRANCH"
 
     cd "$current_directory"
