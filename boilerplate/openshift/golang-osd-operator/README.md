@@ -44,6 +44,17 @@ This will generate a delta configuring prow to:
 - Run the `coverage` target in a postsubmit. This is the step that
   updates your coverage report in codecov.io.
 
+#### Local Testing
+You can run these `make` targets locally during development to test your
+code changes. However, differences in platforms and environments may
+lead to unpredictable results. Therefore boilerplate provides a utility
+to run targets in a container environment that is designed to be as
+similar as possible to CI:
+
+```shell
+$ ./boilerplate/_lib/container-make {target}
+```
+
 ### app-sre
 
 The `build-push` target builds and pushes the operator and OLM registry images,
