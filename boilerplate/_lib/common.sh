@@ -42,11 +42,26 @@ grpcurl_version() {
     $grpcurl -version 2>&1 | cut -d " " -f 2
 }
 
+## repo_import REPODIR
+#
+# Print the qualified org/name of the current repository, e.g.
+# "openshift/wizbang-foo-operator". This relies on git remotes being set
+# reasonably.
 repo_name() {
+    # Just strip off the first component of the import-ish path
+    repo_import $1 | sed 's,^[^/]*/,,'
+}
+
+## repo_import REPODIR
+#
+# Print the go import-ish path to the current repository, e.g.
+# "github.com/openshift/wizbang-foo-operator". This relies on git
+# remotes being set reasonably.
+repo_import() {
     # Account for remotes which are
     # - upstream or origin
     # - ssh ("git@host.com:org/name.git") or https ("https://host.com/org/name.git")
-    (git -C $1 config --get remote.upstream.url || git -C $1 config --get remote.origin.url) | sed 's,git@[^:]*:,,; s,https://[^/]*/,,; s/\.git$//'
+    (git -C $1 config --get remote.upstream.url || git -C $1 config --get remote.origin.url) | sed 's,git@\([^:]*\):,\1/,; s,https://,,; s/\.git$//'
 }
 
 ## current_branch REPO
