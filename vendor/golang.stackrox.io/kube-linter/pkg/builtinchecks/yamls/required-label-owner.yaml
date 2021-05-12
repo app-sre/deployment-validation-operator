@@ -1,0 +1,9 @@
+name: "required-label-owner"
+description: "Indicates when objects do not have an email annotation with an owner label."
+remediation: "Add an email annotation to your object with the name of the object's owner."
+scope:
+  objectKinds:
+    - DeploymentLike
+template: "required-label"
+params:
+  key: "owner"
