@@ -1,0 +1,9 @@
+name: "run-as-non-root"
+description: "Indicates when containers are not set to runAsNonRoot."
+remediation: >-
+  Set runAsUser to a non-zero number and runAsNonRoot to true in your pod or container securityContext.
+  Refer to https://kubernetes.io/docs/tasks/configure-pod-container/security-context/ for details.
+scope:
+  objectKinds:
+    - DeploymentLike
+template: "run-as-non-root"
