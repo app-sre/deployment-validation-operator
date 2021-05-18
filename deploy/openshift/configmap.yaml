@@ -1,0 +1,28 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deployment-validation-operator-config
+  labels:
+    name: deployment-validation-operator
+data:
+  deployment-validation-operator-config.yaml: |-
+    customChecks:
+    - name: "required-minimum-replicas"
+      template: "minimum-replicas"
+      description: "Indicates when deployments use less that the minimum recommended number of replicas"
+      remediation: >-
+        Increase be number of replicas in the deployment to at least the minimum to increase the fault tolerancy of the deployment.
+      scope:
+        objectKinds:
+          - DeploymentLike
+      params:
+        minReplicas: 3
+    checks:
+      # if doNotAutoAddDefaults is true, default checks are not automatically added.
+      doNotAutoAddDefaults: false
+
+      # addAllBuiltIn, if set, adds all built-in checks. This allows users to
+      # explicitly opt-out of checks that are not relevant using Exclude.
+      # Takes precedence over doNotAutoAddDefaults, if both are set.
+      addAllBuiltIn: true

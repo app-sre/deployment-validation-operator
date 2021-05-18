@@ -4,7 +4,6 @@ metadata:
   labels:
     app: deployment-validation-operator
   name: deployment-validation-operator
-  namespace: deployment-validation-operator
 spec:
   replicas: 3
   selector:
@@ -25,6 +24,8 @@ spec:
       - image: quay.io/app-sre/deployment-validation-operator:latest
         imagePullPolicy: Always
         name: deployment-validation-operator
+        args:
+        - --config /config/deployment-validation-operator-config.yaml
         env:
         - name: WATCH_NAMESPACE
           value: ""
@@ -34,6 +35,13 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        volumeMounts:
+        - name: dvo-config
+          mountPath: /config
+      volumes:
+      - name: dvo-config
+        configMap:
+          name: deployment-validation-operator-config
       restartPolicy: Always
       serviceAccount: deployment-validation-operator
       terminationGracePeriodSeconds: 30

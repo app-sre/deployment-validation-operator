@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/app-sre/deployment-validation-operator/config"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
