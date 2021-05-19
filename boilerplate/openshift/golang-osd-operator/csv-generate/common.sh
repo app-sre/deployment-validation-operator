@@ -1,4 +1,7 @@
-#!/bin/bash 
+#!/usr/bin/env bash
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+source $REPO_ROOT/boilerplate/_lib/common.sh
 
 function check_mandatory_params() {
     local csv_missing_param_error

@@ -1,5 +1,14 @@
 # Conventions for OSD operators written in Go
 
+- [Conventions for OSD operators written in Go](#conventions-for-osd-operators-written-in-go)
+  - [`make` targets and functions.](#make-targets-and-functions)
+    - [Prow](#prow)
+      - [Local Testing](#local-testing)
+    - [app-sre](#app-sre)
+  - [Code coverage](#code-coverage)
+  - [Linting and other static analysis with `golangci-lint`](#linting-and-other-static-analysis-with-golangci-lint)
+  - [Checks on generated code](#checks-on-generated-code)
+
 This convention is suitable for both cluster- and hive-deployed operators.
 
 The following components are included:
@@ -59,6 +68,8 @@ $ ./boilerplate/_lib/container-make {target}
 
 The `build-push` target builds and pushes the operator and OLM registry images,
 ready to be SaaS-deployed.
+By default it is configured to be run from the app-sre jenkins pipelines.
+Consult [this doc](app-sre.md) for information on local execution/testing.
 
 ## Code coverage
 - A `codecov.sh` script, referenced by the `coverage` `make` target, to
@@ -106,5 +117,3 @@ Checks consist of:
 * `openapi-gen`. This is a no-op if your operator has no APIs.
 * `go generate`. This is a no-op if you have no `//go:generate`
   directives in your code.
-
-## More coming soon
