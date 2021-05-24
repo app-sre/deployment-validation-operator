@@ -20,4 +20,4 @@ docker-test:
 
 # We are early adopters of the OPM build/push process. Remove this
 # override once boilerplate uses that path by default.
-build-push: opm-build-push
+build-push: opm-build-push ;
