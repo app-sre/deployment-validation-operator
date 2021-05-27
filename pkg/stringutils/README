@@ -1,0 +1,1 @@
+These functions are copyed from kube-linter because they are internal functions.  The project plans to move these to a common library that will be open sourced, but that is a ways off.  For now these functions should stay here until the kube-linter library is available.  At that time, these should all be removed and the upstream library should be used

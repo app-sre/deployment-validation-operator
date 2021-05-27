@@ -1,11 +1,12 @@
 package controller
 
 import (
+	"context"
 	"testing"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -18,21 +19,22 @@ func TestGenericReconciler(t *testing.T) {
 	}
 
 	// Objects to track in the fake client.
-	objs := []runtime.Object{&deployment}
+	objs := []client.Object{&deployment}
 
 	// Create a fake client to mock API calls.
-	client := fake.NewFakeClient(objs...)
+	//	client := fake.NewFakeClient(objs...)
+	client := fake.NewClientBuilder().WithObjects(objs...)
 
 	request := reconcile.Request{
 		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
 	}
 
 	gr := &GenericReconciler{
-		client:         client,
+		client:         client.Build(),
 		reconciledKind: testutils.ObjectKind(&deployment),
 		reconciledObj:  &deployment}
 
-	_, err = gr.Reconcile(request)
+	_, err = gr.Reconcile(context.TODO(), request)
 	if err != nil {
 		t.Errorf("Error reconciling %v", err)
 	}

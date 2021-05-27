@@ -46,6 +46,7 @@ func NewGenericReconciler(obj runtime.Object) *GenericReconciler {
 	return &GenericReconciler{reconciledObj: obj, reconciledKind: kind}
 }
 
+// AddToManager will add the reconciler for the configured obj to a manager
 func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 	gr.client = mgr.GetClient()
 
@@ -59,7 +60,8 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 	}
 
 	// Watch for changes to primary resource
-	err = c.Watch(&source.Kind{Type: gr.reconciledObj}, &handler.EnqueueRequestForObject{})
+	watchObj := gr.reconciledObj.(client.Object)
+	err = c.Watch(&source.Kind{Type: watchObj}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -68,7 +70,7 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 }
 
 // Reconcile watches an object kind and reports validation errors
-func (gr *GenericReconciler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (gr *GenericReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	var log = logf.Log.WithName(fmt.Sprintf("%sController", gr.reconciledKind))
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.V(2).Info("Reconcile", "Kind", gr.reconciledKind)
@@ -78,8 +80,8 @@ func (gr *GenericReconciler) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, nil
 	}
 
-	instance := gr.reconciledObj.DeepCopyObject()
-	err := gr.client.Get(context.TODO(), request.NamespacedName, instance)
+	instance := gr.reconciledObj.DeepCopyObject().(client.Object)
+	err := gr.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil && !errors.IsNotFound(err) {
 		return reconcile.Result{Requeue: true}, err
 	}

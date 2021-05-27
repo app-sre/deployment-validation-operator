@@ -1,0 +1,7 @@
+name: "writable-host-mount"
+description: "Indicates when containers mount a host path as writable."
+remediation: "Set containers to mount host paths as readOnly, if you need to access files on the host."
+scope:
+  objectKinds:
+    - DeploymentLike
+template: "writable-host-mount"

@@ -2,34 +2,27 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"runtime"
 	"strings"
 
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
-
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/rest"
 
 	dv_config "github.com/app-sre/deployment-validation-operator/config"
 	"github.com/app-sre/deployment-validation-operator/pkg/apis"
 	"github.com/app-sre/deployment-validation-operator/pkg/controller"
+	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
 
-	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
-	"github.com/operator-framework/operator-sdk/pkg/leader"
-	"github.com/operator-framework/operator-sdk/pkg/log/zap"
-	"github.com/operator-framework/operator-sdk/pkg/metrics"
-	sdkVersion "github.com/operator-framework/operator-sdk/version"
+	"github.com/operator-framework/operator-lib/leader"
 
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
@@ -38,8 +31,9 @@ import (
 
 // Change below variables to serve metrics on different host or port.
 var (
-	metricsHost       = "0.0.0.0"
-	metricsPort int32 = 8383
+	metricsHost             = "0.0.0.0"
+	metricsPort       int32 = 8383
+	defaultConfigFile       = "config/deployment-validation-operator-config.yaml"
 )
 var log = logf.Log.WithName("DeploymentValidation")
 
@@ -47,20 +41,29 @@ func printVersion() {
 	log.Info(fmt.Sprintf("Operator Version: %s", version.Version))
 	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
 	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
-	log.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
 }
 
 func main() {
+	var configFile string
+	var inCluster bool
+
 	// Make sure the operator name is what we want
 	os.Setenv("OPERATOR_NAME", dv_config.OperatorName)
 
 	// Add the zap logger flag set to the CLI. The flag set must
 	// be added before calling pflag.Parse().
-	pflag.CommandLine.AddFlagSet(zap.FlagSet())
+	opts := zap.Options{}
+	opts.BindFlags(flag.CommandLine)
 
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+
+	// Add app specific flags
+	appFlags := pflag.NewFlagSet("dvo", pflag.ExitOnError)
+	appFlags.StringVar(&configFile, "config", defaultConfigFile, "Path to config file")
+	appFlags.BoolVarP(&inCluster, "in-cluster", "", true, "Set to false if running outside a cluster")
+	pflag.CommandLine.AddFlagSet(appFlags)
 
 	pflag.Parse()
 
@@ -72,11 +75,12 @@ func main() {
 	// implementing the logr.Logger interface. This logger will
 	// be propagated through the whole operator, generating
 	// uniform and structured logs.
-	logf.SetLogger(zap.Logger())
+	logger := zap.New(zap.UseFlagOptions(&opts))
+	logf.SetLogger(logger)
 
 	printVersion()
 
-	namespace, err := k8sutil.GetWatchNamespace()
+	namespace, err := getWatchNamespace()
 	if err != nil {
 		log.Error(err, "Failed to get watch namespace")
 		os.Exit(1)
@@ -89,12 +93,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx := context.TODO()
-	// Become the leader before proceeding
-	err = leader.Become(ctx, "deployment-validation-operator-lock")
-	if err != nil {
-		log.Error(err, "Failed to get leader lock")
-		os.Exit(1)
+	if inCluster {
+		// leader.Become looks for the operator namespace using a hard-coded
+		// path that assumes it is running inside a cluster and no workaround
+		// is immediately obvious.  If running outside the cluster then the
+		// file wouldn't normally exist and this call will fail.  If running
+		// outside a cluster, then leader election probably isn't that
+		// important anyway so we don't even try to do it.
+		ctx := context.TODO()
+		// Become the leader before proceeding
+		err = leader.Become(ctx, "deployment-validation-operator-lock")
+		if err != nil {
+			log.Error(err, "Failed to get leader lock")
+			os.Exit(1)
+		}
 	}
 
 	// Set default manager options
@@ -128,13 +140,16 @@ func main() {
 	}
 
 	// Setup all Controllers
-	if err := controller.AddToManager(mgr); err != nil {
+	if err := controller.AddControllersToManager(mgr); err != nil {
 		log.Error(err, "Failed to setup the controllers")
 		os.Exit(1)
 	}
 
-	// Add the Metrics Service
-	addMetrics(ctx, cfg)
+	log.Info("Initializing Validation Engine")
+	if err := validations.InitializeValidationEngine(configFile); err != nil {
+		log.Error(err, "Failed to initialize validation engine")
+		os.Exit(1)
+	}
 
 	log.Info("Starting")
 
@@ -145,49 +160,15 @@ func main() {
 	}
 }
 
-// addMetrics will create the Services and Service Monitors to allow the operator export the metrics by using
-// the Prometheus operator
-func addMetrics(ctx context.Context, cfg *rest.Config) {
-	// Get the namespace the operator is currently deployed in.
-	operatorNs, err := k8sutil.GetOperatorNamespace()
-	if err != nil {
-		if errors.Is(err, k8sutil.ErrRunLocal) {
-			log.Info("Skipping CR metrics server creation; not running in a cluster.")
-			return
-		}
-	}
+func getWatchNamespace() (string, error) {
+	// WatchNamespaceEnvVar is the constant for env variable WATCH_NAMESPACE
+	// which specifies the Namespace to watch.
+	// An empty value means the operator is running with cluster scope.
+	var watchNamespaceEnvVar = "WATCH_NAMESPACE"
 
-	// Add to the below struct any other metrics ports you want to expose.
-	servicePorts := []v1.ServicePort{
-		{
-			Port:       metricsPort,
-			Name:       metrics.OperatorPortName,
-			Protocol:   v1.ProtocolTCP,
-			TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: metricsPort},
-		},
+	ns, found := os.LookupEnv(watchNamespaceEnvVar)
+	if !found {
+		return "", fmt.Errorf("%s must be set", watchNamespaceEnvVar)
 	}
-
-	// Create Service object to expose the metrics port(s).
-	service, err := metrics.CreateMetricsService(ctx, cfg, servicePorts)
-	if err != nil {
-		log.Info("Could not create metrics Service", "error", err.Error())
-	}
-
-	// CreateServiceMonitors will automatically create the prometheus-operator ServiceMonitor resources
-	// necessary to configure Prometheus to scrape metrics from this operator.
-	services := []*v1.Service{service}
-
-	// The ServiceMonitor is created in the same namespace where the operator is deployed
-	_, err = metrics.CreateServiceMonitors(cfg, operatorNs, services)
-	if err != nil {
-		log.Info("Could not create ServiceMonitor object", "error", err.Error())
-		// If this operator is deployed to a cluster without the prometheus-operator running,
-		// it will return
-		// ErrServiceMonitorNotPresent, which can be used to safely skip ServiceMonitor creation.
-		if err == metrics.ErrServiceMonitorNotPresent {
-			log.Info("Install prometheus-operator in your cluster to create ServiceMonitor objects",
-				"error",
-				err.Error())
-		}
-	}
+	return ns, nil
 }
