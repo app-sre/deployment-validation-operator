@@ -12,18 +12,6 @@ import (
 
 var log = logf.Log.WithName("validations")
 
-type ValidationInterface interface {
-	AppliesTo() map[string]struct{}
-	Validate(reconcile.Request, interface{}, string, bool)
-}
-
-var validations []ValidationInterface
-
-// AddValidation will add a validation to the list of validations
-func AddValidation(v ValidationInterface) {
-	validations = append(validations, v)
-}
-
 // RunValidations will run all the registered validations
 func RunValidations(request reconcile.Request, obj client.Object, kind string, isDeleted bool) {
 	log.V(2).Info("validation", "kind", kind)
