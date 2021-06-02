@@ -1139,6 +1139,8 @@ golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 h1:go1bK/D/BFZV2I8cIQd1N
 golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.stackrox.io/kube-linter v0.0.0-20210521164721-3b39423676e4 h1:iExoJg48on+zM5L06KZETKPX328GfZ1B2Blhi9xupzA=
 golang.stackrox.io/kube-linter v0.0.0-20210521164721-3b39423676e4/go.mod h1:hpSMaPc57ccQkCRooc/0SF/ODIXdZCj0sjspFQWFYxc=
+golang.stackrox.io/kube-linter v0.0.0-20210601214711-7d10a69154ed h1:y0nSRe2t64ASehSvyLciHxQHTpzBDrmYgYDI0QLorSc=
+golang.stackrox.io/kube-linter v0.0.0-20210601214711-7d10a69154ed/go.mod h1:hpSMaPc57ccQkCRooc/0SF/ODIXdZCj0sjspFQWFYxc=
 gomodules.xyz/jsonpatch/v2 v2.1.0 h1:Phva6wqu+xR//Njw6iorylFFgn/z547tw5Ne3HZPQ+k=
 gomodules.xyz/jsonpatch/v2 v2.1.0/go.mod h1:IhYNNY4jnS53ZnfE4PAmpKtDpTCj1JFXc+3mwe7XcUU=
 google.golang.org/api v0.0.0-20160322025152-9bf6e6e569ff/go.mod h1:4mhQ8q/RsB7i+udVvVy5NUi08OU8ZlA0gRVgrF7VFY0=

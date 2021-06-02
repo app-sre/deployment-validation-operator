@@ -277,7 +277,7 @@ golang.org/x/text/unicode/norm
 golang.org/x/text/width
 # golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 golang.org/x/time/rate
-# golang.stackrox.io/kube-linter v0.0.0-20210521164721-3b39423676e4
+# golang.stackrox.io/kube-linter v0.0.0-20210601214711-7d10a69154ed
 ## explicit
 golang.stackrox.io/kube-linter/internal/defaultchecks
 golang.stackrox.io/kube-linter/internal/errorhelpers
@@ -297,7 +297,6 @@ golang.stackrox.io/kube-linter/pkg/ignore
 golang.stackrox.io/kube-linter/pkg/instantiatedcheck
 golang.stackrox.io/kube-linter/pkg/k8sutil
 golang.stackrox.io/kube-linter/pkg/lintcontext
-golang.stackrox.io/kube-linter/pkg/lintcontext/mocks
 golang.stackrox.io/kube-linter/pkg/matcher
 golang.stackrox.io/kube-linter/pkg/objectkinds
 golang.stackrox.io/kube-linter/pkg/run
@@ -348,6 +347,8 @@ golang.stackrox.io/kube-linter/pkg/templates/readinessprobe
 golang.stackrox.io/kube-linter/pkg/templates/readinessprobe/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/readonlyrootfs
 golang.stackrox.io/kube-linter/pkg/templates/readonlyrootfs/internal/params
+golang.stackrox.io/kube-linter/pkg/templates/replicas
+golang.stackrox.io/kube-linter/pkg/templates/replicas/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/requiredannotation
 golang.stackrox.io/kube-linter/pkg/templates/requiredannotation/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/requiredlabel
