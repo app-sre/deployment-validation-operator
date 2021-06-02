@@ -43,7 +43,7 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 
 	// Clear labels from past run to ensure only results from this run
 	// are reflected in the metrics
-	engine.ClearMetrics(promLabels)
+	engine.ClearMetrics(result.Reports, promLabels)
 
 	for _, report := range result.Reports {
 		logger := log.WithValues(
