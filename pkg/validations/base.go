@@ -1,6 +1,7 @@
 package validations
 
 import (
+	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -33,6 +34,12 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	// do not run any validations
 	if isDeleted {
 		engine.DeleteMetrics(promLabels)
+		return
+	}
+
+	// Only run checks against an object with no owners.  This should be
+	// the object that controls the configuration
+	if !utils.IsOwner(obj) {
 		return
 	}
 
