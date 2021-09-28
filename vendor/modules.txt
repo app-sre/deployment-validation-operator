@@ -263,7 +263,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.3.4
+# golang.org/x/text v0.3.5
 golang.org/x/text/encoding
 golang.org/x/text/encoding/internal
 golang.org/x/text/encoding/internal/identifier
@@ -277,7 +277,7 @@ golang.org/x/text/unicode/norm
 golang.org/x/text/width
 # golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 golang.org/x/time/rate
-# golang.stackrox.io/kube-linter v0.0.0-20210601214711-7d10a69154ed
+# golang.stackrox.io/kube-linter v0.0.0-20210923173231-2a83cbe3dec2
 ## explicit
 golang.stackrox.io/kube-linter/internal/defaultchecks
 golang.stackrox.io/kube-linter/internal/errorhelpers
@@ -301,6 +301,8 @@ golang.stackrox.io/kube-linter/pkg/matcher
 golang.stackrox.io/kube-linter/pkg/objectkinds
 golang.stackrox.io/kube-linter/pkg/run
 golang.stackrox.io/kube-linter/pkg/templates
+golang.stackrox.io/kube-linter/pkg/templates/accesstoresources
+golang.stackrox.io/kube-linter/pkg/templates/accesstoresources/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/all
 golang.stackrox.io/kube-linter/pkg/templates/antiaffinity
 golang.stackrox.io/kube-linter/pkg/templates/antiaffinity/internal/params
@@ -327,14 +329,22 @@ golang.stackrox.io/kube-linter/pkg/templates/hostnetwork
 golang.stackrox.io/kube-linter/pkg/templates/hostnetwork/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/hostpid
 golang.stackrox.io/kube-linter/pkg/templates/hostpid/internal/params
+golang.stackrox.io/kube-linter/pkg/templates/imagepullpolicy
+golang.stackrox.io/kube-linter/pkg/templates/imagepullpolicy/internal/params
+golang.stackrox.io/kube-linter/pkg/templates/latesttag
+golang.stackrox.io/kube-linter/pkg/templates/latesttag/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/livenessprobe
 golang.stackrox.io/kube-linter/pkg/templates/livenessprobe/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/memoryrequirements
 golang.stackrox.io/kube-linter/pkg/templates/memoryrequirements/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/mismatchingselector
 golang.stackrox.io/kube-linter/pkg/templates/mismatchingselector/internal/params
+golang.stackrox.io/kube-linter/pkg/templates/namespace
+golang.stackrox.io/kube-linter/pkg/templates/namespace/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/nonexistentserviceaccount
 golang.stackrox.io/kube-linter/pkg/templates/nonexistentserviceaccount/internal/params
+golang.stackrox.io/kube-linter/pkg/templates/nonisolatedpod
+golang.stackrox.io/kube-linter/pkg/templates/nonisolatedpod/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/ports
 golang.stackrox.io/kube-linter/pkg/templates/ports/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/privileged
@@ -347,6 +357,8 @@ golang.stackrox.io/kube-linter/pkg/templates/readinessprobe
 golang.stackrox.io/kube-linter/pkg/templates/readinessprobe/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/readonlyrootfs
 golang.stackrox.io/kube-linter/pkg/templates/readonlyrootfs/internal/params
+golang.stackrox.io/kube-linter/pkg/templates/readsecret
+golang.stackrox.io/kube-linter/pkg/templates/readsecret/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/replicas
 golang.stackrox.io/kube-linter/pkg/templates/replicas/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/requiredannotation
@@ -363,7 +375,11 @@ golang.stackrox.io/kube-linter/pkg/templates/sysctl
 golang.stackrox.io/kube-linter/pkg/templates/sysctl/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/unsafeprocmount
 golang.stackrox.io/kube-linter/pkg/templates/unsafeprocmount/internal/params
+golang.stackrox.io/kube-linter/pkg/templates/updateconfig
+golang.stackrox.io/kube-linter/pkg/templates/updateconfig/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/util
+golang.stackrox.io/kube-linter/pkg/templates/wildcardinrules
+golang.stackrox.io/kube-linter/pkg/templates/wildcardinrules/internal/params
 golang.stackrox.io/kube-linter/pkg/templates/writablehostmount
 golang.stackrox.io/kube-linter/pkg/templates/writablehostmount/internal/params
 # gomodules.xyz/jsonpatch/v2 v2.1.0
