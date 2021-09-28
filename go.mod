@@ -26,7 +26,7 @@ require (
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/oauth2 v0.0.0-20210210192628-66670185b0cd // indirect
 	golang.org/x/sys v0.0.0-20210309074719-68d13333faf2 // indirect
-	golang.stackrox.io/kube-linter v0.0.0-20210601214711-7d10a69154ed
+	golang.stackrox.io/kube-linter v0.0.0-20210923173231-2a83cbe3dec2
 	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/ini.v1 v1.57.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
