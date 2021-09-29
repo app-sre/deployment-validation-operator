@@ -1,7 +1,7 @@
 package validations
 
 import (
-	"sync"
+	"fmt"
 	"testing"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
@@ -12,7 +12,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
+	"golang.stackrox.io/kube-linter/pkg/builtinchecks"
+	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 	"golang.stackrox.io/kube-linter/pkg/config"
+	"golang.stackrox.io/kube-linter/pkg/configresolver"
 
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -21,38 +24,44 @@ const (
 	checkName = "test-minimum-replicas"
 )
 
-var (
-	loadOnce sync.Once
-	ve       validationEngine
-	loadErr  error
-)
-
-func createEngine() (validationEngine, error) {
-	loadOnce.Do(func() {
-		ve = validationEngine{
-			config: config.Config{
-				CustomChecks: []config.Check{
-					{
-						Name:     checkName,
-						Template: "minimum-replicas",
-						Scope: &config.ObjectKindsDesc{
-							ObjectKinds: []string{"DeploymentLike"},
-						},
-						Params: map[string]interface{}{"minReplicas": 3},
-					},
-				},
-				Checks: config.ChecksConfig{
-					AddAllBuiltIn:        false,
-					DoNotAutoAddDefaults: true,
-				},
-			},
-		}
-		loadErr = ve.InitRegistry()
-	})
+func newEngine(c config.Config) (validationEngine, error) {
+	ve := validationEngine{
+		config: c,
+	}
+	loadErr := ve.InitRegistry()
 	if loadErr != nil {
 		return validationEngine{}, loadErr
 	}
 	return ve, nil
+}
+
+func newEngineConfigWithCustomCheck() config.Config {
+	return config.Config{
+		CustomChecks: []config.Check{
+			{
+				Name:     checkName,
+				Template: "minimum-replicas",
+				Scope: &config.ObjectKindsDesc{
+					ObjectKinds: []string{"DeploymentLike"},
+				},
+				Params: map[string]interface{}{"minReplicas": 3},
+			},
+		},
+		Checks: config.ChecksConfig{
+			AddAllBuiltIn:        false,
+			DoNotAutoAddDefaults: true,
+		},
+	}
+}
+
+func newEngineConfigWithAllChecks() config.Config {
+	return config.Config{
+		CustomChecks: []config.Check{},
+		Checks: config.ChecksConfig{
+			AddAllBuiltIn:        true,
+			DoNotAutoAddDefaults: false,
+		},
+	}
 }
 
 func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
@@ -67,7 +76,7 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 }
 
 func TestRunValidationsIssueCorrection(t *testing.T) {
-	e, err := createEngine()
+	e, err := newEngine(newEngineConfigWithCustomCheck())
 	if err != nil {
 		t.Errorf("Error creating validation engine %v", err)
 	}
@@ -108,4 +117,59 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
 		t.Errorf("Deployment test failed %#v: got %d want %d", checkName, metricValue, 0)
 	}
+}
+
+func TestIncompatibleChecksAreDisabled(t *testing.T) {
+	e, err := newEngine(newEngineConfigWithAllChecks())
+	if err != nil {
+		t.Errorf("Error creating validation engine %v", err)
+	}
+
+	badChecks := getIncompatibleChecks()
+	allKubeLinterChecks, err := getAllBuiltInKubeLinterChecks()
+	if err != nil {
+		t.Fatalf("Got unexpected error while getting all checks built-into kube-linter: %v", err)
+	}
+	expectedNumChecks := len(allKubeLinterChecks) - len(badChecks)
+
+	enabledChecks := e.EnabledChecks()
+	if len(enabledChecks) != expectedNumChecks {
+		t.Errorf("Expected exactly %v checks to be enabled, but got '%v' checks from list '%v'",
+			expectedNumChecks, len(enabledChecks), enabledChecks)
+	}
+
+	for _, badCheck := range badChecks {
+		if stringInSlice(badCheck, enabledChecks) {
+			t.Errorf("Expected incompatible kube-linter check '%v' to not be enabled, "+
+				"but it was in the enabled list '%v'",
+				badCheck, enabledChecks)
+		}
+	}
+}
+
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+// getAllBuiltInKubeLinterChecks returns every check built-into kube-linter (including checks that DVO disables)
+func getAllBuiltInKubeLinterChecks() ([]string, error) {
+	ve := validationEngine{
+		config: newEngineConfigWithAllChecks(),
+	}
+	registry := checkregistry.New()
+	if err := builtinchecks.LoadInto(registry); err != nil {
+		return nil, fmt.Errorf("failed to load built-in validations: %s", err.Error())
+	}
+
+	enabledChecks, err := configresolver.GetEnabledChecksAndValidate(&ve.config, registry)
+	if err != nil {
+		return nil, fmt.Errorf("error finding enabled validations: %s", err.Error())
+	}
+
+	return enabledChecks, nil
 }
