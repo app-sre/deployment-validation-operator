@@ -138,13 +138,16 @@ func TestIncompatibleChecksAreDisabled(t *testing.T) {
 
 	enabledChecks := e.EnabledChecks()
 	if len(enabledChecks) <= 10 {
-		t.Errorf("Expected more than 10 checks to be enabled, but got '%v' from '%v'", len(enabledChecks), enabledChecks)
+		t.Errorf("Expected more than 10 checks to be enabled, but got '%v' from '%v'",
+			len(enabledChecks), enabledChecks)
 	}
 
 	badChecks := getIncompatibleChecks()
 	for _, badCheck := range badChecks {
 		if stringInSlice(badCheck, enabledChecks) {
-			t.Errorf("Expected incompatible kube-linter check '%v' to not be enabled, but it was in the enabled list '%v'", badCheck, enabledChecks)
+			t.Errorf("Expected incompatible kube-linter check '%v' to not be enabled, " +
+				"but it was in the enabled list '%v'",
+				badCheck, enabledChecks)
 		}
 	}
 }
