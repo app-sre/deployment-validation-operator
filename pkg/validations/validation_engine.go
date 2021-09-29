@@ -156,7 +156,7 @@ func disableIncompatibleChecks(c *config.Config) {
 // getIncompatibleChecks returns an array of kube-linter check names that are incompatible with DVO
 // these checks involve kube-linter comparing properties from multiple kubernetes objects at once
 // (e.g. "non-existent-service-account" checks that all serviceaccounts referenced by deployment objects exist as serviceaccount objects)
-// DVO currently only performs a check against kubernetes object at a time, so these checks that compare multiple objects together will always fail
+// DVO currently only performs a check against a single kubernetes object at a time, so these checks that compare multiple objects together will always fail
 func getIncompatibleChecks() []string {
 	return []string{
 		"dangling-service",
