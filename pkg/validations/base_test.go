@@ -1,7 +1,6 @@
 package validations
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
@@ -22,33 +21,30 @@ const (
 )
 
 var (
-	loadOnce sync.Once
 	ve       validationEngine
 	loadErr  error
 )
 
 func createEngine() (validationEngine, error) {
-	loadOnce.Do(func() {
-		ve = validationEngine{
-			config: config.Config{
-				CustomChecks: []config.Check{
-					{
-						Name:     checkName,
-						Template: "minimum-replicas",
-						Scope: &config.ObjectKindsDesc{
-							ObjectKinds: []string{"DeploymentLike"},
-						},
-						Params: map[string]interface{}{"minReplicas": 3},
+	ve = validationEngine{
+		config: config.Config{
+			CustomChecks: []config.Check{
+				{
+					Name:     checkName,
+					Template: "minimum-replicas",
+					Scope: &config.ObjectKindsDesc{
+						ObjectKinds: []string{"DeploymentLike"},
 					},
-				},
-				Checks: config.ChecksConfig{
-					AddAllBuiltIn:        false,
-					DoNotAutoAddDefaults: true,
+					Params: map[string]interface{}{"minReplicas": 3},
 				},
 			},
-		}
-		loadErr = ve.InitRegistry()
-	})
+			Checks: config.ChecksConfig{
+				AddAllBuiltIn:        false,
+				DoNotAutoAddDefaults: true,
+			},
+		},
+	}
+	loadErr = ve.InitRegistry()
 	if loadErr != nil {
 		return validationEngine{}, loadErr
 	}
@@ -56,18 +52,16 @@ func createEngine() (validationEngine, error) {
 }
 
 func createEngineWithAllChecks() (validationEngine, error) {
-	loadOnce.Do(func() {
-		ve = validationEngine{
-			config: config.Config{
-				CustomChecks: []config.Check{},
-				Checks: config.ChecksConfig{
-					AddAllBuiltIn:        true,
-					DoNotAutoAddDefaults: false,
-				},
+	ve = validationEngine{
+		config: config.Config{
+			CustomChecks: []config.Check{},
+			Checks: config.ChecksConfig{
+				AddAllBuiltIn:        true,
+				DoNotAutoAddDefaults: false,
 			},
-		}
-		loadErr = ve.InitRegistry()
-	})
+		},
+	}
+	loadErr = ve.InitRegistry()
 	if loadErr != nil {
 		return validationEngine{}, loadErr
 	}
@@ -137,7 +131,7 @@ func TestIncompatibleChecksAreDisabled(t *testing.T) {
 
 	enabledChecks := e.EnabledChecks()
 	if len(enabledChecks) <= 10 {
-		t.Errorf("Expected more than 10 checks to be enabled, but got '%v'", enabledChecks)
+		t.Errorf("Expected more than 10 checks to be enabled, but got '%v' from '%v'", len(enabledChecks), enabledChecks)
 	}
 
 	badChecks := getIncompatibleChecks()
