@@ -25,7 +25,7 @@ var (
 	loadErr  error
 )
 
-func createEngine() (validationEngine, error) {
+func createEngineWithCustomCheck() (validationEngine, error) {
 	ve = validationEngine{
 		config: config.Config{
 			CustomChecks: []config.Check{
@@ -80,7 +80,7 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 }
 
 func TestRunValidationsIssueCorrection(t *testing.T) {
-	e, err := createEngine()
+	e, err := createEngineWithCustomCheck()
 	if err != nil {
 		t.Errorf("Error creating validation engine %v", err)
 	}
