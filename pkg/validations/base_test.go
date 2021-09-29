@@ -125,11 +125,11 @@ func TestIncompatibleChecksAreDisabled(t *testing.T) {
 	}
 
 	badChecks := getIncompatibleChecks()
-	totalNumKubeLinterChecks, err := getTotalNumKubeLinterChecks()
+	allKubeLinterChecks, err := getAllBuiltInKubeLinterChecks()
 	if err != nil {
 		t.Fatalf("Got unexpected error while determining total number of checks in kube-linter: %v", err)
 	}
-	expectedNumChecks := totalNumKubeLinterChecks - len(badChecks)
+	expectedNumChecks := len(allKubeLinterChecks) - len(badChecks)
 
 	enabledChecks := e.EnabledChecks()
 	if len(enabledChecks) != expectedNumChecks {
@@ -155,21 +155,22 @@ func stringInSlice(a string, list []string) bool {
 	return false
 }
 
-func getTotalNumKubeLinterChecks() (int, error) {
+// getAllBuiltInKubeLinterChecks returns every check built-into kube-linter (including checks that DVO disables)
+func getAllBuiltInKubeLinterChecks() ([]string, error) {
 	ve := validationEngine{
 		config: newEngineConfigWithAllChecks(),
 	}
 	registry := checkregistry.New()
 	if err := builtinchecks.LoadInto(registry); err != nil {
 		log.Error(err, "failed to load built-in validations")
-		return 0, err
+		return nil, err
 	}
 
 	enabledChecks, err := configresolver.GetEnabledChecksAndValidate(&ve.config, registry)
 	if err != nil {
 		log.Error(err, "error finding enabled validations")
-		return 0, err
+		return nil, err
 	}
 
-	return len(enabledChecks), nil
+	return enabledChecks, nil
 }
