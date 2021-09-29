@@ -23,52 +23,45 @@ const (
 	checkName = "test-minimum-replicas"
 )
 
-var (
-	ve                      validationEngine
-	loadErr                 error
-)
 
-func createEngineWithCustomCheck() (validationEngine, error) {
-	ve = validationEngine{
-		config: config.Config{
-			CustomChecks: []config.Check{
-				{
-					Name:     checkName,
-					Template: "minimum-replicas",
-					Scope: &config.ObjectKindsDesc{
-						ObjectKinds: []string{"DeploymentLike"},
-					},
-					Params: map[string]interface{}{"minReplicas": 3},
-				},
-			},
-			Checks: config.ChecksConfig{
-				AddAllBuiltIn:        false,
-				DoNotAutoAddDefaults: true,
-			},
-		},
+func newEngine(c config.Config) (validationEngine, error) {
+	ve := validationEngine{
+		config: c,
 	}
-	loadErr = ve.InitRegistry()
+	loadErr := ve.InitRegistry()
 	if loadErr != nil {
 		return validationEngine{}, loadErr
 	}
 	return ve, nil
 }
 
-func createEngineWithAllChecks() (validationEngine, error) {
-	ve = validationEngine{
-		config: config.Config{
-			CustomChecks: []config.Check{},
-			Checks: config.ChecksConfig{
-				AddAllBuiltIn:        true,
-				DoNotAutoAddDefaults: false,
+func newEngineConfigWithCustomCheck() config.Config {
+	return config.Config{
+		CustomChecks: []config.Check{
+			{
+				Name:     checkName,
+				Template: "minimum-replicas",
+				Scope: &config.ObjectKindsDesc{
+					ObjectKinds: []string{"DeploymentLike"},
+				},
+				Params: map[string]interface{}{"minReplicas": 3},
 			},
 		},
+		Checks: config.ChecksConfig{
+			AddAllBuiltIn:        false,
+			DoNotAutoAddDefaults: true,
+		},
 	}
-	loadErr = ve.InitRegistry()
-	if loadErr != nil {
-		return validationEngine{}, loadErr
+}
+
+func newEngineConfigWithAllChecks() config.Config {
+	return config.Config{
+		CustomChecks: []config.Check{},
+		Checks: config.ChecksConfig{
+			AddAllBuiltIn:        true,
+			DoNotAutoAddDefaults: false,
+		},
 	}
-	return ve, nil
 }
 
 func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
@@ -83,7 +76,7 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 }
 
 func TestRunValidationsIssueCorrection(t *testing.T) {
-	e, err := createEngineWithCustomCheck()
+	e, err := newEngine(newEngineConfigWithCustomCheck())
 	if err != nil {
 		t.Errorf("Error creating validation engine %v", err)
 	}
@@ -127,7 +120,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 }
 
 func TestIncompatibleChecksAreDisabled(t *testing.T) {
-	e, err := createEngineWithAllChecks()
+	e, err := newEngine(newEngineConfigWithAllChecks())
 	if err != nil {
 		t.Errorf("Error creating validation engine %v", err)
 	}
@@ -164,14 +157,8 @@ func stringInSlice(a string, list []string) bool {
 }
 
 func getTotalNumKubeLinterChecks() (int, error) {
-	ve = validationEngine{
-		config: config.Config{
-			CustomChecks: []config.Check{},
-			Checks: config.ChecksConfig{
-				AddAllBuiltIn:        true,
-				DoNotAutoAddDefaults: false,
-			},
-		},
+	ve := validationEngine{
+		config: newEngineConfigWithAllChecks(),
 	}
 	registry := checkregistry.New()
 	if err := builtinchecks.LoadInto(registry); err != nil {
