@@ -1,6 +1,7 @@
 package validations
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
@@ -162,14 +163,12 @@ func getAllBuiltInKubeLinterChecks() ([]string, error) {
 	}
 	registry := checkregistry.New()
 	if err := builtinchecks.LoadInto(registry); err != nil {
-		log.Error(err, "failed to load built-in validations")
-		return nil, err
+		return nil, fmt.Errorf("failed to load built-in validations: %s", err.Error())
 	}
 
 	enabledChecks, err := configresolver.GetEnabledChecksAndValidate(&ve.config, registry)
 	if err != nil {
-		log.Error(err, "error finding enabled validations")
-		return nil, err
+		return nil, fmt.Errorf("error finding enabled validations: %s", err.Error())
 	}
 
 	return enabledChecks, nil
