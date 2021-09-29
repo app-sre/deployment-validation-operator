@@ -1,6 +1,7 @@
 package validations
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
@@ -21,30 +22,34 @@ const (
 )
 
 var (
-	ve       validationEngine
-	loadErr  error
+	loadOnceWithCustomCheck sync.Once
+	loadOnceWithAllChecks 	sync.Once
+	ve       				validationEngine
+	loadErr  				error
 )
 
 func createEngineWithCustomCheck() (validationEngine, error) {
-	ve = validationEngine{
-		config: config.Config{
-			CustomChecks: []config.Check{
-				{
-					Name:     checkName,
-					Template: "minimum-replicas",
-					Scope: &config.ObjectKindsDesc{
-						ObjectKinds: []string{"DeploymentLike"},
+	loadOnceWithCustomCheck.Do(func() {
+		ve = validationEngine{
+			config: config.Config{
+				CustomChecks: []config.Check{
+					{
+						Name:     checkName,
+						Template: "minimum-replicas",
+						Scope: &config.ObjectKindsDesc{
+							ObjectKinds: []string{"DeploymentLike"},
+						},
+						Params: map[string]interface{}{"minReplicas": 3},
 					},
-					Params: map[string]interface{}{"minReplicas": 3},
+				},
+				Checks: config.ChecksConfig{
+					AddAllBuiltIn:        false,
+					DoNotAutoAddDefaults: true,
 				},
 			},
-			Checks: config.ChecksConfig{
-				AddAllBuiltIn:        false,
-				DoNotAutoAddDefaults: true,
-			},
-		},
-	}
-	loadErr = ve.InitRegistry()
+		}
+		loadErr = ve.InitRegistry()
+	})
 	if loadErr != nil {
 		return validationEngine{}, loadErr
 	}
@@ -52,16 +57,18 @@ func createEngineWithCustomCheck() (validationEngine, error) {
 }
 
 func createEngineWithAllChecks() (validationEngine, error) {
-	ve = validationEngine{
-		config: config.Config{
-			CustomChecks: []config.Check{},
-			Checks: config.ChecksConfig{
-				AddAllBuiltIn:        true,
-				DoNotAutoAddDefaults: false,
+	loadOnceWithAllChecks.Do(func() {
+		ve = validationEngine{
+			config: config.Config{
+				CustomChecks: []config.Check{},
+				Checks: config.ChecksConfig{
+					AddAllBuiltIn:        true,
+					DoNotAutoAddDefaults: false,
+				},
 			},
-		},
-	}
-	loadErr = ve.InitRegistry()
+		}
+		loadErr = ve.InitRegistry()
+	})
 	if loadErr != nil {
 		return validationEngine{}, loadErr
 	}
