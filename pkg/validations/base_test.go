@@ -23,9 +23,9 @@ const (
 
 var (
 	loadOnceWithCustomCheck sync.Once
-	loadOnceWithAllChecks 	sync.Once
-	ve       				validationEngine
-	loadErr  				error
+	loadOnceWithAllChecks   sync.Once
+	ve                      validationEngine
+	loadErr                 error
 )
 
 func createEngineWithCustomCheck() (validationEngine, error) {
@@ -145,7 +145,7 @@ func TestIncompatibleChecksAreDisabled(t *testing.T) {
 	badChecks := getIncompatibleChecks()
 	for _, badCheck := range badChecks {
 		if stringInSlice(badCheck, enabledChecks) {
-			t.Errorf("Expected incompatible kube-linter check '%v' to not be enabled, " +
+			t.Errorf("Expected incompatible kube-linter check '%v' to not be enabled, "+
 				"but it was in the enabled list '%v'",
 				badCheck, enabledChecks)
 		}
@@ -153,10 +153,10 @@ func TestIncompatibleChecksAreDisabled(t *testing.T) {
 }
 
 func stringInSlice(a string, list []string) bool {
-    for _, b := range list {
-        if b == a {
-            return true
-        }
-    }
-    return false
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
