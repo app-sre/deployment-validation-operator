@@ -55,6 +55,25 @@ func createEngine() (validationEngine, error) {
 	return ve, nil
 }
 
+func createEngineWithAllChecks() (validationEngine, error) {
+	loadOnce.Do(func() {
+		ve = validationEngine{
+			config: config.Config{
+				CustomChecks: []config.Check{},
+				Checks: config.ChecksConfig{
+					AddAllBuiltIn:        true,
+					DoNotAutoAddDefaults: false,
+				},
+			},
+		}
+		loadErr = ve.InitRegistry()
+	})
+	if loadErr != nil {
+		return validationEngine{}, loadErr
+	}
+	return ve, nil
+}
+
 func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 	d, err := testutils.CreateDeploymentFromTemplate(
 		testutils.NewTemplateArgs())
@@ -108,4 +127,32 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
 		t.Errorf("Deployment test failed %#v: got %d want %d", checkName, metricValue, 0)
 	}
+}
+
+func TestIncompatibleChecksAreDisabled(t *testing.T) {
+	e, err := createEngineWithAllChecks()
+	if err != nil {
+		t.Errorf("Error creating validation engine %v", err)
+	}
+
+	enabledChecks := e.EnabledChecks()
+	if len(enabledChecks) <= 10 {
+		t.Errorf("Expected more than 10 checks to be enabled, but got '%v'", enabledChecks)
+	}
+
+	badChecks := getIncompatibleChecks()
+	for _, badCheck := range badChecks {
+		if stringInSlice(badCheck, enabledChecks) {
+			t.Errorf("Expected incompatible kube-linter check '%v' to not be enabled, but it was in the enabled list '%v'", badCheck, enabledChecks)
+		}
+	}
+}
+
+func stringInSlice(a string, list []string) bool {
+    for _, b := range list {
+        if b == a {
+            return true
+        }
+    }
+    return false
 }
