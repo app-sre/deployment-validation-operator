@@ -11,9 +11,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/types"
 
-	"golang.stackrox.io/kube-linter/pkg/config"
-	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 	"golang.stackrox.io/kube-linter/pkg/builtinchecks"
+	"golang.stackrox.io/kube-linter/pkg/checkregistry"
+	"golang.stackrox.io/kube-linter/pkg/config"
 	"golang.stackrox.io/kube-linter/pkg/configresolver"
 
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -22,7 +22,6 @@ import (
 const (
 	checkName = "test-minimum-replicas"
 )
-
 
 func newEngine(c config.Config) (validationEngine, error) {
 	ve := validationEngine{
@@ -135,7 +134,7 @@ func TestIncompatibleChecksAreDisabled(t *testing.T) {
 	enabledChecks := e.EnabledChecks()
 	if len(enabledChecks) != expectedNumChecks {
 		t.Errorf("Expected exactly %v checks to be enabled, but got '%v' checks from list '%v'",
-		expectedNumChecks, len(enabledChecks), enabledChecks)
+			expectedNumChecks, len(enabledChecks), enabledChecks)
 	}
 
 	for _, badCheck := range badChecks {
