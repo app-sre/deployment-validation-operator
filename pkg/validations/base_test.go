@@ -13,6 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"golang.stackrox.io/kube-linter/pkg/config"
+	"golang.stackrox.io/kube-linter/pkg/checkregistry"
+	"golang.stackrox.io/kube-linter/pkg/builtinchecks"
+	"golang.stackrox.io/kube-linter/pkg/configresolver"
 
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -136,13 +139,19 @@ func TestIncompatibleChecksAreDisabled(t *testing.T) {
 		t.Errorf("Error creating validation engine %v", err)
 	}
 
+	badChecks := getIncompatibleChecks()
+	totalNumKubeLinterChecks, err := getTotalNumKubeLinterChecks()
+	if err != nil {
+		t.Fatalf("Got unexpected error while determining total number of checks in kube-linter: %v", err)
+	}
+	expectedNumChecks := totalNumKubeLinterChecks - len(badChecks)
+
 	enabledChecks := e.EnabledChecks()
-	if len(enabledChecks) <= 10 {
-		t.Errorf("Expected more than 10 checks to be enabled, but got '%v' from '%v'",
-			len(enabledChecks), enabledChecks)
+	if len(enabledChecks) != expectedNumChecks {
+		t.Errorf("Expected exactly %v checks to be enabled, but got '%v' checks from list '%v'",
+		expectedNumChecks, len(enabledChecks), enabledChecks)
 	}
 
-	badChecks := getIncompatibleChecks()
 	for _, badCheck := range badChecks {
 		if stringInSlice(badCheck, enabledChecks) {
 			t.Errorf("Expected incompatible kube-linter check '%v' to not be enabled, "+
@@ -159,4 +168,29 @@ func stringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
+}
+
+func getTotalNumKubeLinterChecks() (int, error) {
+	ve = validationEngine{
+		config: config.Config{
+			CustomChecks: []config.Check{},
+			Checks: config.ChecksConfig{
+				AddAllBuiltIn:        true,
+				DoNotAutoAddDefaults: false,
+			},
+		},
+	}
+	registry := checkregistry.New()
+	if err := builtinchecks.LoadInto(registry); err != nil {
+		log.Error(err, "failed to load built-in validations")
+		return 0, err
+	}
+
+	enabledChecks, err := configresolver.GetEnabledChecksAndValidate(&ve.config, registry)
+	if err != nil {
+		log.Error(err, "error finding enabled validations")
+		return 0, err
+	}
+
+	return len(enabledChecks), nil
 }
