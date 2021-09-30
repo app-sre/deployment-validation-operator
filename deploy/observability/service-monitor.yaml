@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    prometheus: deployment-validation-operator
+  name: deployment-validation-operator
+spec:
+  endpoints:
+  - interval: 60s
+    port: http-metrics
+    scheme: http
+  namespaceSelector:
+    matchNames:
+    - deployment-validation-operator
+  selector:
+    matchLabels:
+      name: deployment-validation-operator

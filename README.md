@@ -34,6 +34,17 @@ do
 done
 ```
 
+### install Dashboard
+
+There are manifests to install the grafana dashboard under the [`deploy/observability`](deploy/observability) directory. A typical installation would go as follows:
+
+```
+for manifest in deploy/observability/*
+do
+    oc create -f $manifest
+done
+```
+
 ## Validations and Metrics
 
 ### Replica count
