@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    grafana: deployment-validation-operator
+  name: deployment-validation-operator-grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      grafana: deployment-validation-operator
+  template:
+    metadata:
+      labels:
+        grafana: deployment-validation-operator
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:6.6.2
+        imagePullPolicy: IfNotPresent
+        args:
+        - -config=/etc/grafana/grafana.ini
+        env:
+        - name: GF_INSTALL_PLUGINS
+          value: "grafana-piechart-panel"
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          limits:
+            cpu: 200m
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        volumeMounts:
+        # Grafana configuration
+        - mountPath: /etc/grafana/provisioning/datasources
+          name: grafana-datasources
+        - mountPath: /etc/grafana/provisioning/dashboards
+          name: grafana-dashboards
+        - mountPath: /etc/grafana
+          name: grafana-config
+        - mountPath: /grafana-dashboard-definitions/DVO/grafana-dashboard-dvo
+          name: grafana-dashboard-dvo
+      volumes:
+      - name: grafana-config
+        configMap:
+          defaultMode: 420
+          name: grafana-config
+      - name: grafana-datasources
+        configMap:
+          defaultMode: 420
+          name: grafana-datasources
+      - name: grafana-dashboards
+        configMap:
+          defaultMode: 420
+          name: grafana-dashboards
+      - name: grafana-dashboard-dvo
+        configMap:
+          defaultMode: 420
+          name: grafana-dashboard-dvo

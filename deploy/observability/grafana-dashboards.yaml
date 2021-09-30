@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+data:
+  dashboards.yaml: |-
+    {
+        "apiVersion": 1,
+        "providers": [
+            {
+                "folder": "DVO",
+                "name": "DVO",
+                "options": {
+                    "path": "/grafana-dashboard-definitions/DVO"
+                },
+                "orgId": 1,
+                "type": "file"
+            }
+        ]
+    }
