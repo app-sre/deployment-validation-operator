@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: grafana
-        image: grafana/grafana:6.6.2
+        image: grafana/grafana
         imagePullPolicy: IfNotPresent
         args:
         - -config=/etc/grafana/grafana.ini

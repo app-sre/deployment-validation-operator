@@ -21,44 +21,46 @@ data:
       "editable": true,
       "gnetId": null,
       "graphTooltip": 0,
-      "id": 1,
-      "iteration": 1633018574568,
       "links": [],
       "panels": [
         {
           "datasource": "$datasource",
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-red",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
           "gridPos": {
             "h": 12,
-            "w": 23,
+            "w": 24,
             "x": 0,
             "y": 0
           },
           "id": 2,
           "options": {
             "displayMode": "lcd",
-            "fieldOptions": {
+            "orientation": "horizontal",
+            "reduceOptions": {
               "calcs": [
                 "mean"
               ],
-              "defaults": {
-                "mappings": [],
-                "thresholds": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "semi-dark-red",
-                      "value": null
-                    }
-                  ]
-                }
-              },
-              "overrides": [],
+              "fields": "",
               "values": false
             },
-            "orientation": "horizontal",
-            "showUnfilled": true
+            "showUnfilled": true,
+            "text": {}
           },
-          "pluginVersion": "6.6.2",
+          "pluginVersion": "8.1.5",
           "targets": [
             {
               "expr": "label_replace((sum by (__name__) ({__name__=~\"deployment_validation_operator_.*\", exported_namespace=~\"$namespace\"})), \"validation\", \"$1\",\"__name__\", \"deployment_validation_operator_(.*)\")",
@@ -68,10 +70,117 @@ data:
           ],
           "title": "Deployment Validation Operator",
           "type": "bargauge"
+        },
+        {
+          "datasource": "Prometheus",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Status"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "0": {
+                            "index": 1,
+                            "text": "Pass"
+                          },
+                          "1": {
+                            "index": 0,
+                            "text": "Failed"
+                          }
+                        },
+                        "type": "value"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 20,
+            "w": 24,
+            "x": 0,
+            "y": 12
+          },
+          "id": 4,
+          "options": {
+            "showHeader": true
+          },
+          "pluginVersion": "8.1.5",
+          "targets": [
+            {
+              "exemplar": false,
+              "expr": "label_replace({__name__=~\"deployment_validation_operator_.*\", exported_namespace=~\"$namespace\"}, \"validation\", \"$1\",\"__name__\", \"deployment_validation_operator_(.*)\")",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Validation Detail",
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "kind",
+                    "name",
+                    "validation",
+                    "Value",
+                    "exported_namespace"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {},
+                "indexByName": {},
+                "renameByName": {
+                  "Value": "Status",
+                  "exported_namespace": "Namspace",
+                  "kind": "Kind",
+                  "name": "Name",
+                  "validation": "Validation"
+                }
+              }
+            }
+          ],
+          "type": "table"
         }
       ],
-      "refresh": false,
-      "schemaVersion": 22,
+      "schemaVersion": 30,
       "style": "dark",
       "tags": [],
       "templating": {
@@ -103,13 +212,13 @@ data:
             "includeAll": true,
             "multi": false,
             "name": "namespace",
-            "query": "label_values({__name__=~\"deployment_validation_operator_.*\"}, exported_namespace)",
+            "query": {
+              "query": "label_values({__name__=~\"deployment_validation_operator_.*\"}, exported_namespace)",
+              "refId": "Prometheus-namespace-Variable-Query"
+            },
             "refresh": 1,
             "skipUrlSync": false,
             "sort": 1,
-            "tagValuesQuery": "",
-            "tags": [],
-            "tagsQuery": "",
             "type": "query",
             "useTags": false
           }
@@ -135,6 +244,6 @@ data:
       },
       "timezone": "",
       "title": "Deployment Validation Operator",
-      "uid": "Mh4W0qHnk",
+      "uid": "DVO",
       "version": 1
     }
