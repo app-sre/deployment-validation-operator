@@ -17,12 +17,13 @@ This operator doesn't define any CRDs at the moment. It has been bootstrapped wi
 There are manifests to install the operator under the [`deploy/openshift`](deploy/openshift) directory. A typical installation would go as follows:
 
 * Create the `deployment-validation-operator` namespace/project
-* Create the service account, roles and role bindings
+* Create the service, service account, configmap, roles and role bindings
 * Create the operator deployment
 
 ```
 oc new-project deployment-validation-operator
 for manifest in service-account.yaml \
+                service.yaml \
                 role.yaml \
                 cluster-role.yaml \
                 role-binding.yaml \
@@ -34,39 +35,15 @@ do
 done
 ```
 
-### install Dashboard
+### Install dashboard
 
-There are manifests to install the grafana dashboard under the [`deploy/observability`](deploy/observability) directory. A typical installation would go as follows:
+There are manifests to install a simple grafana dashboard under the [`deploy/observability`](deploy/observability) directory. A typical installation would go as follows:
 
 ```
 for manifest in deploy/observability/*
 do
     oc create -f $manifest
 done
-```
-
-## Validations and Metrics
-
-### Replica count
-
-The resource has less than 3 replicas. Supports: `Deployment`, `ReplicaSet`.
-
-Metric: `dv_replicas` (gauge): resource has less than 3 replicas.
-
-```
-dv_replicas{kind="v1.Deployment",name="onereplica-deployment",namespace="default"} 1
-dv_replicas{kind="v1.ReplicaSet",name="onereplica-deployment-5969f7b486",namespace="default"} 1
-```
-
-### Requests and Limits
-
-The resource has [requests and limits](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-requests-and-limits-of-pod-and-container) set. Supports: `Deployment`, `ReplicaSet`.
-
-Metric: `dv_requests_limits` (gauge): resource does not have requests or limits.
-
-```
-dv_requests_limits{kind="v1.Deployment",name="onereplica-deployment",namespace="default"} 1
-dv_requests_limits{kind="v1.ReplicaSet",name="onereplica-deployment-5969f7b486",namespace="default"} 1
 ```
 
 ## Tests
@@ -81,15 +58,5 @@ We use [openshift boilerplate](https://github.com/openshift/boilerplate) to mana
 
 ## Roadmap
 
-- Configuration CR that will allow enabling/disabling validations.
 - e2e tests
 
-Planned validations:
-
-- UpdateStrategy=rolling
-- readinessProbe enabled
-- livenessProbe enabled
-- PDB enabled
-- Anti-affinity configured
-- Triggers (DeploymentConfig only)
-- Usage of Deprecated objects
