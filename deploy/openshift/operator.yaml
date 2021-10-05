@@ -21,7 +21,7 @@ spec:
         app: deployment-validation-operator
     spec:
       containers:
-      - image: quay.io/app-sre/deployment-validation-operator:latest
+      - image: quay.io/deployment-validation-operator/dv-operator:latest
         imagePullPolicy: Always
         name: deployment-validation-operator
         args:
