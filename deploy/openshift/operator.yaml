@@ -43,6 +43,7 @@ spec:
       volumes:
       - name: dvo-config
         configMap:
+          optional: true
           name: deployment-validation-operator-config
       restartPolicy: Always
       serviceAccount: deployment-validation-operator
