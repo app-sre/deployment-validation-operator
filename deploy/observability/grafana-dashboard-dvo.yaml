@@ -65,6 +65,7 @@ data:
             {
               "expr": "label_replace((sum by (__name__) ({__name__=~\"deployment_validation_operator_.*\", exported_namespace=~\"$namespace\"})), \"validation\", \"$1\",\"__name__\", \"deployment_validation_operator_(.*)\")",
               "legendFormat": "{{validation}}",
+              "instant": true,
               "refId": "A"
             }
           ],
