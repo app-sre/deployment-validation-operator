@@ -4,6 +4,7 @@ import (
 	// Used to embed yamls by kube-linter
 	_ "embed"
 	"fmt"
+	"os"
 	"strings"
 
 	// Import checks from DVO
@@ -42,16 +43,33 @@ func (ve *validationEngine) EnabledChecks() []string {
 	return ve.enabledChecks
 }
 
+// Get info on config file if it exists
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if err != nil {
+		return false
+	}
+	return !info.IsDir()
+}
+
 func (ve *validationEngine) LoadConfig(path string) error {
 	v := viper.New()
 
 	// Load Configuration
-	config, err := config.Load(v, path)
-	if err != nil {
-		log.Error(err, "failed to load config")
-		return err
+	if fileExists(path) {
+		config, err := config.Load(v, path)
+		if err != nil {
+			log.Error(err, "failed to load config")
+			return err
+		}
+		ve.config = config
+	} else {
+		log.Info(fmt.Sprintf("config file %s does not exist. Use default configuration", path))
+		var conf config.Config
+		conf.Checks.AddAllBuiltIn = true
+		conf.Checks.DoNotAutoAddDefaults = false
+		ve.config = conf
 	}
-	ve.config = config
 
 	return nil
 }
