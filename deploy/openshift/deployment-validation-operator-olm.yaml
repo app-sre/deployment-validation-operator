@@ -7,12 +7,12 @@ objects:
 - apiVersion: operators.coreos.com/v1alpha1
   kind: CatalogSource
   metadata:
-    name: deployment-validation-operator-catalog
+    name: ${SOURCE}
   spec:
     sourceType: grpc
     image: ${IMAGE}:${IMAGE_TAG}
     displayName: Deployment Validation Operator
-    publisher: AppSRE Team
+    publisher: ${CATALOG_PUBLISHER}
 - apiVersion: operators.coreos.com/v1alpha1
   kind: Subscription
   metadata:
@@ -20,8 +20,8 @@ objects:
   spec:
     channel: ${CHANNEL}
     name: deployment-validation-operator
-    source: deployment-validation-operator-catalog
-    sourceNamespace: ${NAMESPACE}
+    source: ${SOURCE}
+    sourceNamespace: ${SOURCE_NAMESPACE}
     config:
       env:
       - name: NAMESPACE_IGNORE_PATTERN
@@ -33,9 +33,9 @@ objects:
     namespace: ${NAMESPACE}
 parameters:
 - name: IMAGE
-  value: quay.io/app-sre/deployment-validation-operator-catalog
-  displayName: deployment-validation-operator catalog image
-  description: the image of the deployment-validation-operator catalog to deploy
+  value: quay.io/operatorhubio/catalog
+  displayName: Catalog image with the deployment-validation-operator
+  description: the image of a catalog to deploy that contains the deployment-validation-operator
   required: true
 - name: IMAGE_TAG
   value: "latest"
@@ -43,7 +43,7 @@ parameters:
   description: the version of the deployment-validation-operator catalog to deploy
   required: true
 - name: NAMESPACE
-  value: ""
+  value: "deployment-validation-operator"
   displayName: namespace to deploy into
   description: the namespace to deploy into
   required: true
@@ -56,3 +56,15 @@ parameters:
   value: ""
   displayName: Namespace ignore pattern
   description: A golang regex to ignore checks from matching patterns
+- name: SOURCE
+  value: "operatorhubio-catalog"
+  displayName: Operator catalog source
+  description: Catalog source that provides the operator
+- name: SOURCE_NAMESPACE
+  value: "deployment-validation-operator"
+  displayName: Catalog namespace source
+  description: Namespace containing the catalog source
+- name: CATALOG_PUBLISHER
+  value: "OperatorHub.io"
+  displayName: Publisher of the catalog
+  description: The name of the publisher of the catalog

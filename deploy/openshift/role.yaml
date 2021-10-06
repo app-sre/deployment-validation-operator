@@ -9,7 +9,6 @@ rules:
   resources:
   - configmaps
   - services
-  - services/finalizers
   verbs:
   - get
   - create
@@ -18,14 +17,6 @@ rules:
   - update
   - watch
   - patch
-- apiGroups:
-  - apps
-  resourceNames:
-  - deployment-validation-operator
-  resources:
-  - deployments/finalizers
-  verbs:
-  - update
 - apiGroups:
   - monitoring.coreos.com
   resources:

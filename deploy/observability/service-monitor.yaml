@@ -6,7 +6,7 @@ metadata:
   name: deployment-validation-operator
 spec:
   endpoints:
-  - interval: 60s
+  - interval: 5s
     port: http-metrics
     scheme: http
   namespaceSelector:

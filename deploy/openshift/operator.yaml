@@ -32,7 +32,7 @@ spec:
         - name: OPERATOR_NAME
           value: "deployment-validation-operator"
         - name: NAMESPACE_IGNORE_PATTERN
-          value: "openshift-.+|kubernetes-.+"
+          value: "openshift.*|kube-.+"
         - name: POD_NAME
           valueFrom:
             fieldRef:
