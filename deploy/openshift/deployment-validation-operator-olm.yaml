@@ -31,6 +31,9 @@ objects:
   metadata:
     name: deployment-validation-operator
     namespace: ${NAMESPACE}
+  spec:
+    targetNamespaces:
+    - ${NAMESPACE}
 parameters:
 - name: IMAGE
   value: quay.io/operatorhubio/catalog
