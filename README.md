@@ -12,7 +12,9 @@ This operator doesn't define any CRDs at the moment. It has been bootstrapped wi
 
 ## Deployment
 
-### Manual installation
+The manifests to deploy DVO take a permissive approach to permissions.  This is done to make it easier to support monitoring new object kinds without having to change rbac rules.  This means that elevated permissions will be required in order to deploy DVO through standard manifests.  There is a manifest to deploy DVO though OLM from opereatorhub which does alleviate this need to have elevated permissions.
+
+### Manual installation (without OLM)
 
 There are manifests to install the operator under the [`deploy/openshift`](deploy/openshift) directory. A typical installation would go as follows:
 
@@ -35,7 +37,18 @@ do
 done
 ```
 
-### Install dashboard
+### Installation via OLM
+
+There is a manifest to deploy DVO via OLM artifacts.  This assumes that OLM is already running in the cluster.  To deploy via OLM:
+
+* Generate the deployment YAML from the openshift template
+* Deploy the generated YAML
+
+```
+oc process --local NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' -f deploy/openshift/deployment-validation-operator-olm.yaml | oc create -f -
+```
+
+## Install dashboard
 
 There are manifests to install a simple grafana dashboard under the [`deploy/observability`](deploy/observability) directory. A typical installation would go as follows:
 
