@@ -36,11 +36,6 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	lintCtx := &lintContextImpl{}
 	lintCtx.addObjects(lintcontext.Object{K8sObject: obj})
 	lintCtxs = append(lintCtxs, lintCtx)
-	result, err := run.Run(lintCtxs, engine.CheckRegistry(), engine.EnabledChecks())
-	if err != nil {
-		log.Error(err, "error running validations")
-		return
-	}
 
 	// If controller has no replicas clear existing metrics and
 	// do not run any validations
@@ -49,6 +44,12 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 		engine.DeleteMetrics(promLabels)
 		return nil
 	}
+
+    result, err := run.Run(lintCtxs, engine.CheckRegistry(), engine.EnabledChecks())
+    if err != nil {
+    	log.Error(err, "error running validations")
+    	return
+    }
 
 	// Clear labels from past run to ensure only results from this run
 	// are reflected in the metrics
