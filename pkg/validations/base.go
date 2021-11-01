@@ -7,6 +7,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"golang.stackrox.io/kube-linter/pkg/extract"
 	"golang.stackrox.io/kube-linter/pkg/lintcontext"
 	"golang.stackrox.io/kube-linter/pkg/run"
 )
@@ -39,6 +40,14 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	if err != nil {
 		log.Error(err, "error running validations")
 		return
+	}
+
+	// If controller has no replicas clear existing metrics and
+	// do not run any validations
+	replicas, found := extract.Replicas(lintCtxs[0])
+	if found && int(replicas) <= 0 {
+		engine.DeleteMetrics(promLabels)
+		return nil
 	}
 
 	// Clear labels from past run to ensure only results from this run
