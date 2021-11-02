@@ -97,11 +97,15 @@ func (ve *validationEngine) InitRegistry() error {
 		if check == nil {
 			return fmt.Errorf("unable to create metric for check %s", checkName)
 		}
-		metric := newGaugeVecMetric(strings.ReplaceAll(check.Spec.Name, "-", "_"),
-			// Should this be the Remediation text or the description?
-			// For now go with Description
-			check.Spec.Description,
-			[]string{"namespace", "name", "kind"})
+		metric := newGaugeVecMetric(
+			strings.ReplaceAll(check.Spec.Name, "-", "_"),
+			fmt.Sprintf("Description: %s ; Remediation: %s", check.Spec.Description, check.Spec.Remediation),
+			[]string{"namespace", "name", "kind"},
+			prometheus.Labels{
+				"check_description": check.Spec.Description,
+				"check_remediation": check.Spec.Remediation,
+			},
+		)
 		metrics.Registry.MustRegister(metric)
 		validationMetrics[checkName] = metric
 	}
@@ -122,12 +126,12 @@ func (ve *validationEngine) GetMetric(name string) *prometheus.GaugeVec {
 }
 
 func (ve *validationEngine) DeleteMetrics(labels prometheus.Labels) {
-	for _, v := range ve.metrics {
-		v.Delete(labels)
+	for _, vector := range ve.metrics {
+		vector.Delete(labels)
 	}
 }
 
-func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, labels prometheus.Labels) {
+func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, baseLabels prometheus.Labels) {
 	// Create a list of validation names for use to delete the labels from any
 	// metric which isn't in the report but for which there is a metric
 	reportValidationNames := map[string]struct{}{}
@@ -138,7 +142,9 @@ func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, label
 	// Delete the labels for validations that aren't in the list of reports
 	for metricValidationName := range ve.metrics {
 		if _, ok := reportValidationNames[metricValidationName]; !ok {
-			ve.metrics[metricValidationName].Delete(labels)
+			check := getCheckByName(metricValidationName)
+			fullPromLabels := getFullPromLabels(baseLabels, check)
+			ve.metrics[metricValidationName].Delete(fullPromLabels)
 		}
 	}
 }
