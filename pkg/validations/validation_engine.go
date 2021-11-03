@@ -32,7 +32,7 @@ type validationEngine struct {
 	config           config.Config
 	registry         checkregistry.CheckRegistry
 	enabledChecks    []string
-	registeredChecks []config.Check
+	registeredChecks map[string]config.Check
 	metrics          map[string]*prometheus.GaugeVec
 }
 
@@ -93,12 +93,13 @@ func (ve *validationEngine) InitRegistry() error {
 	}
 
 	validationMetrics := map[string]*prometheus.GaugeVec{}
+	registeredChecks := map[string]config.Check{}
 	for _, checkName := range enabledChecks {
 		check := registry.Load(checkName)
 		if check == nil {
 			return fmt.Errorf("unable to create metric for check %s", checkName)
 		}
-		ve.registeredChecks = append(ve.registeredChecks, check.Spec)
+		registeredChecks[check.Spec.Name] = check.Spec
 		metric := newGaugeVecMetric(
 			strings.ReplaceAll(check.Spec.Name, "-", "_"),
 			fmt.Sprintf("Description: %s ; Remediation: %s",
@@ -116,6 +117,7 @@ func (ve *validationEngine) InitRegistry() error {
 	ve.registry = registry
 	ve.enabledChecks = enabledChecks
 	ve.metrics = validationMetrics
+	ve.registeredChecks = registeredChecks
 
 	return nil
 }
@@ -167,17 +169,6 @@ func InitializeValidationEngine(path string) error {
 	}
 
 	return err
-}
-
-// getCheckByName will return a kube-linter check with a name matching the parameter.
-// If the check is not found, an error is returned.
-func (ve *validationEngine) getCheckByName(name string) (config.Check, error) {
-	for _, check := range ve.registeredChecks {
-		if check.Name == name {
-			return check, nil
-		}
-	}
-	return config.Check{}, fmt.Errorf("failed to find check by name '%s", name)
 }
 
 // disableIncompatibleChecks will forcibly update a kube-linter config

@@ -50,8 +50,8 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	engine.ClearMetrics(result.Reports, promLabels)
 
 	for _, report := range result.Reports {
-		check, err := engine.getCheckByName(report.Check)
-		if err != nil {
+		check, ok := engine.registeredChecks[report.Check]
+		if !ok {
 			log.Error(err, "Failed to get check '%s' by name", report.Check)
 			return
 		}
