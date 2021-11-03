@@ -38,10 +38,10 @@ func newEngine(c config.Config) (validationEngine, error) {
 
 func newCustomCheck() config.Check {
 	return config.Check{
-		Name:     checkName,
+		Name:        checkName,
 		Description: "some description",
 		Remediation: "some remediation",
-		Template: "minimum-replicas",
+		Template:    "minimum-replicas",
 		Scope: &config.ObjectKindsDesc{
 			ObjectKinds: []string{"DeploymentLike"},
 		},

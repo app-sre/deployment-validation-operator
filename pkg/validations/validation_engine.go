@@ -29,11 +29,11 @@ import (
 var engine validationEngine
 
 type validationEngine struct {
-	config        		config.Config
-	registry      		checkregistry.CheckRegistry
-	enabledChecks 		[]string
-	registeredChecks 	[]config.Check
-	metrics       		map[string]*prometheus.GaugeVec
+	config           config.Config
+	registry         checkregistry.CheckRegistry
+	enabledChecks    []string
+	registeredChecks []config.Check
+	metrics          map[string]*prometheus.GaugeVec
 }
 
 func (ve *validationEngine) CheckRegistry() checkregistry.CheckRegistry {
@@ -101,7 +101,8 @@ func (ve *validationEngine) InitRegistry() error {
 		ve.registeredChecks = append(ve.registeredChecks, check.Spec)
 		metric := newGaugeVecMetric(
 			strings.ReplaceAll(check.Spec.Name, "-", "_"),
-			fmt.Sprintf("Description: %s ; Remediation: %s", check.Spec.Description, check.Spec.Remediation),
+			fmt.Sprintf("Description: %s ; Remediation: %s",
+				check.Spec.Description, check.Spec.Remediation),
 			[]string{"namespace", "name", "kind"},
 			prometheus.Labels{
 				"check_description": check.Spec.Description,
