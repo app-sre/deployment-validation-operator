@@ -168,7 +168,7 @@ func InitializeValidationEngine(path string) error {
 	return err
 }
 
-// getCheckByName will return an instantiatedCheck with a name matching the parameter.
+// getCheckByName will return a kube-linter check with a name matching the parameter.
 // If the check is not found, an error is returned.
 func (ve *validationEngine) getCheckByName(name string) (config.Check, error) {
 	for _, check := range ve.registeredChecks {
