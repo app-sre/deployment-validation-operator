@@ -25,10 +25,7 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	// If the object was deleted, then just delete the metrics and
 	// do not run any validations
 	if isDeleted {
-		for _, registeredCheck := range engine.registeredChecks {
-			fullPromLabelsForCheck := getFullPromLabels(basePromLabels, registeredCheck)
-			engine.DeleteMetrics(fullPromLabelsForCheck)
-		}
+		engine.DeleteMetrics(basePromLabels)
 		return
 	}
 

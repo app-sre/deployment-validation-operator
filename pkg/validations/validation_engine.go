@@ -176,7 +176,7 @@ func (ve *validationEngine) getCheckByName(name string) (config.Check, error) {
 			return check, nil
 		}
 	}
-	return config.Check{}, fmt.Errorf("Failed to find check by name '%s", name)
+	return config.Check{}, fmt.Errorf("failed to find check by name '%s", name)
 }
 
 // disableIncompatibleChecks will forcibly update a kube-linter config
