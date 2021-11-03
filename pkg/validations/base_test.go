@@ -126,7 +126,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 	// Metric with label combination should be successfully cleared because problem was resolved.
 	// The 'GetMetricWith()' function will create a new metric with provided labels if it
-	// does not exist. The default value of a metric 0. Therefore, a value of 0 implies we
+	// does not exist. The default value of a metric is 0. Therefore, a value of 0 implies we
 	// successfully cleared the metric label combination.
 	metric, err = engine.GetMetric(checkName).GetMetricWith(labels)
 	if err != nil {
