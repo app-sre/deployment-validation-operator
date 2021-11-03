@@ -133,7 +133,7 @@ func (ve *validationEngine) DeleteMetrics(labels prometheus.Labels) {
 	}
 }
 
-func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, baseLabels prometheus.Labels) {
+func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, labels prometheus.Labels) {
 	// Create a list of validation names for use to delete the labels from any
 	// metric which isn't in the report but for which there is a metric
 	reportValidationNames := map[string]struct{}{}
@@ -142,9 +142,9 @@ func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, baseL
 	}
 
 	// Delete the labels for validations that aren't in the list of reports
-	for metricName := range ve.metrics {
-		if _, ok := reportValidationNames[metricName]; !ok {
-			ve.metrics[metricName].Delete(baseLabels)
+	for metricValidationName := range ve.metrics {
+		if _, ok := reportValidationNames[metricValidationName]; !ok {
+			ve.metrics[metricValidationName].Delete(labels)
 		}
 	}
 }
