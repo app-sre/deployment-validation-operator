@@ -22,7 +22,10 @@ import (
 )
 
 const (
-	checkName = "test-minimum-replicas"
+	customCheck_name = "test-minimum-replicas"
+	customCheck_description = "some description"
+	customCheck_remediation = "some remediation"
+	customCheck_template = "minimum-replicas"
 )
 
 func newEngine(c config.Config) (validationEngine, error) {
@@ -38,10 +41,10 @@ func newEngine(c config.Config) (validationEngine, error) {
 
 func newCustomCheck() config.Check {
 	return config.Check{
-		Name:        checkName,
-		Description: "some description",
-		Remediation: "some remediation",
-		Template:    "minimum-replicas",
+		Name:        customCheck_name,
+		Description: customCheck_description,
+		Remediation: customCheck_remediation,
+		Template:    customCheck_template,
 		Scope: &config.ObjectKindsDesc{
 			ObjectKinds: []string{"DeploymentLike"},
 		},
@@ -104,7 +107,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 	labels := getPromLabels(request.Namespace, request.Name, "Deployment")
 
-	metric, err := engine.GetMetric(checkName).GetMetricWith(labels)
+	metric, err := engine.GetMetric(customCheck.Name).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)
 	}
@@ -121,7 +124,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 	}
 
 	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 1 {
-		t.Errorf("Deployment test failed %#v: got %d want %d", checkName, metricValue, 1)
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 1)
 	}
 
 	// Problem resolved
@@ -133,13 +136,13 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 	// The 'GetMetricWith()' function will create a new metric with provided labels if it
 	// does not exist. The default value of a metric is 0. Therefore, a value of 0 implies we
 	// successfully cleared the metric label combination.
-	metric, err = engine.GetMetric(checkName).GetMetricWith(labels)
+	metric, err = engine.GetMetric(customCheck.Name).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)
 	}
 
 	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
-		t.Errorf("Deployment test failed %#v: got %d want %d", checkName, metricValue, 0)
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 0)
 	}
 }
 
