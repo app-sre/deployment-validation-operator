@@ -49,8 +49,7 @@ func newCustomCheck() config.Check {
 	}
 }
 
-func newEngineConfigWithCustomCheck() config.Config {
-	customCheck := newCustomCheck()
+func newEngineConfigWithCustomCheck(customCheck config.Check) config.Config {
 	return config.Config{
 		CustomChecks: []config.Check{
 			customCheck,
@@ -84,7 +83,8 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 }
 
 func TestRunValidationsIssueCorrection(t *testing.T) {
-	e, err := newEngine(newEngineConfigWithCustomCheck())
+	customCheck := newCustomCheck()
+	e, err := newEngine(newEngineConfigWithCustomCheck(customCheck))
 	if err != nil {
 		t.Errorf("Error creating validation engine %v", err)
 	}
@@ -109,10 +109,15 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 		t.Errorf("Error getting prometheus metric: %v", err)
 	}
 
-	const expectedConstLabelSubString = "" +
-		"constLabels: {check_description=\"some description\",check_remediation=\"some remediation\"}"
+	expectedConstLabelSubString := fmt.Sprintf("" +
+		"constLabels: {check_description=\"%s\",check_remediation=\"%s\"}",
+		customCheck.Description,
+		customCheck.Remediation,
+	)
 	if !strings.Contains(metric.Desc().String(), expectedConstLabelSubString) {
-		t.Errorf("Metric is missing expected constant labels!")
+		t.Errorf("Metric is missing expected constant labels! Expected:\n%s\nGot:\n%s",
+		expectedConstLabelSubString,
+		metric.Desc().String())
 	}
 
 	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 1 {
