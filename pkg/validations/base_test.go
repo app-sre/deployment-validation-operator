@@ -22,10 +22,10 @@ import (
 )
 
 const (
-	customCheck_name        = "test-minimum-replicas"
-	customCheck_description = "some description"
-	customCheck_remediation = "some remediation"
-	customCheck_template    = "minimum-replicas"
+	customCheckName        = "test-minimum-replicas"
+	customCheckDescription = "some description"
+	customCheckRemediation = "some remediation"
+	customCheckTemplate    = "minimum-replicas"
 )
 
 func newEngine(c config.Config) (validationEngine, error) {
@@ -41,10 +41,10 @@ func newEngine(c config.Config) (validationEngine, error) {
 
 func newCustomCheck() config.Check {
 	return config.Check{
-		Name:        customCheck_name,
-		Description: customCheck_description,
-		Remediation: customCheck_remediation,
-		Template:    customCheck_template,
+		Name:        customCheckName,
+		Description: customCheckDescription,
+		Remediation: customCheckRemediation,
+		Template:    customCheckTemplate,
 		Scope: &config.ObjectKindsDesc{
 			ObjectKinds: []string{"DeploymentLike"},
 		},
