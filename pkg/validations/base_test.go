@@ -2,6 +2,7 @@ package validations
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
@@ -106,6 +107,12 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 	metric, err := engine.GetMetric(checkName).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)
+	}
+
+	const expectedConstLabelSubString = "" +
+		"constLabels: {check_description=\"some description\",check_remediation=\"some remediation\"}"
+	if !strings.Contains(metric.Desc().String(), expectedConstLabelSubString) {
+		t.Errorf("Metric is missing expected constant labels!")
 	}
 
 	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 1 {
