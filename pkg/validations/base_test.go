@@ -22,10 +22,10 @@ import (
 )
 
 const (
-	customCheck_name = "test-minimum-replicas"
+	customCheck_name        = "test-minimum-replicas"
 	customCheck_description = "some description"
 	customCheck_remediation = "some remediation"
-	customCheck_template = "minimum-replicas"
+	customCheck_template    = "minimum-replicas"
 )
 
 func newEngine(c config.Config) (validationEngine, error) {
@@ -112,15 +112,15 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 		t.Errorf("Error getting prometheus metric: %v", err)
 	}
 
-	expectedConstLabelSubString := fmt.Sprintf("" +
+	expectedConstLabelSubString := fmt.Sprintf(""+
 		"constLabels: {check_description=\"%s\",check_remediation=\"%s\"}",
 		customCheck.Description,
 		customCheck.Remediation,
 	)
 	if !strings.Contains(metric.Desc().String(), expectedConstLabelSubString) {
 		t.Errorf("Metric is missing expected constant labels! Expected:\n%s\nGot:\n%s",
-		expectedConstLabelSubString,
-		metric.Desc().String())
+			expectedConstLabelSubString,
+			metric.Desc().String())
 	}
 
 	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 1 {
