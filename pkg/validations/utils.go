@@ -7,27 +7,14 @@ import (
 	"github.com/app-sre/deployment-validation-operator/config"
 
 	"github.com/prometheus/client_golang/prometheus"
-	kubelinterconfig "golang.stackrox.io/kube-linter/pkg/config"
 )
 
-func getBasePromLabels(namespace, name, kind string) prometheus.Labels {
+func getPromLabels(namespace, name, kind string) prometheus.Labels {
 	return prometheus.Labels{
 		"namespace": namespace,
 		"name": name,
 		"kind": kind,
 	}
-}
-
-func getFullPromLabels(basePromLabels prometheus.Labels, check kubelinterconfig.Check,
-	) prometheus.Labels {
-	fullPromLabels := prometheus.Labels{
-		"check_description": check.Description,
-		"check_remediation": check.Remediation,
-	}
-	for k, v := range basePromLabels {
-		fullPromLabels[k] = v
-	}
-	return fullPromLabels
 }
 
 func newGaugeVecMetric(

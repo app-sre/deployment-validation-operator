@@ -101,7 +101,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
 
-	labels := getBasePromLabels(request.Namespace, request.Name, "Deployment")
+	labels := getPromLabels(request.Namespace, request.Name, "Deployment")
 
 	metric, err := engine.GetMetric(checkName).GetMetricWith(labels)
 	if err != nil {

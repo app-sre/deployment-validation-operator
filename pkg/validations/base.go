@@ -16,7 +16,7 @@ var log = logf.Log.WithName("validations")
 // RunValidations will run all the registered validations
 func RunValidations(request reconcile.Request, obj client.Object, kind string, isDeleted bool) {
 	log.V(2).Info("validation", "kind", kind)
-	promLabels := getBasePromLabels(
+	promLabels := getPromLabels(
 		request.Namespace,
 		request.Name,
 		kind,
