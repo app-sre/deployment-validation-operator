@@ -1,13 +1,15 @@
 package validations
 
 import (
+	"strings"
+
 	"github.com/app-sre/deployment-validation-operator/pkg/utils"
+	"github.com/ghodss/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"golang.stackrox.io/kube-linter/pkg/extract"
 	"golang.stackrox.io/kube-linter/pkg/lintcontext"
 	"golang.stackrox.io/kube-linter/pkg/run"
 )
@@ -32,24 +34,27 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 		return
 	}
 
+	// If controller has no replicas clear existing metrics and
+	// do not run any validations
+
+	replicas, err := yaml.Marshal(obj)
+	if err != nil {
+		return
+	}
+	if strings.Contains(string(replicas), "spec.replicas: 0") {
+		engine.DeleteMetrics(promLabels)
+		return
+	}
+
 	lintCtxs := []lintcontext.LintContext{}
 	lintCtx := &lintContextImpl{}
 	lintCtx.addObjects(lintcontext.Object{K8sObject: obj})
 	lintCtxs = append(lintCtxs, lintCtx)
-
-	// If controller has no replicas clear existing metrics and
-	// do not run any validations
-	replicas, found := extract.Replicas(lintCtxs[0])
-	if found && int(replicas) <= 0 {
-		engine.DeleteMetrics(promLabels)
-		return nil
+	result, err := run.Run(lintCtxs, engine.CheckRegistry(), engine.EnabledChecks())
+	if err != nil {
+		log.Error(err, "error running validations")
+		return
 	}
-
-    result, err := run.Run(lintCtxs, engine.CheckRegistry(), engine.EnabledChecks())
-    if err != nil {
-    	log.Error(err, "error running validations")
-    	return
-    }
 
 	// Clear labels from past run to ensure only results from this run
 	// are reflected in the metrics
