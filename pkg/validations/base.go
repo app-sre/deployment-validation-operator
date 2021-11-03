@@ -16,7 +16,7 @@ var log = logf.Log.WithName("validations")
 // RunValidations will run all the registered validations
 func RunValidations(request reconcile.Request, obj client.Object, kind string, isDeleted bool) {
 	log.V(2).Info("validation", "kind", kind)
-	basePromLabels := getBasePromLabels(
+	promLabels := getBasePromLabels(
 		request.Namespace,
 		request.Name,
 		kind,
@@ -25,7 +25,7 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	// If the object was deleted, then just delete the metrics and
 	// do not run any validations
 	if isDeleted {
-		engine.DeleteMetrics(basePromLabels)
+		engine.DeleteMetrics(promLabels)
 		return
 	}
 
@@ -47,7 +47,7 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 
 	// Clear labels from past run to ensure only results from this run
 	// are reflected in the metrics
-	engine.ClearMetrics(result.Reports, basePromLabels)
+	engine.ClearMetrics(result.Reports, promLabels)
 
 	for _, report := range result.Reports {
 		checkDescription := ""
@@ -70,7 +70,7 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 		if metric == nil {
 			log.Error(nil, "no metric found for validation", report.Check)
 		} else {
-			metric.With(basePromLabels).Set(1)
+			metric.With(promLabels).Set(1)
 			logger.Info(report.Remediation)
 		}
 	}
