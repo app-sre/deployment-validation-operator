@@ -35,17 +35,24 @@ func newEngine(c config.Config) (validationEngine, error) {
 	return ve, nil
 }
 
+func newCustomCheck() config.Check {
+	return config.Check{
+		Name:     checkName,
+		Description: "some description",
+		Remediation: "some remediation",
+		Template: "minimum-replicas",
+		Scope: &config.ObjectKindsDesc{
+			ObjectKinds: []string{"DeploymentLike"},
+		},
+		Params: map[string]interface{}{"minReplicas": 3},
+	}
+}
+
 func newEngineConfigWithCustomCheck() config.Config {
+	customCheck := newCustomCheck()
 	return config.Config{
 		CustomChecks: []config.Check{
-			{
-				Name:     checkName,
-				Template: "minimum-replicas",
-				Scope: &config.ObjectKindsDesc{
-					ObjectKinds: []string{"DeploymentLike"},
-				},
-				Params: map[string]interface{}{"minReplicas": 3},
-			},
+			customCheck,
 		},
 		Checks: config.ChecksConfig{
 			AddAllBuiltIn:        false,
@@ -94,7 +101,8 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
 
-	labels := getPromLabels(request.Name, request.Namespace, "Deployment")
+	labels := getBasePromLabels(request.Namespace, request.Name, "Deployment")
+
 	metric, err := engine.GetMetric(checkName).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)
@@ -109,6 +117,10 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 	deployment.Spec.Replicas = &replicaCnt
 	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
 
+	// Metric with label combination should be successfully cleared because problem was resolved.
+	// The 'GetMetricWith()' function will create a new metric with provided labels if it
+	// does not exist. The default value of a metric 0. Therefore, a value of 0 implies we
+	// successfully cleared the metric label combination.
 	metric, err = engine.GetMetric(checkName).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)

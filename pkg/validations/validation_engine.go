@@ -29,10 +29,11 @@ import (
 var engine validationEngine
 
 type validationEngine struct {
-	config        config.Config
-	registry      checkregistry.CheckRegistry
-	enabledChecks []string
-	metrics       map[string]*prometheus.GaugeVec
+	config        		config.Config
+	registry      		checkregistry.CheckRegistry
+	enabledChecks 		[]string
+	registeredChecks 	[]config.Check
+	metrics       		map[string]*prometheus.GaugeVec
 }
 
 func (ve *validationEngine) CheckRegistry() checkregistry.CheckRegistry {
@@ -97,6 +98,7 @@ func (ve *validationEngine) InitRegistry() error {
 		if check == nil {
 			return fmt.Errorf("unable to create metric for check %s", checkName)
 		}
+		ve.registeredChecks = append(ve.registeredChecks, check.Spec)
 		metric := newGaugeVecMetric(
 			strings.ReplaceAll(check.Spec.Name, "-", "_"),
 			fmt.Sprintf("Description: %s ; Remediation: %s", check.Spec.Description, check.Spec.Remediation),
@@ -140,11 +142,9 @@ func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, baseL
 	}
 
 	// Delete the labels for validations that aren't in the list of reports
-	for metricValidationName := range ve.metrics {
-		if _, ok := reportValidationNames[metricValidationName]; !ok {
-			check := getCheckByName(metricValidationName)
-			fullPromLabels := getFullPromLabels(baseLabels, check)
-			ve.metrics[metricValidationName].Delete(fullPromLabels)
+	for metricName := range ve.metrics {
+		if _, ok := reportValidationNames[metricName]; !ok {
+			ve.metrics[metricName].Delete(baseLabels)
 		}
 	}
 }
@@ -166,6 +166,17 @@ func InitializeValidationEngine(path string) error {
 	}
 
 	return err
+}
+
+// getCheckByName will return an instantiatedCheck with a name matching the parameter.
+// If the check is not found, an error is returned.
+func (ve *validationEngine) getCheckByName(name string) (config.Check, error) {
+	for _, check := range ve.registeredChecks {
+		if check.Name == name {
+			return check, nil
+		}
+	}
+	return config.Check{}, fmt.Errorf("Failed to find check by name '%s", name)
 }
 
 // disableIncompatibleChecks will forcibly update a kube-linter config

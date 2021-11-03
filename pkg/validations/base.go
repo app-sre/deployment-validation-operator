@@ -24,11 +24,10 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 
 	// If the object was deleted, then just delete the metrics and
 	// do not run any validations
-	fullPromLabels := engine.CheckRegistry
 	if isDeleted {
-		for _, check := range engine.CheckRegistry() {
-			fullPromLabels = getFullPromLabels(basePromLabels, check)
-			engine.DeleteMetrics(fullPromLabels)
+		for _, registeredCheck := range engine.registeredChecks {
+			fullPromLabelsForCheck := getFullPromLabels(basePromLabels, registeredCheck)
+			engine.DeleteMetrics(fullPromLabelsForCheck)
 		}
 		return
 	}
@@ -54,12 +53,19 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	engine.ClearMetrics(result.Reports, basePromLabels)
 
 	for _, report := range result.Reports {
+		checkDescription := ""
+		check, err := engine.getCheckByName(report.Check)
+		if err != nil {
+			log.Error(err, "Failed to get check '%s' by name", report.Check)
+			return
+		}
+		checkDescription = check.Description
 		logger := log.WithValues(
 			"request.namespace", request.Namespace,
 			"request.name", request.Name,
 			"kind", kind,
 			"validation", report.Check,
-			"check_description", result.GetCheck(report.Check).Description,
+			"check_description", checkDescription,
 			"check_remediation", report.Remediation,
 			"check_failure_reason", report.Diagnostic.Message,
 		)
@@ -67,8 +73,7 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 		if metric == nil {
 			log.Error(nil, "no metric found for validation", report.Check)
 		} else {
-			fullPromLabels = getFullPromLabels(basePromLabels, check)
-			metric.With(fullPromLabels).Set(1)
+			metric.With(basePromLabels).Set(1)
 			logger.Info(report.Remediation)
 		}
 	}
