@@ -171,6 +171,14 @@ func InitializeValidationEngine(path string) error {
 	return err
 }
 
+func (ve *validationEngine) GetCheckByName(name string) (config.Check, error) {
+	check, ok := ve.registeredChecks[name]
+	if !ok {
+		return config.Check{}, fmt.Errorf("check '%s' is not registered", name)
+	}
+	return check, nil
+}
+
 // disableIncompatibleChecks will forcibly update a kube-linter config
 // to disable checks that are incompatible with DVO.
 // the same check name may end up in the exclude list multiple times as a result of this; this is OK.

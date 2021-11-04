@@ -1,6 +1,8 @@
 package validations
 
 import (
+	"fmt"
+
 	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -50,9 +52,9 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	engine.ClearMetrics(result.Reports, promLabels)
 
 	for _, report := range result.Reports {
-		check, ok := engine.registeredChecks[report.Check]
-		if !ok {
-			log.Error(err, "Failed to get check '%s' by name", report.Check)
+		check, err := engine.GetCheckByName(report.Check)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Failed to get check '%s' by name", report.Check))
 			return
 		}
 		logger := log.WithValues(
