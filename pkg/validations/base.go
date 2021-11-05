@@ -1,10 +1,9 @@
 package validations
 
 import (
-	"strings"
+	"reflect"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/utils"
-	"github.com/ghodss/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -37,13 +36,14 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	// If controller has no replicas clear existing metrics and
 	// do not run any validations
 
-	replicas, err := yaml.Marshal(obj)
-	if err != nil {
-		return
-	}
-	if strings.Contains(string(replicas), "spec.replicas: 0") {
-		engine.DeleteMetrics(promLabels)
-		return
+	objValue := reflect.Indirect(reflect.ValueOf(obj))
+	spec := objValue.FieldByName("Spec")
+	if spec.IsValid() {
+		replicas := spec.FieldByName("Replicas")
+		if replicas.IsValid() && replicas.Int() <= 0 {
+			engine.DeleteMetrics(promLabels)
+			return
+		}
 	}
 
 	lintCtxs := []lintcontext.LintContext{}
