@@ -1,6 +1,8 @@
 package validations
 
 import (
+	"fmt"
+
 	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -16,7 +18,11 @@ var log = logf.Log.WithName("validations")
 // RunValidations will run all the registered validations
 func RunValidations(request reconcile.Request, obj client.Object, kind string, isDeleted bool) {
 	log.V(2).Info("validation", "kind", kind)
-	promLabels := getPromLabels(request.Name, request.Namespace, kind)
+	promLabels := getPromLabels(
+		request.Namespace,
+		request.Name,
+		kind,
+	)
 
 	// If the object was deleted, then just delete the metrics and
 	// do not run any validations
@@ -46,11 +52,20 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	engine.ClearMetrics(result.Reports, promLabels)
 
 	for _, report := range result.Reports {
+		check, err := engine.GetCheckByName(report.Check)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Failed to get check '%s' by name", report.Check))
+			return
+		}
 		logger := log.WithValues(
 			"request.namespace", request.Namespace,
 			"request.name", request.Name,
 			"kind", kind,
-			"validation", report.Check)
+			"validation", report.Check,
+			"check_description", check.Description,
+			"check_remediation", report.Remediation,
+			"check_failure_reason", report.Diagnostic.Message,
+		)
 		metric := engine.GetMetric(report.Check)
 		if metric == nil {
 			log.Error(nil, "no metric found for validation", report.Check)

@@ -2,6 +2,7 @@ package validations
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
@@ -21,7 +22,10 @@ import (
 )
 
 const (
-	checkName = "test-minimum-replicas"
+	customCheckName        = "test-minimum-replicas"
+	customCheckDescription = "some description"
+	customCheckRemediation = "some remediation"
+	customCheckTemplate    = "minimum-replicas"
 )
 
 func newEngine(c config.Config) (validationEngine, error) {
@@ -35,17 +39,23 @@ func newEngine(c config.Config) (validationEngine, error) {
 	return ve, nil
 }
 
-func newEngineConfigWithCustomCheck() config.Config {
+func newCustomCheck() config.Check {
+	return config.Check{
+		Name:        customCheckName,
+		Description: customCheckDescription,
+		Remediation: customCheckRemediation,
+		Template:    customCheckTemplate,
+		Scope: &config.ObjectKindsDesc{
+			ObjectKinds: []string{"DeploymentLike"},
+		},
+		Params: map[string]interface{}{"minReplicas": 3},
+	}
+}
+
+func newEngineConfigWithCustomCheck(customCheck config.Check) config.Config {
 	return config.Config{
 		CustomChecks: []config.Check{
-			{
-				Name:     checkName,
-				Template: "minimum-replicas",
-				Scope: &config.ObjectKindsDesc{
-					ObjectKinds: []string{"DeploymentLike"},
-				},
-				Params: map[string]interface{}{"minReplicas": 3},
-			},
+			customCheck,
 		},
 		Checks: config.ChecksConfig{
 			AddAllBuiltIn:        false,
@@ -76,7 +86,8 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 }
 
 func TestRunValidationsIssueCorrection(t *testing.T) {
-	e, err := newEngine(newEngineConfigWithCustomCheck())
+	customCheck := newCustomCheck()
+	e, err := newEngine(newEngineConfigWithCustomCheck(customCheck))
 	if err != nil {
 		t.Errorf("Error creating validation engine %v", err)
 	}
@@ -94,14 +105,26 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
 
-	labels := getPromLabels(request.Name, request.Namespace, "Deployment")
-	metric, err := engine.GetMetric(checkName).GetMetricWith(labels)
+	labels := getPromLabels(request.Namespace, request.Name, "Deployment")
+
+	metric, err := engine.GetMetric(customCheck.Name).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)
 	}
 
+	expectedConstLabelSubString := fmt.Sprintf(""+
+		"constLabels: {check_description=\"%s\",check_remediation=\"%s\"}",
+		customCheck.Description,
+		customCheck.Remediation,
+	)
+	if !strings.Contains(metric.Desc().String(), expectedConstLabelSubString) {
+		t.Errorf("Metric is missing expected constant labels! Expected:\n%s\nGot:\n%s",
+			expectedConstLabelSubString,
+			metric.Desc().String())
+	}
+
 	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 1 {
-		t.Errorf("Deployment test failed %#v: got %d want %d", checkName, metricValue, 1)
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 1)
 	}
 
 	// Problem resolved
@@ -109,13 +132,17 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 	deployment.Spec.Replicas = &replicaCnt
 	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
 
-	metric, err = engine.GetMetric(checkName).GetMetricWith(labels)
+	// Metric with label combination should be successfully cleared because problem was resolved.
+	// The 'GetMetricWith()' function will create a new metric with provided labels if it
+	// does not exist. The default value of a metric is 0. Therefore, a value of 0 implies we
+	// successfully cleared the metric label combination.
+	metric, err = engine.GetMetric(customCheck.Name).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)
 	}
 
 	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
-		t.Errorf("Deployment test failed %#v: got %d want %d", checkName, metricValue, 0)
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 0)
 	}
 }
 
