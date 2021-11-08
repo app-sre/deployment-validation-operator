@@ -29,10 +29,11 @@ import (
 var engine validationEngine
 
 type validationEngine struct {
-	config        config.Config
-	registry      checkregistry.CheckRegistry
-	enabledChecks []string
-	metrics       map[string]*prometheus.GaugeVec
+	config           config.Config
+	registry         checkregistry.CheckRegistry
+	enabledChecks    []string
+	registeredChecks map[string]config.Check
+	metrics          map[string]*prometheus.GaugeVec
 }
 
 func (ve *validationEngine) CheckRegistry() checkregistry.CheckRegistry {
@@ -92,16 +93,23 @@ func (ve *validationEngine) InitRegistry() error {
 	}
 
 	validationMetrics := map[string]*prometheus.GaugeVec{}
+	registeredChecks := map[string]config.Check{}
 	for _, checkName := range enabledChecks {
 		check := registry.Load(checkName)
 		if check == nil {
 			return fmt.Errorf("unable to create metric for check %s", checkName)
 		}
-		metric := newGaugeVecMetric(strings.ReplaceAll(check.Spec.Name, "-", "_"),
-			// Should this be the Remediation text or the description?
-			// For now go with Description
-			check.Spec.Description,
-			[]string{"namespace", "name", "kind"})
+		registeredChecks[check.Spec.Name] = check.Spec
+		metric := newGaugeVecMetric(
+			strings.ReplaceAll(check.Spec.Name, "-", "_"),
+			fmt.Sprintf("Description: %s ; Remediation: %s",
+				check.Spec.Description, check.Spec.Remediation),
+			[]string{"namespace", "name", "kind"},
+			prometheus.Labels{
+				"check_description": check.Spec.Description,
+				"check_remediation": check.Spec.Remediation,
+			},
+		)
 		metrics.Registry.MustRegister(metric)
 		validationMetrics[checkName] = metric
 	}
@@ -109,6 +117,7 @@ func (ve *validationEngine) InitRegistry() error {
 	ve.registry = registry
 	ve.enabledChecks = enabledChecks
 	ve.metrics = validationMetrics
+	ve.registeredChecks = registeredChecks
 
 	return nil
 }
@@ -122,8 +131,8 @@ func (ve *validationEngine) GetMetric(name string) *prometheus.GaugeVec {
 }
 
 func (ve *validationEngine) DeleteMetrics(labels prometheus.Labels) {
-	for _, v := range ve.metrics {
-		v.Delete(labels)
+	for _, vector := range ve.metrics {
+		vector.Delete(labels)
 	}
 }
 
@@ -160,6 +169,14 @@ func InitializeValidationEngine(path string) error {
 	}
 
 	return err
+}
+
+func (ve *validationEngine) GetCheckByName(name string) (config.Check, error) {
+	check, ok := ve.registeredChecks[name]
+	if !ok {
+		return config.Check{}, fmt.Errorf("check '%s' is not registered", name)
+	}
+	return check, nil
 }
 
 // disableIncompatibleChecks will forcibly update a kube-linter config
