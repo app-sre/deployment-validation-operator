@@ -26,7 +26,7 @@ spec:
           - podAffinityTerm:
               labelSelector:
                 matchExpressions:
-                - key: run
+                - key: app
                   operator: In
                   values:
                   - deployment-validation-operator
@@ -68,7 +68,7 @@ spec:
           optional: true
           name: deployment-validation-operator-config
       restartPolicy: Always
-      serviceAccount: deployment-validation-operator
+      serviceAccountName: deployment-validation-operator
       terminationGracePeriodSeconds: 30
       resources:
         requests:
