@@ -60,7 +60,7 @@ spec:
         - name: dvo-config
           mountPath: /config
         securityContext:
-          runAsUser: 1000
+          runAsNonRoot: true
           readOnlyRootFilesystem: true
       volumes:
       - name: dvo-config
