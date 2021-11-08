@@ -40,24 +40,14 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	spec := objValue.FieldByName("Spec")
 	if spec.IsValid() {
 		replicas := spec.FieldByName("Replicas")
-		if replicas.IsValid() {
-			numReplicas, ok := replicas.Interface().(*int32)
-			if ok {
-				if numReplicas != nil {
-					if *numReplicas <= 0 {
-						engine.DeleteMetrics(promLabels)
-						return
-					}
-				}
+		numReplicas, ok := replicas.Interface().(*int32)
+		if ok {
+			if *numReplicas <= 0 {
+				engine.DeleteMetrics(promLabels)
+				return
 			}
 		}
 	}
-
-	//numReplicas, ok := replicas.Interface().(*int32)
-	//if ok {
-	//	if numReplicas != nil {
-	//		return *numReplicas, true
-	//	}
 
 	lintCtxs := []lintcontext.LintContext{}
 	lintCtx := &lintContextImpl{}
