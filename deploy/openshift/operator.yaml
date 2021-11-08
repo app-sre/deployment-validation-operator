@@ -60,7 +60,6 @@ spec:
         - name: dvo-config
           mountPath: /config
         securityContext:
-          runAsNonRoot: true
           readOnlyRootFilesystem: true
       volumes:
       - name: dvo-config
@@ -70,10 +69,3 @@ spec:
       restartPolicy: Always
       serviceAccountName: deployment-validation-operator
       terminationGracePeriodSeconds: 30
-      resources:
-        requests:
-          memory: "200Mi"
-          cpu: "100m"
-        limits:
-          memory: "400Mi"
-          cpu: "200m"
