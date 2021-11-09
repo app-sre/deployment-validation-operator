@@ -81,8 +81,79 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 		return nil, err
 	}
 	d.Spec.Replicas = &replicas
-
 	return &d, nil
+}
+
+// Test to check if a resource has 0 replicas it clears metrics
+func TestValidateZeroReplicas(t *testing.T) {
+
+	// Setup Test Engine
+	customCheckReplicaCountZero := newCustomCheck()
+	e, err := newEngine(newEngineConfigWithCustomCheck(customCheckReplicaCountZero))
+	if err != nil {
+		t.Errorf("Error creating validation engine %v", err)
+	}
+	engine = e
+
+	request := reconcile.Request{
+		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
+	}
+
+	// Setup test deployment file with 0 replicas
+	replicaCnt := int32(0)
+	deployment, err := createTestDeployment(replicaCnt)
+	if err != nil {
+		t.Errorf("Error creating deployment from template %v", err)
+	}
+
+	// Run validations against test environment
+	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
+
+	// Aquire labels generated from validations
+	labels := getPromLabels(request.Namespace, request.Name, "Deployment")
+
+	// The 'GetMetricWith()' function will create a new metric with provided labels if it
+	// does not exist. The default value of a metric is 0. Therefore, a value of 0 implies we
+	// successfully cleared the metric label combination.
+	metric, err := engine.GetMetric(customCheckReplicaCountZero.Name).GetMetricWith(labels)
+	if err != nil {
+		t.Errorf("Error getting prometheus metric: %v", err)
+	}
+
+	// If metrics are cleared then the value will be == 0
+	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheckReplicaCountZero.Name, metricValue, 0)
+	}
+
+	// Check using a replica count above 0
+	replicaCnt = int32(3)
+	deployment.Spec.Replicas = &replicaCnt
+	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
+
+	metric, err = engine.GetMetric(customCheckReplicaCountZero.Name).GetMetricWith(labels)
+	if err != nil {
+		t.Errorf("Error getting prometheus metric: %v", err)
+	}
+
+	// If metrics exist then value will be non 0
+	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheckReplicaCountZero.Name, metricValue, 1)
+	}
+
+	// Check to see metrics clear by setting replicas to 0
+	replicaCnt = int32(0)
+	deployment.Spec.Replicas = &replicaCnt
+	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
+
+	metric, err = engine.GetMetric(customCheckReplicaCountZero.Name).GetMetricWith(labels)
+	if err != nil {
+		t.Errorf("Error getting prometheus metric: %v", err)
+	}
+
+	// If metrics are cleared then the value will be == 0
+	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheckReplicaCountZero.Name, metricValue, 0)
+	}
 }
 
 func TestRunValidationsIssueCorrection(t *testing.T) {
