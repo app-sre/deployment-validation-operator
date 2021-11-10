@@ -96,7 +96,7 @@ func intializeEngine(t *testing.T, customCheck ...config.Check) {
 			engine.config.CustomChecks[0] = customCheck[0]
 			return
 		}
-		// Intialize engine
+		// Initialize engine
 		e, err := newEngine(newEngineConfigWithCustomCheck(customCheck[0]))
 		if err != nil {
 			t.Errorf("Error creating validation engine %v", err)
@@ -106,17 +106,17 @@ func intializeEngine(t *testing.T, customCheck ...config.Check) {
 		if initializeFlagAllChecks == 1 {
 			return
 		}
-		// Intialize engine
+		// Initialize engine
 		e, err := newEngine(newEngineConfigWithAllChecks())
 		if err != nil {
 			t.Errorf("Error creating validation engine %v", err)
 		}
 		engine = e
-		intializeFlagAllChecks = 1
+		initializeFlagAllChecks = 1
 	}
 
-	// Set intialize flag
-	intializeFlag = 1
+	// Set Initialize Flag
+	initializeFlag = 1
 }
 
 func TestRunValidationsIssueCorrection(t *testing.T) {
