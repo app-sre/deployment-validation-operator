@@ -28,6 +28,8 @@ const (
 	customCheckTemplate    = "minimum-replicas"
 )
 
+var intializeFlag = 0
+
 func newEngine(c config.Config) (validationEngine, error) {
 	ve := validationEngine{
 		config: c,
@@ -37,6 +39,20 @@ func newEngine(c config.Config) (validationEngine, error) {
 		return validationEngine{}, loadErr
 	}
 	return ve, nil
+}
+
+func intilizeEngineWithCustomCheck(customCheck config.Check, t *testing.T) {
+
+	if intializeFlag == 1 {
+		return
+	}
+
+	e, err := newEngine(newEngineConfigWithCustomCheck(customCheck))
+	if err != nil {
+		t.Errorf("Error creating validation engine %v", err)
+	}
+	engine = e
+	intializeFlag = 1
 }
 
 func newCustomCheck() config.Check {
@@ -87,13 +103,9 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 // Test to check if a resource has 0 replicas it clears metrics
 func TestValidateZeroReplicas(t *testing.T) {
 
-	// Setup Test Engine
-	customCheckReplicaCountZero := newCustomCheck()
-	e, err := newEngine(newEngineConfigWithCustomCheck(customCheckReplicaCountZero))
-	if err != nil {
-		t.Errorf("Error creating validation engine %v", err)
-	}
-	engine = e
+	customCheck := newCustomCheck()
+
+	intilizeEngineWithCustomCheck(customCheck, t)
 
 	request := reconcile.Request{
 		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
@@ -115,14 +127,14 @@ func TestValidateZeroReplicas(t *testing.T) {
 	// The 'GetMetricWith()' function will create a new metric with provided labels if it
 	// does not exist. The default value of a metric is 0. Therefore, a value of 0 implies we
 	// successfully cleared the metric label combination.
-	metric, err := engine.GetMetric(customCheckReplicaCountZero.Name).GetMetricWith(labels)
+	metric, err := engine.GetMetric(customCheck.Name).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)
 	}
 
 	// If metrics are cleared then the value will be == 0
 	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
-		t.Errorf("Deployment test failed %#v: got %d want %d", customCheckReplicaCountZero.Name, metricValue, 0)
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 0)
 	}
 
 	// Check using a replica count above 0
@@ -130,14 +142,14 @@ func TestValidateZeroReplicas(t *testing.T) {
 	deployment.Spec.Replicas = &replicaCnt
 	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
 
-	metric, err = engine.GetMetric(customCheckReplicaCountZero.Name).GetMetricWith(labels)
+	metric, err = engine.GetMetric(customCheck.Name).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)
 	}
 
 	// If metrics exist then value will be non 0
 	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
-		t.Errorf("Deployment test failed %#v: got %d want %d", customCheckReplicaCountZero.Name, metricValue, 1)
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 1)
 	}
 
 	// Check to see metrics clear by setting replicas to 0
@@ -145,24 +157,22 @@ func TestValidateZeroReplicas(t *testing.T) {
 	deployment.Spec.Replicas = &replicaCnt
 	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
 
-	metric, err = engine.GetMetric(customCheckReplicaCountZero.Name).GetMetricWith(labels)
+	metric, err = engine.GetMetric(customCheck.Name).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)
 	}
 
 	// If metrics are cleared then the value will be == 0
 	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
-		t.Errorf("Deployment test failed %#v: got %d want %d", customCheckReplicaCountZero.Name, metricValue, 0)
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 0)
 	}
+
 }
 
 func TestRunValidationsIssueCorrection(t *testing.T) {
 	customCheck := newCustomCheck()
-	e, err := newEngine(newEngineConfigWithCustomCheck(customCheck))
-	if err != nil {
-		t.Errorf("Error creating validation engine %v", err)
-	}
-	engine = e
+
+	intilizeEngineWithCustomCheck(customCheck, t)
 
 	request := reconcile.Request{
 		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
