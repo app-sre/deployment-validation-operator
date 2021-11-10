@@ -28,8 +28,8 @@ const (
 	customCheckTemplate    = "minimum-replicas"
 )
 
-var intializeFlag = 0
-var intializeFlagAllChecks = 0
+var initializeFlag = 0
+var initializeFlagAllChecks = 0
 
 func newEngine(c config.Config) (validationEngine, error) {
 	ve := validationEngine{
@@ -92,7 +92,7 @@ func intializeEngine(t *testing.T, customCheck ...config.Check) {
 
 	// Check if custom check has been set
 	if len(customCheck) > 0 {
-		if intializeFlag == 1 {
+		if initializeFlag == 1 {
 			engine.config.CustomChecks[0] = customCheck[0]
 			return
 		}
@@ -103,7 +103,7 @@ func intializeEngine(t *testing.T, customCheck ...config.Check) {
 		}
 		engine = e
 	} else {
-		if intializeFlagAllChecks == 1 {
+		if initializeFlagAllChecks == 1 {
 			return
 		}
 		// Intialize engine
