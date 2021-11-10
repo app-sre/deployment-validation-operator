@@ -28,6 +28,9 @@ const (
 	customCheckTemplate    = "minimum-replicas"
 )
 
+var intializeFlag = 0
+var intializeFlagAllChecks = 0
+
 func newEngine(c config.Config) (validationEngine, error) {
 	ve := validationEngine{
 		config: c,
@@ -85,13 +88,44 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 	return &d, nil
 }
 
-func TestRunValidationsIssueCorrection(t *testing.T) {
-	customCheck := newCustomCheck()
-	e, err := newEngine(newEngineConfigWithCustomCheck(customCheck))
-	if err != nil {
-		t.Errorf("Error creating validation engine %v", err)
+func intializeEngine(t *testing.T, customCheck ...config.Check) {
+
+	// Check if custom check has been set
+	if len(customCheck) > 0 {
+		if intializeFlag == 1 {
+			engine.config.CustomChecks[0] = customCheck[0]
+			return
+		}
+		// Intialize engine
+		e, err := newEngine(newEngineConfigWithCustomCheck(customCheck[0]))
+		if err != nil {
+			t.Errorf("Error creating validation engine %v", err)
+		}
+		engine = e
+	} else {
+		if intializeFlagAllChecks == 1 {
+			return
+		}
+		// Intialize engine
+		e, err := newEngine(newEngineConfigWithAllChecks())
+		if err != nil {
+			t.Errorf("Error creating validation engine %v", err)
+		}
+		engine = e
+		intializeFlagAllChecks = 1
 	}
-	engine = e
+
+	// Set intialize flag
+	intializeFlag = 1
+}
+
+func TestRunValidationsIssueCorrection(t *testing.T) {
+
+	customCheck := newCustomCheck()
+
+	intializeEngine(t, customCheck)
+
+	//engine.config.CustomChecks[0] = customCheck
 
 	request := reconcile.Request{
 		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
@@ -147,10 +181,8 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 }
 
 func TestIncompatibleChecksAreDisabled(t *testing.T) {
-	e, err := newEngine(newEngineConfigWithAllChecks())
-	if err != nil {
-		t.Errorf("Error creating validation engine %v", err)
-	}
+
+	intializeEngine(t)
 
 	badChecks := getIncompatibleChecks()
 	allKubeLinterChecks, err := getAllBuiltInKubeLinterChecks()
@@ -159,7 +191,7 @@ func TestIncompatibleChecksAreDisabled(t *testing.T) {
 	}
 	expectedNumChecks := len(allKubeLinterChecks) - len(badChecks)
 
-	enabledChecks := e.EnabledChecks()
+	enabledChecks := engine.EnabledChecks()
 	if len(enabledChecks) != expectedNumChecks {
 		t.Errorf("Expected exactly %v checks to be enabled, but got '%v' checks from list '%v'",
 			expectedNumChecks, len(enabledChecks), enabledChecks)
