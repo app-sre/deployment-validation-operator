@@ -7,6 +7,7 @@ import (
 
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
 
+	"github.com/prometheus/client_golang/prometheus"
 	prom_tu "github.com/prometheus/client_golang/prometheus/testutil"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -18,6 +19,7 @@ import (
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"golang.stackrox.io/kube-linter/pkg/configresolver"
 
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -27,9 +29,6 @@ const (
 	customCheckRemediation = "some remediation"
 	customCheckTemplate    = "minimum-replicas"
 )
-
-var initializeFlag = 0
-var initializeFlagAllChecks = 0
 
 func newEngine(c config.Config) (validationEngine, error) {
 	ve := validationEngine{
@@ -90,33 +89,25 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 
 func intializeEngine(t *testing.T, customCheck ...config.Check) {
 
+	// Reset global prometheus registry to avoid testing conflicts
+	metrics.Registry = prometheus.NewRegistry()
+
 	// Check if custom check has been set
 	if len(customCheck) > 0 {
-		if initializeFlag == 1 {
-			engine.config.CustomChecks[0] = customCheck[0]
-			return
-		}
-		// Initialize engine
+		// Initialize engine with custom check
 		e, err := newEngine(newEngineConfigWithCustomCheck(customCheck[0]))
 		if err != nil {
 			t.Errorf("Error creating validation engine %v", err)
 		}
 		engine = e
 	} else {
-		if initializeFlagAllChecks == 1 {
-			return
-		}
-		// Initialize engine
+		// Initialize engine for all checks
 		e, err := newEngine(newEngineConfigWithAllChecks())
 		if err != nil {
 			t.Errorf("Error creating validation engine %v", err)
 		}
 		engine = e
-		initializeFlagAllChecks = 1
 	}
-
-	// Set Initialize Flag
-	initializeFlag = 1
 }
 
 func TestRunValidationsIssueCorrection(t *testing.T) {
