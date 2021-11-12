@@ -97,14 +97,19 @@ func intializeEngine(t *testing.T, customCheck ...config.Check) {
 		// Initialize engine with custom check
 		e, err := newEngine(newEngineConfigWithCustomCheck(customCheck[0]))
 		if err != nil {
-			t.Errorf("Error creating validation engine %v", err)
+			t.Errorf("Error creating validation engine with custom checks %v", err)
+		}
+		if len(customCheck) > 1 {
+			for i := 1; i < len(customCheck); i++ {
+				e.config.CustomChecks[1] = customCheck[1]
+			}
 		}
 		engine = e
 	} else {
 		// Initialize engine for all checks
 		e, err := newEngine(newEngineConfigWithAllChecks())
 		if err != nil {
-			t.Errorf("Error creating validation engine %v", err)
+			t.Errorf("Error creating validation engine with all checks %v", err)
 		}
 		engine = e
 	}
