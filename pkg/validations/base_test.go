@@ -54,26 +54,16 @@ func newCustomCheck() config.Check {
 	}
 }
 
-func newEngineConfigWithCustomCheck(customCheck ...config.Check) config.Config {
+func newEngineConfigWithCustomCheck(customCheck []config.Check) config.Config {
 
-	// Create custom config with custom check
-	customConfig := config.Config{
-		CustomChecks: []config.Check{
-			customCheck[0],
-		},
+	// Create custom config with custom check array
+	return config.Config{
+		CustomChecks: customCheck,
 		Checks: config.ChecksConfig{
 			AddAllBuiltIn:        false,
 			DoNotAutoAddDefaults: true,
 		},
 	}
-
-	// If there are multiple custom checks then input the remaining
-	if len(customCheck) > 1 {
-		for i := 1; i < len(customCheck); i++ {
-			customConfig.CustomChecks[i] = customCheck[i]
-		}
-	}
-	return customConfig
 }
 
 func newEngineConfigWithAllChecks() config.Config {
@@ -105,7 +95,7 @@ func intializeEngine(t *testing.T, customCheck ...config.Check) {
 	// Check if custom check has been set
 	if len(customCheck) > 0 {
 		// Initialize engine with custom check
-		e, err := newEngine(newEngineConfigWithCustomCheck(customCheck...))
+		e, err := newEngine(newEngineConfigWithCustomCheck(customCheck))
 		if err != nil {
 			t.Errorf("Error creating validation engine with custom checks %v", err)
 		}
