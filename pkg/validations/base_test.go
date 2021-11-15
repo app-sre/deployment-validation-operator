@@ -116,8 +116,6 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 	intializeEngine(t, customCheck)
 
-	//engine.config.CustomChecks[0] = customCheck
-
 	request := reconcile.Request{
 		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
 	}
