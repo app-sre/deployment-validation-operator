@@ -97,14 +97,14 @@ func intializeEngine(customCheck ...config.Check) error {
 		// Initialize engine with custom check
 		e, err := newEngine(newEngineConfigWithCustomCheck(customCheck))
 		if err != nil {
-			return fmt.Errorf("Error creating validation engine with custom checks %v", err)
+			return err
 		}
 		engine = e
 	} else {
 		// Initialize engine for all checks
 		e, err := newEngine(newEngineConfigWithAllChecks())
 		if err != nil {
-			return fmt.Errorf("Error creating validation engine with all checks %v", err)
+			return err
 		}
 		engine = e
 	}
