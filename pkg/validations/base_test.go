@@ -115,7 +115,10 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 	customCheck := newCustomCheck()
 
-	intializeEngine(customCheck)
+	err := intializeEngine(customCheck)
+	if err != nil {
+		return
+	}
 
 	request := reconcile.Request{
 		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
@@ -172,7 +175,10 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 func TestIncompatibleChecksAreDisabled(t *testing.T) {
 
-	intializeEngine()
+	err := intializeEngine()
+	if err != nil {
+		return
+	}
 
 	badChecks := getIncompatibleChecks()
 	allKubeLinterChecks, err := getAllBuiltInKubeLinterChecks()
