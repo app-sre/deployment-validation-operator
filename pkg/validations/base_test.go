@@ -89,6 +89,9 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 
 func intializeEngine(customCheck ...config.Check) error {
 
+	// Reset global prometheus registry to avoid testing conflicts
+	metrics.Registry = prometheus.NewRegistry()
+
 	// Check if custom check has been set
 	if len(customCheck) > 0 {
 		// Initialize engine with custom check
@@ -111,9 +114,6 @@ func intializeEngine(customCheck ...config.Check) error {
 func TestRunValidationsIssueCorrection(t *testing.T) {
 
 	customCheck := newCustomCheck()
-
-	// Reset global prometheus registry to avoid testing conflicts
-	metrics.Registry = prometheus.NewRegistry()
 
 	err := intializeEngine(customCheck)
 	if err != nil {
@@ -175,12 +175,9 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 func TestIncompatibleChecksAreDisabled(t *testing.T) {
 
-	// Reset global prometheus registry to avoid testing conflicts
-	metrics.Registry = prometheus.NewRegistry()
-
 	err := intializeEngine()
 	if err != nil {
-		t.Errorf("Error initializing engine %v", err)
+		return
 	}
 
 	badChecks := getIncompatibleChecks()
