@@ -177,7 +177,7 @@ func TestIncompatibleChecksAreDisabled(t *testing.T) {
 
 	err := intializeEngine()
 	if err != nil {
-		return
+		t.Errorf("Error initializing engine %v", err)
 	}
 
 	badChecks := getIncompatibleChecks()
