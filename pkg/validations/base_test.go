@@ -87,7 +87,7 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 	return &d, nil
 }
 
-func intializeEngine(t *testing.T, customCheck ...config.Check) {
+func intializeEngine(customCheck ...config.Check) {
 
 	// Reset global prometheus registry to avoid testing conflicts
 	metrics.Registry = prometheus.NewRegistry()
@@ -97,14 +97,16 @@ func intializeEngine(t *testing.T, customCheck ...config.Check) {
 		// Initialize engine with custom check
 		e, err := newEngine(newEngineConfigWithCustomCheck(customCheck))
 		if err != nil {
-			t.Errorf("Error creating validation engine with custom checks %v", err)
+			fmt.Errorf("Error creating validation engine with custom checks %v", err)
+			return
 		}
 		engine = e
 	} else {
 		// Initialize engine for all checks
 		e, err := newEngine(newEngineConfigWithAllChecks())
 		if err != nil {
-			t.Errorf("Error creating validation engine with all checks %v", err)
+			fmt.Errorf("Error creating validation engine with all checks %v", err)
+			return
 		}
 		engine = e
 	}
@@ -114,7 +116,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 	customCheck := newCustomCheck()
 
-	intializeEngine(t, customCheck)
+	intializeEngine(customCheck)
 
 	request := reconcile.Request{
 		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
@@ -171,7 +173,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 func TestIncompatibleChecksAreDisabled(t *testing.T) {
 
-	intializeEngine(t)
+	intializeEngine()
 
 	badChecks := getIncompatibleChecks()
 	allKubeLinterChecks, err := getAllBuiltInKubeLinterChecks()
