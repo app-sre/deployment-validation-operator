@@ -117,7 +117,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 	err := intializeEngine(customCheck)
 	if err != nil {
-		return
+		t.Errorf("Error initializing engine %v", err)
 	}
 
 	request := reconcile.Request{
