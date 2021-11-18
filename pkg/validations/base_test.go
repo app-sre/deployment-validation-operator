@@ -30,8 +30,6 @@ const (
 	customCheckTemplate    = "minimum-replicas"
 )
 
-var intializeFlag = 0
-
 func newEngine(c config.Config) (validationEngine, error) {
 	ve := validationEngine{
 		config: c,
@@ -41,20 +39,6 @@ func newEngine(c config.Config) (validationEngine, error) {
 		return validationEngine{}, loadErr
 	}
 	return ve, nil
-}
-
-func intilizeEngineWithCustomCheck(customCheck config.Check, t *testing.T) {
-
-	if intializeFlag == 1 {
-		return
-	}
-
-	e, err := newEngine(newEngineConfigWithCustomCheck(customCheck))
-	if err != nil {
-		t.Errorf("Error creating validation engine %v", err)
-	}
-	engine = e
-	intializeFlag = 1
 }
 
 func newCustomCheck() config.Check {
@@ -102,7 +86,7 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 	return &d, nil
 }
 
-func intializeEngine(customCheck ...config.Check) error {
+func initializeEngine(customCheck ...config.Check) error {
 
 	// Reset global prometheus registry to avoid testing conflicts
 	metrics.Registry = prometheus.NewRegistry()
@@ -130,7 +114,8 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 	customCheck := newCustomCheck()
 
-	err := intializeEngine(customCheck)
+	// Initialize engine
+	err := initializeEngine(customCheck)
 	if err != nil {
 		t.Errorf("Error initializing engine %v", err)
 	}
@@ -190,7 +175,8 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 func TestIncompatibleChecksAreDisabled(t *testing.T) {
 
-	err := intializeEngine()
+	// Initialize engine
+	err := initializeEngine()
 	if err != nil {
 		t.Errorf("Error initializing engine: %v", err)
 	}
@@ -222,7 +208,11 @@ func TestValidateZeroReplicas(t *testing.T) {
 
 	customCheck := newCustomCheck()
 
-	intilizeEngineWithCustomCheck(customCheck, t)
+	// Initialize Engine
+	err := initializeEngine(customCheck)
+	if err != nil {
+		t.Errorf("Error initializing engine %v", err)
+	}
 
 	request := reconcile.Request{
 		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
