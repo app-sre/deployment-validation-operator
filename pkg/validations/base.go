@@ -45,12 +45,14 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	spec := objValue.FieldByName("Spec")
 	if spec.IsValid() {
 		replicas := spec.FieldByName("Replicas")
-		numReplicas, ok := replicas.Interface().(*int32)
+		if replicas.IsValid() {
+			numReplicas, ok := replicas.Interface().(*int32)
 
-		// clear labels if we fail to get a value for numReplicas, or if value is <= 0
-		if !ok || numReplicas == nil || *numReplicas <= 0 {
-			engine.DeleteMetrics(promLabels)
-			return
+			// clear labels if we fail to get a value for numReplicas, or if value is <= 0
+			if !ok || numReplicas == nil || *numReplicas <= 0 {
+				engine.DeleteMetrics(promLabels)
+				return
+			}
 		}
 	}
 
