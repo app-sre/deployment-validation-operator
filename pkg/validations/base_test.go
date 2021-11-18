@@ -7,6 +7,7 @@ import (
 
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
 
+	"github.com/prometheus/client_golang/prometheus"
 	prom_tu "github.com/prometheus/client_golang/prometheus/testutil"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -18,6 +19,7 @@ import (
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"golang.stackrox.io/kube-linter/pkg/configresolver"
 
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -52,11 +54,11 @@ func newCustomCheck() config.Check {
 	}
 }
 
-func newEngineConfigWithCustomCheck(customCheck config.Check) config.Config {
+func newEngineConfigWithCustomCheck(customCheck []config.Check) config.Config {
+
+	// Create custom config with custom check array
 	return config.Config{
-		CustomChecks: []config.Check{
-			customCheck,
-		},
+		CustomChecks: customCheck,
 		Checks: config.ChecksConfig{
 			AddAllBuiltIn:        false,
 			DoNotAutoAddDefaults: true,
@@ -85,13 +87,38 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 	return &d, nil
 }
 
-func TestRunValidationsIssueCorrection(t *testing.T) {
-	customCheck := newCustomCheck()
-	e, err := newEngine(newEngineConfigWithCustomCheck(customCheck))
-	if err != nil {
-		t.Errorf("Error creating validation engine %v", err)
+func intializeEngine(customCheck ...config.Check) error {
+
+	// Reset global prometheus registry to avoid testing conflicts
+	metrics.Registry = prometheus.NewRegistry()
+
+	// Check if custom check has been set
+	if len(customCheck) > 0 {
+		// Initialize engine with custom check
+		e, err := newEngine(newEngineConfigWithCustomCheck(customCheck))
+		if err != nil {
+			return err
+		}
+		engine = e
+	} else {
+		// Initialize engine for all checks
+		e, err := newEngine(newEngineConfigWithAllChecks())
+		if err != nil {
+			return err
+		}
+		engine = e
 	}
-	engine = e
+	return nil
+}
+
+func TestRunValidationsIssueCorrection(t *testing.T) {
+
+	customCheck := newCustomCheck()
+
+	err := intializeEngine(customCheck)
+	if err != nil {
+		t.Errorf("Error initializing engine %v", err)
+	}
 
 	request := reconcile.Request{
 		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
@@ -147,9 +174,10 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 }
 
 func TestIncompatibleChecksAreDisabled(t *testing.T) {
-	e, err := newEngine(newEngineConfigWithAllChecks())
+
+	err := intializeEngine()
 	if err != nil {
-		t.Errorf("Error creating validation engine %v", err)
+		t.Errorf("Error initializing engine: %v", err)
 	}
 
 	badChecks := getIncompatibleChecks()
@@ -159,7 +187,7 @@ func TestIncompatibleChecksAreDisabled(t *testing.T) {
 	}
 	expectedNumChecks := len(allKubeLinterChecks) - len(badChecks)
 
-	enabledChecks := e.EnabledChecks()
+	enabledChecks := engine.EnabledChecks()
 	if len(enabledChecks) != expectedNumChecks {
 		t.Errorf("Expected exactly %v checks to be enabled, but got '%v' checks from list '%v'",
 			expectedNumChecks, len(enabledChecks), enabledChecks)
