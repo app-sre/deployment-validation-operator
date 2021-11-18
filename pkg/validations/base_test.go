@@ -7,6 +7,7 @@ import (
 
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
 
+	"github.com/prometheus/client_golang/prometheus"
 	prom_tu "github.com/prometheus/client_golang/prometheus/testutil"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -18,6 +19,7 @@ import (
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"golang.stackrox.io/kube-linter/pkg/configresolver"
 
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -68,11 +70,11 @@ func newCustomCheck() config.Check {
 	}
 }
 
-func newEngineConfigWithCustomCheck(customCheck config.Check) config.Config {
+func newEngineConfigWithCustomCheck(customCheck []config.Check) config.Config {
+
+	// Create custom config with custom check array
 	return config.Config{
-		CustomChecks: []config.Check{
-			customCheck,
-		},
+		CustomChecks: customCheck,
 		Checks: config.ChecksConfig{
 			AddAllBuiltIn:        false,
 			DoNotAutoAddDefaults: true,
@@ -98,6 +100,121 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 	}
 	d.Spec.Replicas = &replicas
 	return &d, nil
+}
+
+func intializeEngine(customCheck ...config.Check) error {
+
+	// Reset global prometheus registry to avoid testing conflicts
+	metrics.Registry = prometheus.NewRegistry()
+
+	// Check if custom check has been set
+	if len(customCheck) > 0 {
+		// Initialize engine with custom check
+		e, err := newEngine(newEngineConfigWithCustomCheck(customCheck))
+		if err != nil {
+			return err
+		}
+		engine = e
+	} else {
+		// Initialize engine for all checks
+		e, err := newEngine(newEngineConfigWithAllChecks())
+		if err != nil {
+			return err
+		}
+		engine = e
+	}
+	return nil
+}
+
+func TestRunValidationsIssueCorrection(t *testing.T) {
+
+	customCheck := newCustomCheck()
+
+	err := intializeEngine(customCheck)
+	if err != nil {
+		t.Errorf("Error initializing engine %v", err)
+	}
+
+	request := reconcile.Request{
+		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
+	}
+
+	replicaCnt := int32(1)
+	deployment, err := createTestDeployment(replicaCnt)
+	if err != nil {
+		t.Errorf("Error creating deployment from template %v", err)
+	}
+
+	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
+
+	labels := getPromLabels(request.Namespace, request.Name, "Deployment")
+
+	metric, err := engine.GetMetric(customCheck.Name).GetMetricWith(labels)
+	if err != nil {
+		t.Errorf("Error getting prometheus metric: %v", err)
+	}
+
+	expectedConstLabelSubString := fmt.Sprintf(""+
+		"constLabels: {check_description=\"%s\",check_remediation=\"%s\"}",
+		customCheck.Description,
+		customCheck.Remediation,
+	)
+	if !strings.Contains(metric.Desc().String(), expectedConstLabelSubString) {
+		t.Errorf("Metric is missing expected constant labels! Expected:\n%s\nGot:\n%s",
+			expectedConstLabelSubString,
+			metric.Desc().String())
+	}
+
+	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 1 {
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 1)
+	}
+
+	// Problem resolved
+	replicaCnt = int32(3)
+	deployment.Spec.Replicas = &replicaCnt
+	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
+
+	// Metric with label combination should be successfully cleared because problem was resolved.
+	// The 'GetMetricWith()' function will create a new metric with provided labels if it
+	// does not exist. The default value of a metric is 0. Therefore, a value of 0 implies we
+	// successfully cleared the metric label combination.
+	metric, err = engine.GetMetric(customCheck.Name).GetMetricWith(labels)
+	if err != nil {
+		t.Errorf("Error getting prometheus metric: %v", err)
+	}
+
+	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 0)
+	}
+}
+
+func TestIncompatibleChecksAreDisabled(t *testing.T) {
+
+	err := intializeEngine()
+	if err != nil {
+		t.Errorf("Error initializing engine: %v", err)
+	}
+
+	badChecks := getIncompatibleChecks()
+	allKubeLinterChecks, err := getAllBuiltInKubeLinterChecks()
+	if err != nil {
+		t.Fatalf("Got unexpected error while getting all checks built-into kube-linter: %v", err)
+	}
+	expectedNumChecks := len(allKubeLinterChecks) - len(badChecks)
+
+	enabledChecks := engine.EnabledChecks()
+	if len(enabledChecks) != expectedNumChecks {
+		t.Errorf("Expected exactly %v checks to be enabled, but got '%v' checks from list '%v'",
+			expectedNumChecks, len(enabledChecks), enabledChecks)
+	}
+
+	for _, badCheck := range badChecks {
+		if stringInSlice(badCheck, enabledChecks) {
+			t.Errorf("Expected incompatible kube-linter check '%v' to not be enabled, "+
+				"but it was in the enabled list '%v'",
+				badCheck, enabledChecks)
+		}
+	}
 }
 
 // Test to check if a resource has 0 replicas it clears metrics
@@ -167,92 +284,6 @@ func TestValidateZeroReplicas(t *testing.T) {
 		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 0)
 	}
 
-}
-
-func TestRunValidationsIssueCorrection(t *testing.T) {
-	customCheck := newCustomCheck()
-
-	intilizeEngineWithCustomCheck(customCheck, t)
-
-	request := reconcile.Request{
-		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
-	}
-
-	replicaCnt := int32(1)
-	deployment, err := createTestDeployment(replicaCnt)
-	if err != nil {
-		t.Errorf("Error creating deployment from template %v", err)
-	}
-
-	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
-
-	labels := getPromLabels(request.Namespace, request.Name, "Deployment")
-
-	metric, err := engine.GetMetric(customCheck.Name).GetMetricWith(labels)
-	if err != nil {
-		t.Errorf("Error getting prometheus metric: %v", err)
-	}
-
-	expectedConstLabelSubString := fmt.Sprintf(""+
-		"constLabels: {check_description=\"%s\",check_remediation=\"%s\"}",
-		customCheck.Description,
-		customCheck.Remediation,
-	)
-	if !strings.Contains(metric.Desc().String(), expectedConstLabelSubString) {
-		t.Errorf("Metric is missing expected constant labels! Expected:\n%s\nGot:\n%s",
-			expectedConstLabelSubString,
-			metric.Desc().String())
-	}
-
-	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 1 {
-		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 1)
-	}
-
-	// Problem resolved
-	replicaCnt = int32(3)
-	deployment.Spec.Replicas = &replicaCnt
-	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
-
-	// Metric with label combination should be successfully cleared because problem was resolved.
-	// The 'GetMetricWith()' function will create a new metric with provided labels if it
-	// does not exist. The default value of a metric is 0. Therefore, a value of 0 implies we
-	// successfully cleared the metric label combination.
-	metric, err = engine.GetMetric(customCheck.Name).GetMetricWith(labels)
-	if err != nil {
-		t.Errorf("Error getting prometheus metric: %v", err)
-	}
-
-	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
-		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 0)
-	}
-}
-
-func TestIncompatibleChecksAreDisabled(t *testing.T) {
-	e, err := newEngine(newEngineConfigWithAllChecks())
-	if err != nil {
-		t.Errorf("Error creating validation engine %v", err)
-	}
-
-	badChecks := getIncompatibleChecks()
-	allKubeLinterChecks, err := getAllBuiltInKubeLinterChecks()
-	if err != nil {
-		t.Fatalf("Got unexpected error while getting all checks built-into kube-linter: %v", err)
-	}
-	expectedNumChecks := len(allKubeLinterChecks) - len(badChecks)
-
-	enabledChecks := e.EnabledChecks()
-	if len(enabledChecks) != expectedNumChecks {
-		t.Errorf("Expected exactly %v checks to be enabled, but got '%v' checks from list '%v'",
-			expectedNumChecks, len(enabledChecks), enabledChecks)
-	}
-
-	for _, badCheck := range badChecks {
-		if stringInSlice(badCheck, enabledChecks) {
-			t.Errorf("Expected incompatible kube-linter check '%v' to not be enabled, "+
-				"but it was in the enabled list '%v'",
-				badCheck, enabledChecks)
-		}
-	}
 }
 
 func stringInSlice(a string, list []string) bool {
