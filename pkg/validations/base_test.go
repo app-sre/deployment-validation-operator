@@ -177,7 +177,7 @@ func TestIncompatibleChecksAreDisabled(t *testing.T) {
 
 	err := intializeEngine()
 	if err != nil {
-		t.Errorf("Error getting prometheus metric: %v", err)
+		t.Errorf("Error initializing engine: %v", err)
 	}
 
 	badChecks := getIncompatibleChecks()
