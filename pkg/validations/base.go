@@ -46,7 +46,9 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	if spec.IsValid() {
 		replicas := spec.FieldByName("Replicas")
 		numReplicas, ok := replicas.Interface().(*int32)
-		if ok && numReplicas != nil && *numReplicas <= 0 {
+
+		// clear labels if we fail to get a value for numReplicas, or if value is <= 0
+		if !ok || numReplicas == nil || *numReplicas <= 0 {
 			engine.DeleteMetrics(promLabels)
 			return
 		}
