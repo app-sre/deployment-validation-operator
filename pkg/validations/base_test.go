@@ -228,7 +228,7 @@ func TestValidateZeroReplicas(t *testing.T) {
 	// Run validations against test environment
 	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
 
-	// Aquire labels generated from validations
+	// Acquire labels generated from validations
 	labels := getPromLabels(request.Namespace, request.Name, "Deployment")
 
 	// The 'GetMetricWith()' function will create a new metric with provided labels if it
