@@ -15,21 +15,21 @@ objects:
           - namespaceSelector:
               matchLabels:
                 name: ${OLM_NAMESPACE}
-  policyTypes:
-    - Ingress
+    policyTypes:
+      - Ingress
 - apiVersion: networking.k8s.io/v1
   kind: NetworkPolicy
   metadata:
     name: allow-from-monitoring-namespace
   spec:
-  podSelector: {}
-  ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              name: ${MONITORING_NAMESPACE}
-  policyTypes:
-    - Ingress
+    podSelector: {}
+    ingress:
+      - from:
+          - namespaceSelector:
+              matchLabels:
+                name: ${MONITORING_NAMESPACE}
+    policyTypes:
+      - Ingress
 parameters:
 - name: OLM_NAMESPACE
   value: ""

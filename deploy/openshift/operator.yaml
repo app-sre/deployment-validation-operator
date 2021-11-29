@@ -20,12 +20,31 @@ spec:
         name: deployment-validation-operator
         app: deployment-validation-operator
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - deployment-validation-operator
+              topologyKey: kubernetes.io/hostname
+            weight: 100
       containers:
-      - image: quay.io/deployment-validation-operator/dv-operator:latest
+      - image: quay.io/deployment-validation-operator/dv-operator:0.1.1
         imagePullPolicy: Always
         name: deployment-validation-operator
         args:
         - --config /config/deployment-validation-operator-config.yaml
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100n"
+          limits:
+            memory: "512Mi"
+            cpu: "1"
         env:
         - name: WATCH_NAMESPACE
           value: ""
@@ -40,18 +59,13 @@ spec:
         volumeMounts:
         - name: dvo-config
           mountPath: /config
+        securityContext:
+          readOnlyRootFilesystem: true
       volumes:
       - name: dvo-config
         configMap:
           optional: true
           name: deployment-validation-operator-config
       restartPolicy: Always
-      serviceAccount: deployment-validation-operator
+      serviceAccountName: deployment-validation-operator
       terminationGracePeriodSeconds: 30
-      resources:
-        requests:
-          memory: "200Mi"
-          cpu: "100m"
-        limits:
-          memory: "400Mi"
-          cpu: "200m"
