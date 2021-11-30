@@ -2,42 +2,24 @@
 apiVersion: v1
 kind: Template
 metadata:
-  name: deployment-validation-operator-network-policies
+  name: deployment-validation-operator-network-policy-${NAMESPACE}
 objects:
 - apiVersion: networking.k8s.io/v1
   kind: NetworkPolicy
   metadata:
-    name: allow-from-operator-lifecycle-manager-namespace
+    name: allow-from-${NAMESPACE}
   spec:
     podSelector: {}
     ingress:
       - from:
-          - namespaceSelector:
-              matchLabels:
-                name: ${OLM_NAMESPACE}
-    policyTypes:
-      - Ingress
-- apiVersion: networking.k8s.io/v1
-  kind: NetworkPolicy
-  metadata:
-    name: allow-from-monitoring-namespace
-  spec:
-    podSelector: {}
-    ingress:
-      - from:
-          - namespaceSelector:
-              matchLabels:
-                name: ${MONITORING_NAMESPACE}
-    policyTypes:
-      - Ingress
+        - namespaceSelector:
+            matchLabels:
+              name: ${NAMESPACE}
+  policyTypes:
+    - Ingress
 parameters:
-- name: OLM_NAMESPACE
+- name: NAMESPACE
   value: ""
-  displayName: Operator Lifecycle Manager namespace
-  description: the namespace where the Operator LIfecycle Manager is running
-  required: true
-- name: MONITORING_NAMESPACE
-  value: ""
-  displayName: the monitoring namespace
-  description: the namespace where monitoring (ie prometheus) is running
+  displayName: a namespace with access to DVO data
+  description: the namespace that should be allowed to access DVO data
   required: true
