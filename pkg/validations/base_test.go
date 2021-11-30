@@ -245,7 +245,7 @@ func TestValidateZeroReplicas(t *testing.T) {
 	}
 
 	// Check using a replica count above 0
-	replicaCnt = int32(3)
+	replicaCnt = int32(1)
 	deployment.Spec.Replicas = &replicaCnt
 	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
 
@@ -255,7 +255,7 @@ func TestValidateZeroReplicas(t *testing.T) {
 	}
 
 	// If metrics exist then value will be non 0
-	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
+	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue == 0 {
 		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 1)
 	}
 
