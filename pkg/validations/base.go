@@ -2,6 +2,7 @@ package validations
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,6 +36,24 @@ func RunValidations(request reconcile.Request, obj client.Object, kind string, i
 	// the object that controls the configuration
 	if !utils.IsOwner(obj) {
 		return
+	}
+
+	// If controller has no replicas clear existing metrics and
+	// do not run any validations
+
+	objValue := reflect.Indirect(reflect.ValueOf(obj))
+	spec := objValue.FieldByName("Spec")
+	if spec.IsValid() {
+		replicas := spec.FieldByName("Replicas")
+		if replicas.IsValid() {
+			numReplicas, ok := replicas.Interface().(*int32)
+
+			// clear labels if we fail to get a value for numReplicas, or if value is <= 0
+			if !ok || numReplicas == nil || *numReplicas <= 0 {
+				engine.DeleteMetrics(promLabels)
+				return
+			}
+		}
 	}
 
 	lintCtxs := []lintcontext.LintContext{}

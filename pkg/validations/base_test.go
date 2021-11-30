@@ -83,11 +83,10 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 		return nil, err
 	}
 	d.Spec.Replicas = &replicas
-
 	return &d, nil
 }
 
-func intializeEngine(customCheck ...config.Check) error {
+func initializeEngine(customCheck ...config.Check) error {
 
 	// Reset global prometheus registry to avoid testing conflicts
 	metrics.Registry = prometheus.NewRegistry()
@@ -115,7 +114,8 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 	customCheck := newCustomCheck()
 
-	err := intializeEngine(customCheck)
+	// Initialize engine
+	err := initializeEngine(customCheck)
 	if err != nil {
 		t.Errorf("Error initializing engine %v", err)
 	}
@@ -175,7 +175,8 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 
 func TestIncompatibleChecksAreDisabled(t *testing.T) {
 
-	err := intializeEngine()
+	// Initialize engine
+	err := initializeEngine()
 	if err != nil {
 		t.Errorf("Error initializing engine: %v", err)
 	}
@@ -200,6 +201,79 @@ func TestIncompatibleChecksAreDisabled(t *testing.T) {
 				badCheck, enabledChecks)
 		}
 	}
+}
+
+// Test to check if a resource has 0 replicas it clears metrics
+func TestValidateZeroReplicas(t *testing.T) {
+
+	customCheck := newCustomCheck()
+
+	// Initialize Engine
+	err := initializeEngine(customCheck)
+	if err != nil {
+		t.Errorf("Error initializing engine %v", err)
+	}
+
+	request := reconcile.Request{
+		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
+	}
+
+	// Setup test deployment file with 0 replicas
+	replicaCnt := int32(0)
+	deployment, err := createTestDeployment(replicaCnt)
+	if err != nil {
+		t.Errorf("Error creating deployment from template %v", err)
+	}
+
+	// Run validations against test environment
+	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
+
+	// Acquire labels generated from validations
+	labels := getPromLabels(request.Namespace, request.Name, "Deployment")
+
+	// The 'GetMetricWith()' function will create a new metric with provided labels if it
+	// does not exist. The default value of a metric is 0. Therefore, a value of 0 implies we
+	// successfully cleared the metric label combination.
+	metric, err := engine.GetMetric(customCheck.Name).GetMetricWith(labels)
+	if err != nil {
+		t.Errorf("Error getting prometheus metric: %v", err)
+	}
+
+	// If metrics are cleared then the value will be == 0
+	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 0)
+	}
+
+	// Check using a replica count above 0
+	replicaCnt = int32(1)
+	deployment.Spec.Replicas = &replicaCnt
+	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
+
+	metric, err = engine.GetMetric(customCheck.Name).GetMetricWith(labels)
+	if err != nil {
+		t.Errorf("Error getting prometheus metric: %v", err)
+	}
+
+	// If metrics exist then value will be non 0
+	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue == 0 {
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 1)
+	}
+
+	// Check to see metrics clear by setting replicas to 0
+	replicaCnt = int32(0)
+	deployment.Spec.Replicas = &replicaCnt
+	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
+
+	metric, err = engine.GetMetric(customCheck.Name).GetMetricWith(labels)
+	if err != nil {
+		t.Errorf("Error getting prometheus metric: %v", err)
+	}
+
+	// If metrics are cleared then the value will be == 0
+	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
+		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 0)
+	}
+
 }
 
 func stringInSlice(a string, list []string) bool {
