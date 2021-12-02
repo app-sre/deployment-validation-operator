@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: deployment-validation-operator
+  name: deployment-validation-operator
+  namespace: deployment-validation-operator
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: deployment-validation-operator
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        name: deployment-validation-operator
+        app: deployment-validation-operator
+    spec:
+      containers:
+      - image: quay.io/deployment-validation-operator/dv-operator:latest
+        imagePullPolicy: Always
+        name: deployment-validation-operator
+        args:
+        - --config /config/deployment-validation-operator-config.yaml
+        env:
+        - name: WATCH_NAMESPACE
+          value: ""
+        - name: OPERATOR_NAME
+          value: "deployment-validation-operator"
+        - name: NAMESPACE_IGNORE_PATTERN
+          value: "openshift.*|kube-.+"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        volumeMounts:
+        - name: dvo-config
+          mountPath: /config
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "100m"
+          limits:
+            memory: "400Mi"
+            cpu: "200m"
+      volumes:
+      - name: dvo-config
+        configMap:
+          optional: true
+          name: deployment-validation-operator-config
+      restartPolicy: Always
+      serviceAccount: deployment-validation-operator
+      terminationGracePeriodSeconds: 30

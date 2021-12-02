@@ -1,0 +1,10 @@
+mirrors:
+  quay.io:
+    endpoint:
+      - https://quay.io
+
+configs:
+  quay.io:
+    auth:
+      username: ""
+      password: ""

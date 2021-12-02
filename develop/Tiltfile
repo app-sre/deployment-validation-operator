@@ -1,0 +1,15 @@
+k8s_yaml('manifests/develop-operator.yaml')
+
+docker_build(
+    'dvo-local/dv-operator',
+    '../',
+    dockerfile='Dockerfile',
+    ignore=[
+        'boilerplate/',
+        'deploy/',
+        'develop/',
+        'hack/',
+    ],
+)
+
+k8s_resource('deployment-validation-operator')
