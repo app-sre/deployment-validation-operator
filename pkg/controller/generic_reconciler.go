@@ -87,7 +87,6 @@ func (gr *GenericReconciler) Reconcile(ctx context.Context, request reconcile.Re
 	}
 
 	deleted := err != nil && errors.IsNotFound(err)
-	gvk := instance.GetObjectKind().GroupVersionKind()
 	validations.RunValidations(request, instance, gr.reconciledKind, deleted)
 
 	return reconcile.Result{}, nil
