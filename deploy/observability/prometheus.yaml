@@ -1,10 +1,22 @@
-apiVersion: monitoring.coreos.com/v1
-kind: Prometheus
+---
+apiVersion: v1
+kind: Template
 metadata:
-  name: deployment-validation-operator
-spec:
-  replicas: 2
-  serviceAccountName: prometheus-k8s
-  serviceMonitorSelector:
-    matchLabels:
-      prometheus: deployment-validation-operator
+  name: deployment-validation-operator-prometheus-${NAMESPACE}
+objects:
+- apiVersion: monitoring.coreos.com/v1
+  kind: Prometheus
+  metadata:
+    name: deployment-validation-operator
+  spec:
+    replicas: 2
+    serviceAccountName: prometheus-k8s
+    serviceMonitorSelector:
+      matchLabels:
+        prometheus: dvo-${NAMESPACE}
+parameters:
+- name: NAMESPACE
+  value: ""
+  displayName: a namespace to match a prometheus instance with
+  description: namespace matched with prometheus instance
+  required: true

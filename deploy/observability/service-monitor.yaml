@@ -8,8 +8,8 @@ objects:
   kind: ServiceMonitor
   metadata:
     labels:
-      prometheus: deployment-validation-operator
-    name: deployment-validation-operator
+      prometheus: dvo-${NAMESPACE}
+    name: dvo-${NAMESPACE}
   spec:
     endpoints:
     - interval: 5s
@@ -20,7 +20,7 @@ objects:
       - ${NAMESPACE}
     selector:
       matchLabels:
-        name: deployment-validation-operator
+        name: ${NAMESPACE}
 parameters:
 - name: NAMESPACE
   value: ""
