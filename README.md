@@ -54,15 +54,15 @@ If DVO is deployed to a namespace other than the one where OLM is deployed, whic
 oc process --local NAMESPACE='operator-lifecycle-manager' -f deploy/openshift/network-policies.yaml | oc create -f -
 ```
 
-## Install dashboard
+## Install Grafana dashboard
 
 There are manifests to install a simple grafana dashboard under the [`deploy/observability`](deploy/observability) directory. A typical installation would go as follows:
 
 ```
-for manifest in deploy/observability/*
-do
-    oc create -f $manifest
-done
+# change NAMESPACE to install deployment-validation-components if desired
+NAMESPACE='deployment-validation-operator'
+for manifest in deploy/observability/non-templates/*; do oc -n $NAMESPACE create -f $manifest; done
+for manifest in deploy/observability/templates/*; do oc -n $NAMESPACE process --local NAMESPACE="$NAMESPACE" -f deploy/observability/templates/* | oc create -f -; done
 ```
 
 ## Allow scraping from outside DVO namespace
