@@ -169,9 +169,7 @@ func main() {
 }
 
 func initMetricsEndpoint() {
-	r := prometheus.NewRegistry()
-	handler := promhttp.HandlerFor(r, promhttp.HandlerOpts{})
-	http.Handle(fmt.Sprintf("/%s", metricsPath), handler)
+	http.Handle(fmt.Sprintf("/%s", metricsPath), promhttp.Handler())
 	go func() {
 		err := http.ListenAndServe(fmt.Sprintf(":%d", metricsPort), nil)
 		log.Error(err, "Prometheus metrics server stopped unexpectedly")
