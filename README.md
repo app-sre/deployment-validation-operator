@@ -56,14 +56,13 @@ oc process --local NAMESPACE='operator-lifecycle-manager' -f deploy/openshift/ne
 
 ## Install Grafana dashboard
 
-There are manifests to install a simple grafana dashboard under the [`deploy/observability`](deploy/observability) directory. A typical installation would go as follows:
+There are manifests to install a simple grafana dashboard under the [`deploy/observability`](deploy/observability) directory.
 
-```
-# change NAMESPACE to the name of your project/namespace where you have DVO components installed
-NAMESPACE='deployment-validation-operator'
-for manifest in deploy/observability/non-templates/*; do oc -n $NAMESPACE create -f $manifest; done
-for manifest in deploy/observability/templates/*; do oc -n $NAMESPACE process --local NAMESPACE="$NAMESPACE" -f deploy/observability/templates/* | oc create -f -; done
-```
+A typical installation to the default namespace `deployment-validation-operator` goes as follows:
+`oc process -f deploy/observability/template.yaml | oc create -f -`
+
+Or, if you want to deploy deployment-validation-operator components to a custom namespace:
+`oc process --local NAMESPACE="custom-dvo-namespace" -f deploy/observability/template.yaml | oc create -f -`
 
 ## Allow scraping from outside DVO namespace
 
