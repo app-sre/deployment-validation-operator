@@ -13,7 +13,7 @@ objects:
     serviceAccountName: prometheus-k8s
     serviceMonitorSelector:
       matchLabels:
-        prometheus: dvo-${NAMESPACE}
+        prometheus: deployment-validation-operator
 parameters:
 - name: NAMESPACE
   value: ""

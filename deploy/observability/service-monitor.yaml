@@ -8,8 +8,8 @@ objects:
   kind: ServiceMonitor
   metadata:
     labels:
-      prometheus: dvo-${NAMESPACE}
-    name: dvo-${NAMESPACE}
+      prometheus: deployment-validation-operator
+    name: deployment-validation-operator
   spec:
     endpoints:
     - interval: 5s
@@ -20,10 +20,10 @@ objects:
       - ${NAMESPACE}
     selector:
       matchLabels:
-        name: ${NAMESPACE}
+        name: deployment-validation-operator
 parameters:
 - name: NAMESPACE
   value: ""
-  displayName: namespace with installed prometheus-metrics deployment-validation-operator service-monitor
-  description: namespace to install prometheus-metrics deployment-validation-operator service-monitor to
+  displayName: namespace for deployment-validation-operator service-monitor to select
+  description: namespace is deployment-validation-operator service-monitor is selected to
   required: true
