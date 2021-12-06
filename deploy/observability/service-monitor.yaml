@@ -1,17 +1,29 @@
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
+---
+apiVersion: v1
+kind: Template
 metadata:
-  labels:
-    prometheus: deployment-validation-operator
-  name: deployment-validation-operator
-spec:
-  endpoints:
-  - interval: 5s
-    port: http-metrics
-    scheme: http
-  namespaceSelector:
-    matchNames:
-    - deployment-validation-operator
-  selector:
-    matchLabels:
-      name: deployment-validation-operator
+  name: deployment-validation-operator-service-monitor-${NAMESPACE}
+objects:
+- apiVersion: monitoring.coreos.com/v1
+  kind: ServiceMonitor
+  metadata:
+    labels:
+      prometheus: deployment-validation-operator
+    name: deployment-validation-operator
+  spec:
+    endpoints:
+    - interval: 5s
+      port: http-metrics
+      scheme: http
+    namespaceSelector:
+      matchNames:
+      - ${NAMESPACE}
+    selector:
+      matchLabels:
+        name: deployment-validation-operator
+parameters:
+- name: NAMESPACE
+  value: ""
+  displayName: namespace with installed prometheus-metrics deployment-validation-operator service-monitor
+  description: namespace to install prometheus-metrics deployment-validation-operator service-monitor to
+  required: true

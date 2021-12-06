@@ -1,8 +1,20 @@
-apiVersion: operators.coreos.com/v1
-kind: OperatorGroup
+---
+apiVersion: v1
+kind: Template
 metadata:
-  name: prometheus
-  namespace: deployment-validation-operator
-spec:
-  targetNamespaces:
-  - deployment-validation-operator
+  name: deployment-validation-operator-operator-group-${NAMESPACE}
+objects:
+- apiVersion: operators.coreos.com/v1
+  kind: OperatorGroup
+  metadata:
+    name: prometheus
+    namespace: ${NAMESPACE}
+  spec:
+    targetNamespaces:
+    - ${NAMESPACE}
+parameters:
+- name: NAMESPACE
+  value: ""
+  displayName: namespace with installed prometheus operator-group
+  description: namespace to install prometheus operator-group to
+  required: true
