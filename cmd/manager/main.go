@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"runtime"
 	"strings"
@@ -26,14 +27,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+
 	"github.com/spf13/pflag"
 )
 
 // Change below variables to serve metrics on different host or port.
 var (
-	metricsHost             = "0.0.0.0"
-	metricsPort       int32 = 8383
-	defaultConfigFile       = "config/deployment-validation-operator-config.yaml"
+	metricsPort       	int32 	= 8383
+	metricsPath			string	= "metrics"
+	defaultConfigFile   	    = "config/deployment-validation-operator-config.yaml"
 )
 var log = logf.Log.WithName("DeploymentValidation")
 
@@ -112,7 +117,7 @@ func main() {
 	// Set default manager options
 	options := manager.Options{
 		Namespace:          namespace,
-		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		MetricsBindAddress: "0", // disable controller-runtime managed prometheus endpoint
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
@@ -151,6 +156,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %s", getFullMetricsEndpoint()))
+	initMetricsEndpoint()
+
 	log.Info("Starting")
 
 	// Start the Cmd
@@ -158,6 +166,20 @@ func main() {
 		log.Error(err, "Manager exited non-zero")
 		os.Exit(1)
 	}
+}
+
+func initMetricsEndpoint() {
+	r := prometheus.NewRegistry()
+	handler := promhttp.HandlerFor(r, promhttp.HandlerOpts{})
+	http.Handle(fmt.Sprintf("/%s", metricsPath), handler)
+	go func() {
+		err := http.ListenAndServe(fmt.Sprintf(":%d", metricsPort), nil)
+		log.Error(err, "Prometheus metrics server stopped unexpectedly")
+	}()
+}
+
+func getFullMetricsEndpoint() string {
+	return fmt.Sprintf("http://0.0.0.0:%d/%s", metricsPort, metricsPath)
 }
 
 func getWatchNamespace() (string, error) {
