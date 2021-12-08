@@ -43,7 +43,7 @@ spec:
             memory: "256Mi"
             cpu: "100n"
           limits:
-            memory: "512Mi"
+            memory: "4GB"
             cpu: "1"
         env:
         - name: WATCH_NAMESPACE
