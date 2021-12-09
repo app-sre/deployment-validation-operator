@@ -34,9 +34,9 @@ import (
 
 // Change below variables to serve metrics on different host or port.
 var (
-	metricsPort       	int32 	= 8383
-	metricsPath			string	= "metrics"
-	defaultConfigFile   	    = "config/deployment-validation-operator-config.yaml"
+	metricsPort       int32  = 8383
+	metricsPath       string = "metrics"
+	defaultConfigFile        = "config/deployment-validation-operator-config.yaml"
 )
 var log = logf.Log.WithName("DeploymentValidation")
 
