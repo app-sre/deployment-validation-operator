@@ -147,14 +147,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %s", getFullMetricsEndpoint()))
+	dvo_prom.InitMetricsEndpoint(metricsPath, metricsPort)
+
 	log.Info("Initializing Validation Engine")
 	if err := validations.InitializeValidationEngine(configFile); err != nil {
 		log.Error(err, "Failed to initialize validation engine")
 		os.Exit(1)
 	}
-
-	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %s", getFullMetricsEndpoint()))
-	dvo_prom.InitMetricsEndpoint(metricsPath, metricsPort)
 
 	log.Info("Starting")
 
