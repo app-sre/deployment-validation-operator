@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	// Import checks from DVO
 	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
+	// Import checks from DVO
 	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all"
 
 	"golang.stackrox.io/kube-linter/pkg/builtinchecks"
