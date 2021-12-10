@@ -19,6 +19,7 @@ The manifests to deploy DVO take a permissive approach to permissions.  This is 
 There are manifests to install the operator under the [`deploy/openshift`](deploy/openshift) directory. A typical installation would go as follows:
 
 * Create the `deployment-validation-operator` namespace/project
+    * If deploying to a namespace other than `deployment-validation-operator`, there are commented lines you must change in `deploy/openshift/cluster-role-binding.yaml` and `deploy/openshift/role-binding.yaml` first
 * Create the service, service account, configmap, roles and role bindings
 * Create the operator deployment
 
@@ -54,16 +55,15 @@ If DVO is deployed to a namespace other than the one where OLM is deployed, whic
 oc process --local NAMESPACE='operator-lifecycle-manager' -f deploy/openshift/network-policies.yaml | oc create -f -
 ```
 
-## Install dashboard
+## Install Grafana dashboard
 
-There are manifests to install a simple grafana dashboard under the [`deploy/observability`](deploy/observability) directory. A typical installation would go as follows:
+There are manifests to install a simple grafana dashboard under the [`deploy/observability`](deploy/observability) directory.
 
-```
-for manifest in deploy/observability/*
-do
-    oc create -f $manifest
-done
-```
+A typical installation to the default namespace `deployment-validation-operator` goes as follows:
+`oc process -f deploy/observability/template.yaml | oc create -f -`
+
+Or, if you want to deploy deployment-validation-operator components to a custom namespace:
+`oc process --local NAMESPACE="custom-dvo-namespace" -f deploy/observability/template.yaml | oc create -f -`
 
 ## Allow scraping from outside DVO namespace
 

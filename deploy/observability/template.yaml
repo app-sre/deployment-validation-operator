@@ -1,0 +1,471 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: deployment-validation-operator-observability-template_${NAMESPACE}
+objects:
+- apiVersion: operators.coreos.com/v1
+  kind: OperatorGroup
+  metadata:
+    name: prometheus
+    namespace: ${NAMESPACE}
+  spec:
+    targetNamespaces:
+    - ${NAMESPACE}
+- apiVersion: monitoring.coreos.com/v1
+  kind: ServiceMonitor
+  metadata:
+    labels:
+      prometheus: deployment-validation-operator
+    name: deployment-validation-operator
+    namespace: ${NAMESPACE}
+  spec:
+    endpoints:
+    - interval: 5s
+      port: http-metrics
+      scheme: http
+    namespaceSelector:
+      matchNames:
+      - ${NAMESPACE}
+    selector:
+      matchLabels:
+        name: deployment-validation-operator
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: grafana-config
+    namespace: ${NAMESPACE}
+  data:
+    grafana.ini: |-
+      [auth.anonymous]
+      enabled = true
+      org_role = Editor
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: grafana-dashboard-dvo
+    namespace: ${NAMESPACE}
+  data:
+    deployment-validation-operator.json: |-
+      {
+        "annotations": {
+          "list": [
+            {
+              "builtIn": 1,
+              "datasource": "Prometheus",
+              "enable": true,
+              "hide": true,
+              "iconColor": "rgba(0, 211, 255, 1)",
+              "name": "Annotations & Alerts",
+              "type": "dashboard"
+            }
+          ]
+        },
+        "editable": true,
+        "gnetId": null,
+        "graphTooltip": 0,
+        "links": [],
+        "panels": [
+          {
+            "datasource": "$datasource",
+            "fieldConfig": {
+              "defaults": {
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "dark-red",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 12,
+              "w": 24,
+              "x": 0,
+              "y": 0
+            },
+            "id": 2,
+            "options": {
+              "displayMode": "lcd",
+              "orientation": "horizontal",
+              "reduceOptions": {
+                "calcs": [
+                  "mean"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "showUnfilled": true,
+              "text": {}
+            },
+            "pluginVersion": "8.1.5",
+            "targets": [
+              {
+                "expr": "label_replace((sum by (__name__) ({__name__=~\"deployment_validation_operator_.*\", exported_namespace=~\"$namespace\"})), \"validation\", \"$1\",\"__name__\", \"deployment_validation_operator_(.*)\")",
+                "legendFormat": "{{validation}}",
+                "instant": true,
+                "refId": "A"
+              }
+            ],
+            "title": "Deployment Validation Operator",
+            "type": "bargauge"
+          },
+          {
+            "datasource": "Prometheus",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "custom": {
+                  "align": "auto",
+                  "displayMode": "auto"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              "overrides": [
+                {
+                  "matcher": {
+                    "id": "byName",
+                    "options": "Status"
+                  },
+                  "properties": [
+                    {
+                      "id": "mappings",
+                      "value": [
+                        {
+                          "options": {
+                            "0": {
+                              "index": 1,
+                              "text": "Pass"
+                            },
+                            "1": {
+                              "index": 0,
+                              "text": "Failed"
+                            }
+                          },
+                          "type": "value"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            "gridPos": {
+              "h": 20,
+              "w": 24,
+              "x": 0,
+              "y": 12
+            },
+            "id": 4,
+            "options": {
+              "showHeader": true
+            },
+            "pluginVersion": "8.1.5",
+            "targets": [
+              {
+                "exemplar": false,
+                "expr": "label_replace({__name__=~\"deployment_validation_operator_.*\", exported_namespace=~\"$namespace\"}, \"validation\", \"$1\",\"__name__\", \"deployment_validation_operator_(.*)\")",
+                "format": "table",
+                "instant": true,
+                "refId": "A"
+              }
+            ],
+            "title": "Validation Detail",
+            "transformations": [
+              {
+                "id": "filterFieldsByName",
+                "options": {
+                  "include": {
+                    "names": [
+                      "kind",
+                      "name",
+                      "validation",
+                      "Value",
+                      "exported_namespace"
+                    ]
+                  }
+                }
+              },
+              {
+                "id": "organize",
+                "options": {
+                  "excludeByName": {},
+                  "indexByName": {},
+                  "renameByName": {
+                    "Value": "Status",
+                    "exported_namespace": "Namspace",
+                    "kind": "Kind",
+                    "name": "Name",
+                    "validation": "Validation"
+                  }
+                }
+              }
+            ],
+            "type": "table"
+          }
+        ],
+        "schemaVersion": 30,
+        "style": "dark",
+        "tags": [],
+        "templating": {
+          "list": [
+            {
+              "current": {},
+              "hide": 0,
+              "includeAll": false,
+              "label": "Datasource",
+              "multi": false,
+              "name": "datasource",
+              "options": [],
+              "query": "prometheus",
+              "refresh": 1,
+              "regex": "",
+              "skipUrlSync": false,
+              "type": "datasource"
+            },
+            {
+              "allValue": ".*",
+              "current": {
+                "selected": true,
+                "text": "All",
+                "value": "$__all"
+              },
+              "datasource": "$datasource",
+              "definition": "label_values({__name__=~\"deployment_validation_operator_.*\"}, exported_namespace)",
+              "hide": 0,
+              "includeAll": true,
+              "multi": false,
+              "name": "namespace",
+              "query": {
+                "query": "label_values({__name__=~\"deployment_validation_operator_.*\"}, exported_namespace)",
+                "refId": "Prometheus-namespace-Variable-Query"
+              },
+              "refresh": 1,
+              "skipUrlSync": false,
+              "sort": 1,
+              "type": "query",
+              "useTags": false
+            }
+          ]
+        },
+        "time": {
+          "from": "now-5m",
+          "to": "now"
+        },
+        "timepicker": {
+          "refresh_intervals": [
+            "5s",
+            "10s",
+            "30s",
+            "1m",
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "2h",
+            "1d"
+          ]
+        },
+        "timezone": "",
+        "title": "Deployment Validation Operator",
+        "uid": "DVO",
+        "version": 1
+      }
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: grafana-dashboards
+    namespace: ${NAMESPACE}
+  data:
+    dashboards.yaml: |-
+      {
+          "apiVersion": 1,
+          "providers": [
+              {
+                  "folder": "DVO",
+                  "name": "DVO",
+                  "options": {
+                      "path": "/grafana-dashboard-definitions/DVO"
+                  },
+                  "orgId": 1,
+                  "type": "file"
+              }
+          ]
+      }
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: grafana-datasources
+    namespace: ${NAMESPACE}
+  data:
+    datasources.yaml: |-
+      {
+          "apiVersion": 1,
+          "datasources": [
+              {
+                  "name": "Prometheus",
+                  "type": "prometheus",
+                  "url": "http://prometheus-operated.${NAMESPACE}.svc.cluster.local:9090",
+                  "access": "proxy"
+              }
+          ]
+      }
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    labels:
+      grafana: deployment-validation-operator
+    name: grafana
+    namespace: ${NAMESPACE}
+  spec:
+    port:
+      targetPort: https
+    to:
+      kind: Service
+      name: deployment-validation-operator-grafana
+      weight: 100
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      grafana: deployment-validation-operator
+    name: deployment-validation-operator-grafana
+    namespace: ${NAMESPACE}
+  spec:
+    ports:
+    - name: https
+      port: 80
+      protocol: TCP
+      targetPort: 3000
+    selector:
+      grafana: deployment-validation-operator
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    labels:
+      grafana: deployment-validation-operator
+    name: deployment-validation-operator-grafana
+    namespace: ${NAMESPACE}
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        grafana: deployment-validation-operator
+    template:
+      metadata:
+        labels:
+          grafana: deployment-validation-operator
+      spec:
+        containers:
+        - name: grafana
+          image: grafana/grafana
+          imagePullPolicy: IfNotPresent
+          args:
+          - -config=/etc/grafana/grafana.ini
+          env:
+          - name: GF_INSTALL_PLUGINS
+            value: "grafana-piechart-panel"
+          ports:
+          - containerPort: 3000
+            name: http
+            protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          volumeMounts:
+          # Grafana configuration
+          - mountPath: /etc/grafana/provisioning/datasources
+            name: grafana-datasources
+          - mountPath: /etc/grafana/provisioning/dashboards
+            name: grafana-dashboards
+          - mountPath: /etc/grafana
+            name: grafana-config
+          - mountPath: /grafana-dashboard-definitions/DVO/grafana-dashboard-dvo
+            name: grafana-dashboard-dvo
+        volumes:
+        - name: grafana-config
+          configMap:
+            defaultMode: 420
+            name: grafana-config
+        - name: grafana-datasources
+          configMap:
+            defaultMode: 420
+            name: grafana-datasources
+        - name: grafana-dashboards
+          configMap:
+            defaultMode: 420
+            name: grafana-dashboards
+        - name: grafana-dashboard-dvo
+          configMap:
+            defaultMode: 420
+            name: grafana-dashboard-dvo
+- apiVersion: operators.coreos.com/v1alpha1
+  kind: Subscription
+  metadata:
+    name: prometheus
+    namespace: ${NAMESPACE}
+  spec:
+    channel: beta
+    installPlanApproval: Automatic
+    name: prometheus
+    source: community-operators
+    sourceNamespace: openshift-marketplace
+    startingCSV: prometheusoperator.0.47.0
+- apiVersion: monitoring.coreos.com/v1
+  kind: Prometheus
+  metadata:
+    name: deployment-validation-operator
+    namespace: ${NAMESPACE}
+  spec:
+    replicas: 2
+    serviceAccountName: prometheus-k8s
+    serviceMonitorSelector:
+      matchLabels:
+        prometheus: deployment-validation-operator
+parameters:
+- name: NAMESPACE
+  value: "deployment-validation-operator"
+  displayName: namespace for deployment-validation-operator grafana/prometheus components to be installed to
+  description: namespace for deployment-validation-operator grafana/prometheus components to be installed to
+  required: true
