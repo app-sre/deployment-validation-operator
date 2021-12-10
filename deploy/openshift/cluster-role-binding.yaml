@@ -5,10 +5,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: deployment-validation-operator
-  namespace: deployment-validation-operator
-# - kind: ServiceAccount
-#   name: deployment-validation-operator
-#   namespace: <custom-namespace-here>
+  namespace: deployment-validation-operator # if using a custom namespace to deploy DVO components, change this line !!!
 roleRef:
   kind: ClusterRole
   name: deployment-validation-operator
