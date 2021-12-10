@@ -12,7 +12,7 @@ import (
 
 var PrometheusRegistry *prometheus.Registry
 
-var log = logf.Log.WithName("utils")
+var log = logf.Log.WithName("prometheus")
 
 func InitMetricsEndpoint(metricsPath string, metricsPort int32) {
 	PrometheusRegistry = prometheus.NewRegistry()
