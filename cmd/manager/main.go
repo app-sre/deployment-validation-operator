@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"runtime"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	dv_config "github.com/app-sre/deployment-validation-operator/config"
 	"github.com/app-sre/deployment-validation-operator/pkg/apis"
 	"github.com/app-sre/deployment-validation-operator/pkg/controller"
+	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
 
@@ -27,8 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	"github.com/spf13/pflag"
 )
 
@@ -38,6 +36,7 @@ var (
 	metricsPath       string = "metrics"
 	defaultConfigFile        = "config/deployment-validation-operator-config.yaml"
 )
+
 var log = logf.Log.WithName("DeploymentValidation")
 
 func printVersion() {
@@ -155,7 +154,7 @@ func main() {
 	}
 
 	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %s", getFullMetricsEndpoint()))
-	initMetricsEndpoint()
+	dvo_prom.InitMetricsEndpoint(metricsPath, metricsPort)
 
 	log.Info("Starting")
 
@@ -164,14 +163,6 @@ func main() {
 		log.Error(err, "Manager exited non-zero")
 		os.Exit(1)
 	}
-}
-
-func initMetricsEndpoint() {
-	http.Handle(fmt.Sprintf("/%s", metricsPath), promhttp.Handler())
-	go func() {
-		err := http.ListenAndServe(fmt.Sprintf(":%d", metricsPort), nil)
-		log.Error(err, "Prometheus metrics server stopped unexpectedly")
-	}()
 }
 
 func getFullMetricsEndpoint() string {

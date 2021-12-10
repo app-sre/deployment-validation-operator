@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -19,7 +20,6 @@ import (
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"golang.stackrox.io/kube-linter/pkg/configresolver"
 
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -89,7 +89,7 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 func initializeEngine(customCheck ...config.Check) error {
 
 	// Reset global prometheus registry to avoid testing conflicts
-	metrics.Registry = prometheus.NewRegistry()
+	dvo_prom.PrometheusRegistry = prometheus.NewRegistry()
 
 	// Check if custom check has been set
 	if len(customCheck) > 0 {

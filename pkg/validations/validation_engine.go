@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	// Import checks from DVO
+	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all"
 
 	"golang.stackrox.io/kube-linter/pkg/builtinchecks"
@@ -108,7 +109,7 @@ func (ve *validationEngine) InitRegistry() error {
 				"check_remediation": check.Spec.Remediation,
 			},
 		)
-		prometheus.MustRegister(metric)
+		dvo_prom.PrometheusRegistry.MustRegister(metric)
 		validationMetrics[checkName] = metric
 	}
 
