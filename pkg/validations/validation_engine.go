@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
+
 	// Import checks from DVO
 	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all"
 
@@ -18,8 +20,6 @@ import (
 
 	// Import and initialize all check templates from kube-linter
 	_ "golang.stackrox.io/kube-linter/pkg/templates/all"
-
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -110,7 +110,7 @@ func (ve *validationEngine) InitRegistry() error {
 				"check_remediation": check.Spec.Remediation,
 			},
 		)
-		metrics.Registry.MustRegister(metric)
+		dvo_prom.PrometheusRegistry.MustRegister(metric)
 		validationMetrics[checkName] = metric
 	}
 

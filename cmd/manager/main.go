@@ -14,6 +14,7 @@ import (
 	dv_config "github.com/app-sre/deployment-validation-operator/config"
 	"github.com/app-sre/deployment-validation-operator/pkg/apis"
 	"github.com/app-sre/deployment-validation-operator/pkg/controller"
+	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
 
@@ -31,10 +32,11 @@ import (
 
 // Change below variables to serve metrics on different host or port.
 var (
-	metricsHost             = "0.0.0.0"
-	metricsPort       int32 = 8383
-	defaultConfigFile       = "config/deployment-validation-operator-config.yaml"
+	metricsPort       int32  = 8383
+	metricsPath       string = "metrics"
+	defaultConfigFile        = "config/deployment-validation-operator-config.yaml"
 )
+
 var log = logf.Log.WithName("DeploymentValidation")
 
 func printVersion() {
@@ -112,7 +114,7 @@ func main() {
 	// Set default manager options
 	options := manager.Options{
 		Namespace:          namespace,
-		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		MetricsBindAddress: "0", // disable controller-runtime managed prometheus endpoint
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
@@ -145,6 +147,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %s", getFullMetricsEndpoint()))
+	dvo_prom.InitMetricsEndpoint(metricsPath, metricsPort)
+
 	log.Info("Initializing Validation Engine")
 	if err := validations.InitializeValidationEngine(configFile); err != nil {
 		log.Error(err, "Failed to initialize validation engine")
@@ -158,6 +163,10 @@ func main() {
 		log.Error(err, "Manager exited non-zero")
 		os.Exit(1)
 	}
+}
+
+func getFullMetricsEndpoint() string {
+	return fmt.Sprintf("http://0.0.0.0:%d/%s", metricsPort, metricsPath)
 }
 
 func getWatchNamespace() (string, error) {
