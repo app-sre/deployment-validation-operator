@@ -19,8 +19,6 @@ import (
 	// Import and initialize all check templates from kube-linter
 	_ "golang.stackrox.io/kube-linter/pkg/templates/all"
 
-	"sigs.k8s.io/controller-runtime/pkg/metrics"
-
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/spf13/viper"
@@ -110,7 +108,7 @@ func (ve *validationEngine) InitRegistry() error {
 				"check_remediation": check.Spec.Remediation,
 			},
 		)
-		metrics.Registry.MustRegister(metric)
+		prometheus.MustRegister(metric)
 		validationMetrics[checkName] = metric
 	}
 
