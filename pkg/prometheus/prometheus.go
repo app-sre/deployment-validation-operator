@@ -6,19 +6,22 @@ import (
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	// Import Prometheus resources
-	. "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-var PrometheusRegistry *Registry
+var PrometheusRegistry *prometheus.Registry
 
 var log = logf.Log.WithName("utils")
 
 func InitMetricsEndpoint(metricsPath string, metricsPort int32) {
-	PrometheusRegistry = NewRegistry()
-	PrometheusRegistry.MustRegister(NewProcessCollector(ProcessCollectorOpts{}))
-	PrometheusRegistry.MustRegister(NewGoCollector())
+	PrometheusRegistry = prometheus.NewRegistry()
+	processCollector := prometheus.NewProcessCollector(
+		prometheus.ProcessCollectorOpts{},
+	)
+	goCollector := prometheus.NewGoCollector()
+	PrometheusRegistry.MustRegister(processCollector)
+	PrometheusRegistry.MustRegister(goCollector)
 
 	handler := promhttp.HandlerFor(PrometheusRegistry, promhttp.HandlerOpts{})
 	http.Handle(fmt.Sprintf("/%s", metricsPath), handler)
