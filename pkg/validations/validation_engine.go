@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
+
 	// Import checks from DVO
 	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all"
 
