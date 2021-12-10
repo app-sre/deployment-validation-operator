@@ -4,42 +4,32 @@ kind: Template
 metadata:
   name: deployment-validation-operator-observability-template_${NAMESPACE}
 objects:
-- apiVersion: v1
-  kind: Template
+- apiVersion: operators.coreos.com/v1
+  kind: OperatorGroup
   metadata:
-    name: deployment-validation-operator-operator-group
+    name: prometheus
     namespace: ${NAMESPACE}
-  objects:
-  - apiVersion: operators.coreos.com/v1
-    kind: OperatorGroup
-    metadata:
-      name: prometheus
-    spec:
-      targetNamespaces:
+  spec:
+    targetNamespaces:
+    - ${NAMESPACE}
+- apiVersion: monitoring.coreos.com/v1
+  kind: ServiceMonitor
+  metadata:
+    labels:
+      prometheus: deployment-validation-operator
+    name: deployment-validation-operator
+    namespace: ${NAMESPACE}
+  spec:
+    endpoints:
+    - interval: 5s
+      port: http-metrics
+      scheme: http
+    namespaceSelector:
+      matchNames:
       - ${NAMESPACE}
-- apiVersion: v1
-  kind: Template
-  metadata:
-    name: deployment-validation-operator-service-monitor-${NAMESPACE}
-    namespace: ${NAMESPACE}
-  objects:
-  - apiVersion: monitoring.coreos.com/v1
-    kind: ServiceMonitor
-    metadata:
-      labels:
-        prometheus: deployment-validation-operator
-      name: deployment-validation-operator
-    spec:
-      endpoints:
-      - interval: 5s
-        port: http-metrics
-        scheme: http
-      namespaceSelector:
-        matchNames:
-        - ${NAMESPACE}
-      selector:
-        matchLabels:
-          name: deployment-validation-operator
+    selector:
+      matchLabels:
+        name: deployment-validation-operator
 - apiVersion: v1
   kind: ConfigMap
   metadata:
@@ -335,7 +325,7 @@ objects:
               {
                   "name": "Prometheus",
                   "type": "prometheus",
-                  "url": "http://prometheus-operated.deployment-validation-operator.svc.cluster.local:9090",
+                  "url": "http://prometheus-operated.${NAMESPACE}.svc.cluster.local:9090",
                   "access": "proxy"
               }
           ]

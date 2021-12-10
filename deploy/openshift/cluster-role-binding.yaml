@@ -6,6 +6,9 @@ subjects:
 - kind: ServiceAccount
   name: deployment-validation-operator
   namespace: deployment-validation-operator
+# - kind: ServiceAccount
+#   name: deployment-validation-operator
+#   namespace: <custom-namespace-here>
 roleRef:
   kind: ClusterRole
   name: deployment-validation-operator
