@@ -13,6 +13,9 @@ objects:
     image: ${IMAGE}:${IMAGE_TAG}
     displayName: Deployment Validation Operator
     publisher: ${CATALOG_PUBLISHER}
+    updateStrategy:
+      registryPoll:
+        interval: 15m
 - apiVersion: operators.coreos.com/v1alpha1
   kind: Subscription
   metadata:
