@@ -43,10 +43,16 @@ done
 There is a manifest to deploy DVO via OLM artifacts.  This assumes that OLM is already running in the cluster.  To deploy via OLM:
 
 * Generate the deployment YAML from the openshift template
-* Deploy the generated YAML
+* Deploy one of the two following YAML templates (not both!):
 
 ```
-oc process --local NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' -f deploy/openshift/deployment-validation-operator-olm.yaml | oc create -f -
+# deploy this if you DO NOT want OLM to automatically upgrade DVO
+oc process --local NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' -f deploy/openshift/deployment-validation-operator-olm-without-polling.yaml | oc create -f -
+```
+
+```
+# otherwise, deploy this if you DO want OLM to automatically upgrade DVO
+oc process --local NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' -f deploy/openshift/deployment-validation-operator-olm-with-polling.yaml | oc create -f -
 ```
 
 If DVO is deployed to a namespace other than the one where OLM is deployed, which is usually the case, then a network policy may be required to allow OLM to see the artifacts in the DVO namespace.  For example, if OLM is deployed in the namespace `operator-lifecycle-manager` then the network policy would be deployed like this:

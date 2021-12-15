@@ -15,7 +15,7 @@ objects:
     publisher: ${CATALOG_PUBLISHER}
     updateStrategy:
       registryPoll:
-        interval: 15m
+        interval: ${REGISTRY_POLLING_INTERVAL}
 - apiVersion: operators.coreos.com/v1alpha1
   kind: Subscription
   metadata:
@@ -74,3 +74,7 @@ parameters:
   value: "OperatorHub.io"
   displayName: Publisher of the catalog
   description: The name of the publisher of the catalog
+- name: REGISTRY_POLLING_INTERVAL
+  value: "15m"
+  displayName: Time interval between checks by OLM for new versions of DVO
+  description: Time interval between checks by OLM for new versions of DVO
