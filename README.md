@@ -43,10 +43,26 @@ done
 There is a manifest to deploy DVO via OLM artifacts.  This assumes that OLM is already running in the cluster.  To deploy via OLM:
 
 * Generate the deployment YAML from the openshift template
-* Deploy the generated YAML
+* Deploy one of the two following YAML templates (not both!):
 
 ```
+# deploy this if you DO NOT want OLM to automatically upgrade DVO
+
 oc process --local NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' -f deploy/openshift/deployment-validation-operator-olm.yaml | oc create -f -
+```
+
+```
+# otherwise, deploy this if you DO want OLM to automatically upgrade DVO
+# set REGISTRY_POLLING_INTERVAL to be shorter to have OLM check for new DVO versions more frequently if desired; e.g. '45m'
+# the shorter the interval, the more resources OLM may consume
+# read more about OLM catalog polling: https://github.com/operator-framework/
+operator-lifecycle-manager/blob/master/doc/design/catalog-polling.md
+
+oc process --local \
+NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' \
+REGISTRY_POLLING_INTERVAL='24h' \
+-f deploy/openshift/deployment-validation-operator-olm-with-polling.yaml \
+| oc create -f -
 ```
 
 If DVO is deployed to a namespace other than the one where OLM is deployed, which is usually the case, then a network policy may be required to allow OLM to see the artifacts in the DVO namespace.  For example, if OLM is deployed in the namespace `operator-lifecycle-manager` then the network policy would be deployed like this:
@@ -86,4 +102,3 @@ We use [openshift boilerplate](https://github.com/openshift/boilerplate) to mana
 ## Roadmap
 
 - e2e tests
-
