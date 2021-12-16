@@ -75,6 +75,6 @@ parameters:
   displayName: Publisher of the catalog
   description: The name of the publisher of the catalog
 - name: REGISTRY_POLLING_INTERVAL
-  value: "15m"
+  value: "24h"
   displayName: Time interval between checks by OLM for new versions of DVO
   description: Time interval between checks by OLM for new versions of DVO
