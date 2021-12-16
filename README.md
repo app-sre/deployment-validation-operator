@@ -52,7 +52,9 @@ oc process --local NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' -f deploy/open
 
 ```
 # otherwise, deploy this if you DO want OLM to automatically upgrade DVO
-# (set REGISTRY_POLLING_INTERVAL to be shorter to have OLM check for new DVO versions more frequently if desired; e.g. '45m')
+# set REGISTRY_POLLING_INTERVAL to be shorter to have OLM check for new DVO versions more frequently if desired; e.g. '45m'
+# the shorter the interval, the more resources OLM may consume
+# read more about OLM catalog polling: https://github.com/operator-framework/operator-lifecycle-manager/blob/master/doc/design/catalog-polling.md
 oc process --local \
 NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' \
 REGISTRY_POLLING_INTERVAL='24h' \
