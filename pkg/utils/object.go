@@ -4,8 +4,15 @@ import (
 	"golang.stackrox.io/kube-linter/pkg/objectkinds"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/rest"
+
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var log = logf.Log.WithName("DeploymentValidation")
 
 var deploymentLikeMatcher, _ = objectkinds.ConstructMatcher(objectkinds.DeploymentLike)
 
@@ -33,7 +40,36 @@ func IsOwner(obj client.Object) bool {
 }
 
 //IsOpenshift identify environment and returns true if its openshift else false
-func IsOpenshift() bool {
+func IsOpenshift(oskinds map[string]bool) (bool, error) {
+	log.Info("Checking Environment in IsOpenshift.")
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return false, err
+	}
+	discoveryclient, err := discovery.NewDiscoveryClientForConfig(config)
+	if err != nil {
+		return false, err
+	}
 
-	return false
+	errs := []error{}
+	lists, err := discoveryclient.ServerPreferredResources()
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	for _, list := range lists {
+		if len(list.APIResources) == 0 {
+			continue
+		}
+		for _, resource := range list.APIResources {
+			if len(resource.Verbs) == 0 {
+				continue
+			}
+			if oskinds[resource.Kind] {
+				return true, nil
+			}
+		}
+	}
+
+	return false, err
 }

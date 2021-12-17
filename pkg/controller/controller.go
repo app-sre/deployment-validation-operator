@@ -90,7 +90,7 @@ func generateObjects() []runtime.Object {
 
 	objs := []runtime.Object{}
 
-	allowOpenshiftKinds := utils.IsOpenshift()
+	allowOpenshiftKinds, _ := utils.IsOpenshift(osKinds)
 
 	for gk := range gvks {
 		if osKinds[gk.Kind] && !allowOpenshiftKinds {
