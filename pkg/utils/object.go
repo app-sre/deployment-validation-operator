@@ -31,3 +31,9 @@ func IsOwner(obj client.Object) bool {
 	}
 	return true
 }
+
+//IsOpenshift identify environment and returns true if its openshift else false
+func IsOpenshift() bool {
+
+	return false
+}

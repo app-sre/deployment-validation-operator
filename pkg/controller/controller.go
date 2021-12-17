@@ -4,14 +4,23 @@ import (
 	osappsscheme "github.com/openshift/client-go/apps/clientset/versioned/scheme"
 
 	"golang.stackrox.io/kube-linter/pkg/objectkinds"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"k8s.io/client-go/kubernetes/scheme"
 
+	"github.com/app-sre/deployment-validation-operator/pkg/utils"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
+
+// Openshift Kinds
+var osKinds = map[string]bool{
+	"DeploymentConfig": true,
+	"Route":            true,
+}
+
+var log = logf.Log.WithName("DeploymentValidation")
 
 // AddControllersToManager adds all Controllers to the Manager
 func AddControllersToManager(m manager.Manager) error {
@@ -29,6 +38,7 @@ func generateObjects() []runtime.Object {
 	// Construct the gvks for objects to watch.  Remove the Any
 	// kind or else all objects kinds will be watched.  That would
 	// be bad.
+	log.Info("Generating Objects.")
 	kubeLinterKinds := objectkinds.AllObjectKinds()
 	for i := range kubeLinterKinds {
 		if kubeLinterKinds[i] == objectkinds.Any {
@@ -80,7 +90,12 @@ func generateObjects() []runtime.Object {
 
 	objs := []runtime.Object{}
 
+	allowOpenshiftKinds := utils.IsOpenshift()
+
 	for gk := range gvks {
+		if osKinds[gk.Kind] && !allowOpenshiftKinds {
+			continue
+		}
 		obj, err := kubeScheme.New(gvks[gk])
 		if err == nil {
 			objs = append(objs, obj)
