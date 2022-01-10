@@ -1,6 +1,9 @@
 package controller
 
 import (
+	"fmt"
+
+	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	osappsscheme "github.com/openshift/client-go/apps/clientset/versioned/scheme"
 
 	"golang.stackrox.io/kube-linter/pkg/objectkinds"
@@ -9,16 +12,12 @@ import (
 
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 // Openshift Kinds
-var osKinds = map[string]bool{
-	"DeploymentConfig": true,
-	"Route":            true,
-}
+var osKinds = map[string]bool{}
 
 var log = logf.Log.WithName("DeploymentValidation")
 
@@ -81,6 +80,7 @@ func generateObjects() []runtime.Object {
 
 	osAppsScheme := osappsscheme.Scheme
 	for gvk := range osAppsScheme.AllKnownTypes() {
+		osKinds[gvk.Kind] = true
 		if kubeLinterMatcher.Matches(gvk) {
 			if _, ok := gvks[gvk.GroupKind()]; !ok {
 				gvks[gvk.GroupKind()] = gvk
@@ -94,6 +94,7 @@ func generateObjects() []runtime.Object {
 
 	for gk := range gvks {
 		if osKinds[gk.Kind] && !allowOpenshiftKinds {
+			log.Info(fmt.Sprintf("Non-Openshift Environment. Skipping registering kind: %s", gk.Kind))
 			continue
 		}
 		obj, err := kubeScheme.New(gvks[gk])

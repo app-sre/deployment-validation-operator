@@ -40,8 +40,8 @@ func IsOwner(obj client.Object) bool {
 }
 
 //IsOpenshift identify environment and returns true if its openshift else false
-func IsOpenshift(oskinds map[string]bool) (bool, error) {
-	log.Info("Checking Environment in IsOpenshift.")
+func IsOpenshift(osKind map[string]bool) (bool, error) {
+	log.Info("Checking User Environment in IsOpenshift.")
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return false, err
@@ -61,11 +61,12 @@ func IsOpenshift(oskinds map[string]bool) (bool, error) {
 		if len(list.APIResources) == 0 {
 			continue
 		}
+		// Check for acceptable kinds in current Env
 		for _, resource := range list.APIResources {
 			if len(resource.Verbs) == 0 {
 				continue
 			}
-			if oskinds[resource.Kind] {
+			if osKind[resource.Kind] {
 				return true, nil
 			}
 		}
