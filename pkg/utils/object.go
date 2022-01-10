@@ -51,10 +51,9 @@ func IsOpenshift(osKind map[string]bool) (bool, error) {
 		return false, err
 	}
 
-	errs := []error{}
 	lists, err := discoveryclient.ServerPreferredResources()
 	if err != nil {
-		errs = append(errs, err)
+		return false, err
 	}
 
 	for _, list := range lists {
