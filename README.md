@@ -14,6 +14,8 @@ This operator doesn't define any CRDs at the moment. It has been bootstrapped wi
 
 The manifests to deploy DVO take a permissive approach to permissions.  This is done to make it easier to support monitoring new object kinds without having to change rbac rules.  This means that elevated permissions will be required in order to deploy DVO through standard manifests.  There is a manifest to deploy DVO though OLM from opereatorhub which does alleviate this need to have elevated permissions.
 
+* DVO deployment should only deploy 1 pod as currently metrics are not replicated across a standard 3 causing installation issues (will be fixed in a later version)
+
 ### Manual installation (without OLM)
 
 There are manifests to install the operator under the [`deploy/openshift`](deploy/openshift) directory. A typical installation would go as follows:

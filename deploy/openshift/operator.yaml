@@ -4,8 +4,10 @@ metadata:
   labels:
     app: deployment-validation-operator
   name: deployment-validation-operator
+  annotations:
+    ignore-check.kube-linter.io/minimum-three-replicas: "This deployment uses 1 pod as currently replicating does not replicate metric data causing installation issues"
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: deployment-validation-operator
