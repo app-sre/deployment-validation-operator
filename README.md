@@ -101,6 +101,62 @@ make test
 
 We use [openshift boilerplate](https://github.com/openshift/boilerplate) to manage our make targets. See this [doc](https://github.com/openshift/boilerplate/blob/master/boilerplate/openshift/golang-osd-operator/README.md) for further information.
 
+
+## Releases
+
+### New Release
+
+**Before Proceeding:** 
+* Assure desired changes for new release have been submitted and merged successfully
+* Check with team to verify if this is a MAJOR, MINOR, or a PATCH release
+
+**Release Process:**
+1. Create a new release 
+    
+    - Create new release on GitHub page from the right column
+    - Follow the model of Major/Minor/Patch (x/y/z, 0.1.2) 
+    - Provide a description of the release (Auto-generate or Manually)
+
+2. Publish the new release 
+    
+    - This will trigger a jenkins job that will build a new image of DVO with the new release tag
+    - Verify Jenkins Job was successful - [DVO Jenkins](https://ci.int.devshift.net/view/deployment-validation-operator/job/app-sre-deployment-validation-operator-gh-build-tag/)
+
+3. Modify OLM
+
+    - OperatorHub Repository for DVO - [DVO OLM](https://github.com/k8s-operatorhub/community-operators/tree/main/operators/deployment-validation-operator)
+    - Edit deployment-validation-operator.package.yaml to reflect the new release
+    
+    ```yaml
+    # REALEASE VERSION == 0.2.0, 0.2.1, etc.
+    
+    * channels.currentCSV: deployment-validation-operator.v<RELEASE VERSION>
+    ```
+    
+    - Clone a new directory from a previous version (ex. 0.2.0, 0.2.1) and change the name of the directory to reflect the new release
+    - Modify the clusterserviceversion file's name within the directory to reflect the new release version
+    
+    ```yaml
+    # Edit the clusterserviceversion file within the directory and modify the following lines to reflect the new release
+    # REALEASE VERSION == 0.2.0, 0.2.1, etc.
+
+    * metadata.annotations.containerImage: quay.io/deployment-validation-operator/dv-operator:<RELEASE VERSION>
+    * metadata.name: deployment-validation-operator.v<RELEASE VERSION>
+    * spec.install.spec.deployments.spec.template.spec.containers.image: quay.io/deployment-validation-operator/dv-operator:<RELEASE VERSION>
+    * spec.links.url: https://quay.io/deployment-validation-operator/dv-operator:<RELEASE VERSION>
+    * spec.version: <RELEASE VERSION>
+
+    # Modify the following line to reflect the previous release version for upgrade purposes 
+    # (ex. If going from 0.2.1 -> 0.2.2, then the previous release was 0.2.1)
+
+    * spec.replaces: deployment-validation-operator.v<PREVIOUS RELEASE VERSION>
+    ```
+
+    - Submit a PR
+
+4. Verify new release changes by deploying and testing DVO
+
+
 ## Roadmap
 
 - e2e tests
