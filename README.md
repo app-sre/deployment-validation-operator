@@ -153,7 +153,7 @@ We use [openshift boilerplate](https://github.com/openshift/boilerplate) to mana
     ```
 
     - If changes need to be made to add/subtract reviewers, this can be changed within `ci.yaml`
-    * This file allows for authorized users to review the PRs pushed to the DVO OLM project
+        * This file allows for authorized users to review the PRs pushed to the DVO OLM project
 
     - If need-be for the nature of what the changes in the new DVO release, update the rest of these files accordingly
 
