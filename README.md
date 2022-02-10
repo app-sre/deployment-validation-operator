@@ -101,6 +101,11 @@ make test
 
 We use [openshift boilerplate](https://github.com/openshift/boilerplate) to manage our make targets. See this [doc](https://github.com/openshift/boilerplate/blob/master/boilerplate/openshift/golang-osd-operator/README.md) for further information.
 
+
+## Releases
+
+To create a new DVO release follow this [New DVO Release](./docs/new-releases.md)
+
 ## Roadmap
 
 - e2e tests
