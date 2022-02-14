@@ -2,11 +2,11 @@
 
 ## Description
 
-The Deployment Validation Operator (DVO) checks deployments and other resources against a curated collection of best practices.
+The Deployment Validation Operator (DVO) checks deployments and other resources against a curated collection of best practices. 
 
 These best practices focus mainly on ensuring that the applications are fault-tolerant.
 
-DVO will only monitor Kubernetes resources and will not modify them in any way. Instead, it will report failed validations via Prometheus, which will allow users of this operator to create alerts based on its results. All the metrics are gauges that will report `1` if the best-practice has failed. The metric will always have three parameters: `name`, `namespace` and `kind`.
+DVO will only monitor Kubernetes resources and will not modify them in any way. As an operator it is a continuously running version of the static analysis tool Kube-linter [https://github.com/stackrox/kube-linter]. It will report failed validations via Prometheus, which will allow users of this operator to create alerts based on its results. All the metrics are gauges that will report `1` if the best-practice has failed. The metric will always have three parameters: `name`, `namespace` and `kind`. 
 
 This operator doesn't define any CRDs at the moment. It has been bootstrapped with `operator-sdk` making it possible to add a CRD in the future if required.
 
