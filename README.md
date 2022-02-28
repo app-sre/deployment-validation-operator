@@ -10,6 +10,10 @@ DVO will only monitor Kubernetes resources and will not modify them in any way. 
 
 This operator doesn't define any CRDs at the moment. It has been bootstrapped with `operator-sdk` making it possible to add a CRD in the future if required.
 
+## Architecture Diagrams
+
+[Architecure Diagrams](./docs/architecture.md)
+
 ## Deployment
 
 The manifests to deploy DVO take a permissive approach to permissions.  This is done to make it easier to support monitoring new object kinds without having to change rbac rules.  This means that elevated permissions will be required in order to deploy DVO through standard manifests.  There is a manifest to deploy DVO though OLM from opereatorhub which does alleviate this need to have elevated permissions.
