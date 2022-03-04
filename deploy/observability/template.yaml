@@ -455,10 +455,10 @@ objects:
 - apiVersion: monitoring.coreos.com/v1
   kind: Prometheus
   metadata:
-    name: deployment-validation-operator
+    name: contoller-subscription
     namespace: ${NAMESPACE}
   spec:
-    replicas: 2
+    replicas: 1
     serviceAccountName: prometheus-k8s
     serviceMonitorSelector:
       matchLabels:
