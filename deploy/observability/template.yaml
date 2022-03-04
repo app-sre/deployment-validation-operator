@@ -455,7 +455,7 @@ objects:
 - apiVersion: monitoring.coreos.com/v1
   kind: Prometheus
   metadata:
-    name: contoller-subscription
+    name: deployment-validation-operator
     namespace: ${NAMESPACE}
   spec:
     replicas: 1
