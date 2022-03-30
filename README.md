@@ -97,10 +97,9 @@ oc process --local NAMESPACE='some-namespace' -f deploy/openshift/network-polici
 
 ## Disabling Checks
 
-In the current state of DVO, all validation checks are performed with [kube-linter](https://github.com/stackrox/kube-linter). 
+In the current state of DVO, all validation checks are performed with [kube-linter](https://github.com/stackrox/kube-linter).
 
 kube-linter supports functionality for [disabling a particular check for a particular kubernetes object](https://www.civo.com/learn/yaml-best-practices-using-kubelinter#ignoring-a-check). This functionality is also supported through DVO.
-
 
 ## Tests
 
