@@ -47,6 +47,18 @@ spec:
           limits:
             memory: "4Gi"
             cpu: "1"
+        livenessProbe:
+          tcpSocket:
+            port: 8383
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+        readinessProbe:
+          tcpSocket:
+            port: 8383
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
         env:
         - name: WATCH_NAMESPACE
           value: ""
