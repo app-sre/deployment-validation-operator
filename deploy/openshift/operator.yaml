@@ -56,7 +56,7 @@ spec:
         readinessProbe:
           tcpSocket:
             port: 8383
-          initialDelaySeconds: 30
+          initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 3
         env:
