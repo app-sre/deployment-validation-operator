@@ -97,7 +97,7 @@ oc process --local NAMESPACE='some-namespace' -f deploy/openshift/network-polici
 
 ## Enabling Checks
 
-In the validation engine file is a function called getDisabledChecks(). Comment out the check you would like to have availalbe to the user base of DVO and push the change.
+In the validation engine file is a function called getDisabledChecks(). Comment out the check you would like to have available to the user base of DVO and push the change.
 
 ```
 Location of file
