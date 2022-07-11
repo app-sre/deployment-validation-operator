@@ -112,7 +112,7 @@ In the current state of DVO, all validation checks are performed with [kube-lint
 
 kube-linter supports functionality for [disabling a particular check for a particular kubernetes object](https://www.civo.com/learn/yaml-best-practices-using-kubelinter#ignoring-a-check). This functionality is also supported through DVO.
 
-In the validation engine file is a function called getDisabledChecks(). Comment the check you would like to have availalbe to the user base of DVO and push the change.
+In the validation engine file is a function called getDisabledChecks(). Comment the check you would like to have available to the user base of DVO and push the change.
 
 ```
 Location of file
