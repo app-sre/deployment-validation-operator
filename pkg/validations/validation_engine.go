@@ -209,6 +209,9 @@ func disableChecks(c *config.Config) {
 
 // getDisabledChecks returns an array of kube-linter check names that are disabled for DVO
 // These checks are disabled as they do not have supporting Openshift documentation
+// Disabled Checks are:
+// "minimum-three-replicas", "no-anti-affinity", "no-node-affinity",
+// "unset-cpu-requirements", "unset-memory-requirements"
 func getDisabledChecks() []string {
 	return []string{
 		"access-to-create-pods",
@@ -229,12 +232,9 @@ func getDisabledChecks() []string {
 		"hpa-minimum-three-replicas",
 		"invalid-target-ports",
 		"latest-tag",
-		// "minimum-three-replicas",
 		"mismatching-selector",
-		// "no-anti-affinity",
 		"no-extensions-v1beta",
 		"no-liveness-probe",
-		// "no-node-affinity",
 		"no-read-only-root-fs",
 		"no-readiness-probe",
 		"no-rolling-update-strategy",
@@ -249,8 +249,6 @@ func getDisabledChecks() []string {
 		"ssh-port",
 		"unsafe-proc-mount",
 		"unsafe-sysctls",
-		// "unset-cpu-requirements",
-		// "unset-memory-requirements",
 		"use-namespace",
 		"wildcard-in-rules",
 		"writable-host-mount",
