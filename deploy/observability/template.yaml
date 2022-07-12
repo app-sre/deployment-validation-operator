@@ -458,7 +458,7 @@ objects:
     name: deployment-validation-operator
     namespace: ${NAMESPACE}
   spec:
-    replicas: 1
+    replicas: 2
     serviceAccountName: prometheus-k8s
     serviceMonitorSelector:
       matchLabels:
