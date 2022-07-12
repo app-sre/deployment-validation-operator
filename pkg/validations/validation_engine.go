@@ -74,6 +74,7 @@ func (ve *validationEngine) LoadConfig(path string) error {
 
 func (ve *validationEngine) InitRegistry() error {
 	disableIncompatibleChecks(&ve.config)
+	disableChecks(&ve.config)
 
 	registry := checkregistry.New()
 	if err := builtinchecks.LoadInto(registry); err != nil {
