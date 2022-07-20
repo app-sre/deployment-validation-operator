@@ -110,7 +110,7 @@ Documentation of currently allowed checks can be found [here](./docs/checks.md)
 
 In the current state of DVO, all validation checks are performed with [kube-linter](https://github.com/stackrox/kube-linter).
 
-kube-linter supports functionality for [disabling a particular check for a particular kubernetes object](https://www.civo.com/learn/yaml-best-practices-using-kubelinter#ignoring-a-check). This functionality is also supported through DVO.
+kube-linter supports functionality for [ignoring violations for a particular kubernetes object](https://github.com/stackrox/kube-linter/blob/main/docs/configuring-kubelinter.md#ignoring-violations-for-specific-cases). This functionality is also supported through DVO.
 
 In the validation engine file is a function called getDisabledChecks(). Comment the check you would like to have disabled to the user base of DVO and push the change.
 
