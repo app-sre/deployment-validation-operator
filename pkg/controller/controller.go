@@ -2,6 +2,8 @@ package controller
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	osappsscheme "github.com/openshift/client-go/apps/clientset/versioned/scheme"
@@ -110,4 +112,15 @@ func generateObjects() []runtime.Object {
 	}
 
 	return objs
+}
+
+// resyncPeriod returns a function which generates a duration each time it is
+// invoked; this is so that multiple controllers don't get into lock-step and all
+// hammer the apiserver with list requests simultaneously.
+func resyncPeriod(resync time.Duration) func() time.Duration {
+	return func() time.Duration {
+		// the factor will fall into [0.9, 1.1)
+		factor := rand.Float64()/5.0 + 0.9 //nolint:gosec
+		return time.Duration(float64(resync.Nanoseconds()) * factor)
+	}
 }
