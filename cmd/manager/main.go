@@ -10,6 +10,7 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 
 	dv_config "github.com/app-sre/deployment-validation-operator/config"
 	"github.com/app-sre/deployment-validation-operator/pkg/apis"
@@ -21,6 +22,7 @@ import (
 	"github.com/operator-framework/operator-lib/leader"
 
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -115,6 +117,8 @@ func main() {
 	options := manager.Options{
 		Namespace:          namespace,
 		MetricsBindAddress: "0", // disable controller-runtime managed prometheus endpoint
+		// disable caching of everything
+		ClientBuilder: &newUncachedClientBuilder{},
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
@@ -180,4 +184,19 @@ func getWatchNamespace() (string, error) {
 		return "", fmt.Errorf("%s must be set", watchNamespaceEnvVar)
 	}
 	return ns, nil
+}
+
+type newUncachedClientBuilder struct {
+	uncached []client.Object
+}
+
+func (n *newUncachedClientBuilder) WithUncached(objs ...client.Object) manager.ClientBuilder {
+	n.uncached = append(n.uncached, objs...)
+	return n
+}
+
+func (n *newUncachedClientBuilder) Build(
+	cache cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
+	// Directly use the API client, without wrapping it in a delegatingClient for cache access.
+	return client.New(config, options)
 }
