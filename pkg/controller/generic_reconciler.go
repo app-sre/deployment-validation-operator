@@ -10,13 +10,14 @@ import (
 
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/workqueue"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -61,7 +62,40 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 
 	// Watch for changes to primary resource
 	watchObj := gr.reconciledObj.(client.Object)
-	err = c.Watch(&source.Kind{Type: watchObj}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: watchObj}, &handler.Funcs{
+		CreateFunc: func(ce event.CreateEvent, rli workqueue.RateLimitingInterface) {
+			validations.RunValidations(reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      ce.Object.GetName(),
+					Namespace: ce.Object.GetNamespace(),
+				},
+			}, ce.Object, gr.reconciledKind, false)
+		},
+		UpdateFunc: func(ue event.UpdateEvent, rli workqueue.RateLimitingInterface) {
+			validations.RunValidations(reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      ue.ObjectNew.GetName(),
+					Namespace: ue.ObjectNew.GetNamespace(),
+				},
+			}, ue.ObjectNew, gr.reconciledKind, false)
+		},
+		DeleteFunc: func(de event.DeleteEvent, rli workqueue.RateLimitingInterface) {
+			validations.RunValidations(reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      de.Object.GetName(),
+					Namespace: de.Object.GetNamespace(),
+				},
+			}, de.Object, gr.reconciledKind, true)
+		},
+		GenericFunc: func(ge event.GenericEvent, rli workqueue.RateLimitingInterface) {
+			validations.RunValidations(reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      ge.Object.GetName(),
+					Namespace: ge.Object.GetNamespace(),
+				},
+			}, ge.Object, gr.reconciledKind, false)
+		},
+	})
 	if err != nil {
 		return err
 	}
@@ -71,23 +105,23 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 
 // Reconcile watches an object kind and reports validation errors
 func (gr *GenericReconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
-	var log = logf.Log.WithName(fmt.Sprintf("%sController", gr.reconciledKind))
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.V(2).Info("Reconcile", "Kind", gr.reconciledKind)
+	// var log = logf.Log.WithName(fmt.Sprintf("%sController", gr.reconciledKind))
+	// reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	// reqLogger.V(2).Info("Reconcile", "Kind", gr.reconciledKind)
 
-	if namespaceIgnore != nil && namespaceIgnore.Match([]byte(request.Namespace)) {
-		reqLogger.Info("Ignoring object as it matches namespace ignore pattern")
-		return reconcile.Result{}, nil
-	}
+	// if namespaceIgnore != nil && namespaceIgnore.Match([]byte(request.Namespace)) {
+	// 	reqLogger.Info("Ignoring object as it matches namespace ignore pattern")
+	// 	return reconcile.Result{}, nil
+	// }
 
-	instance := gr.reconciledObj.DeepCopyObject().(client.Object)
-	err := gr.client.Get(ctx, request.NamespacedName, instance)
-	if err != nil && !errors.IsNotFound(err) {
-		return reconcile.Result{Requeue: true}, err
-	}
+	// instance := gr.reconciledObj.DeepCopyObject().(client.Object)
+	// err := gr.client.Get(ctx, request.NamespacedName, instance)
+	// if err != nil && !errors.IsNotFound(err) {
+	// 	return reconcile.Result{Requeue: true}, err
+	// }
 
-	deleted := err != nil && errors.IsNotFound(err)
-	validations.RunValidations(request, instance, gr.reconciledKind, deleted)
+	// deleted := err != nil && errors.IsNotFound(err)
+	// validations.RunValidations(request, instance, gr.reconciledKind, deleted)
 
 	return reconcile.Result{}, nil
 }
