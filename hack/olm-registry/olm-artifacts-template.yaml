@@ -71,6 +71,23 @@ objects:
             namespace: openshift-deployment-validation-operator
           spec:
             channel: ${CHANNEL}
+            config:
+              env:
+              - name: "NAMESPACE_IGNORE_PATTERN"
+                value: "openshift.*|kube-.*|default|dedicated-admin"
             name: deployment-validation-operator
             source: deployment-validation-operator-catalog
             sourceNamespace: openshift-deployment-validation-operator
+        - apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+            metadata:
+              name: allow-from-openshift-insights
+          spec:
+            podSelector: {}
+            ingress:
+              - from:
+                - namespaceSelector:
+                    matchLabels:
+                      name: openshift-insights
+          policyTypes:
+            - Ingress
