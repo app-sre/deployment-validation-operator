@@ -82,6 +82,7 @@ objects:
           kind: NetworkPolicy
             metadata:
               name: allow-from-openshift-insights
+              namespace: openshift-deployment-validation-operator
           spec:
             podSelector: {}
             ingress:
