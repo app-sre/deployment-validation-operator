@@ -39,7 +39,7 @@ func IsOwner(obj client.Object) bool {
 	return true
 }
 
-//IsOpenshift identify environment and returns true if its openshift else false
+// IsOpenshift identify environment and returns true if its openshift else false
 func IsOpenshift(osKind map[string]bool) (bool, error) {
 	log.Info("Checking User Environment in IsOpenshift.")
 	config, err := rest.InClusterConfig()

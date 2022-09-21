@@ -10,8 +10,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type namespace struct {
+	uid, name string
+}
+
 type watchNamespacesCache struct {
-	namespaces    *[]string
+	namespaces    *[]namespace
 	ignorePattern *regexp.Regexp
 }
 
@@ -26,15 +30,24 @@ func newWatchNamespacesCache() *watchNamespacesCache {
 	}
 }
 
-func (nsc *watchNamespacesCache) setCache(namespaces *[]string) {
+func (nsc *watchNamespacesCache) setCache(namespaces *[]namespace) {
 	nsc.namespaces = namespaces
+}
+
+func (nsc *watchNamespacesCache) getNamespaceUID(namespace string) string {
+	for _, ns := range *nsc.namespaces {
+		if ns.name == namespace {
+			return ns.uid
+		}
+	}
+	return ""
 }
 
 func (nsc *watchNamespacesCache) resetCache() {
 	nsc.setCache(nil)
 }
 
-func (nsc *watchNamespacesCache) getWatchNamespaces(ctx context.Context, c client.Client) (*[]string, error) {
+func (nsc *watchNamespacesCache) getWatchNamespaces(ctx context.Context, c client.Client) (*[]namespace, error) {
 	if nsc.namespaces != nil {
 		return nsc.namespaces, nil
 	}
@@ -42,13 +55,13 @@ func (nsc *watchNamespacesCache) getWatchNamespaces(ctx context.Context, c clien
 	if err := c.List(ctx, &namespaceList); err != nil {
 		return nil, fmt.Errorf("listing %s: %w", namespaceList.GroupVersionKind().String(), err)
 	}
-	watchNamespaces := []string{}
+	watchNamespaces := []namespace{}
 	for _, ns := range namespaceList.Items {
 		name := ns.GetName()
 		if nsc.ignorePattern != nil && nsc.ignorePattern.Match([]byte(name)) {
 			continue
 		}
-		watchNamespaces = append(watchNamespaces, name)
+		watchNamespaces = append(watchNamespaces, namespace{uid: string(ns.GetUID()), name: name})
 	}
 	nsc.setCache(&watchNamespaces)
 	return nsc.namespaces, nil

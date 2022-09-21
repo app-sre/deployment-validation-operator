@@ -17,3 +17,6 @@ build/_output/*
 .operator-sdk/*
 .grpcurl/*
 .opm/*
+
+# goland
+.idea

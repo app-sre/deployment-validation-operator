@@ -4,26 +4,16 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 
 	"golang.stackrox.io/kube-linter/pkg/lintcontext"
 	"golang.stackrox.io/kube-linter/pkg/run"
 )
 
 var log = logf.Log.WithName("validations")
-
-func DeleteMetrics(namespace, name, kind string) {
-	promLabels := getPromLabels(
-		namespace,
-		name,
-		kind,
-	)
-	engine.DeleteMetrics(promLabels)
-}
 
 type ValidationOutcome string
 
@@ -34,11 +24,11 @@ var (
 )
 
 // RunValidations will run all the registered validations
-func RunValidations(request reconcile.Request, obj client.Object) (ValidationOutcome, error) {
+func RunValidations(request utils.Request, obj client.Object) (ValidationOutcome, error) {
 	kind := obj.GetObjectKind().GroupVersionKind().Kind
 	log.V(2).Info("validation", "kind", kind)
 
-	promLabels := getPromLabels(request.Namespace, request.Name, kind)
+	promLabels := getPromLabels(request.NamespaceUID, request.Namespace, request.NameUID, request.Name, kind)
 
 	// Only run checks against an object with no owners.  This should be
 	// the object that controls the configuration

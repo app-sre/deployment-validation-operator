@@ -7,7 +7,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	osappsscheme "github.com/openshift/client-go/apps/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -18,10 +17,12 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/retry"
 
+	"github.com/app-sre/deployment-validation-operator/pkg/utils"
+	"github.com/app-sre/deployment-validation-operator/pkg/validations"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var (
@@ -148,7 +149,7 @@ func (gr *GenericReconciler) processNamespacedResource(ctx context.Context, gvk 
 		return err
 	}
 	for _, ns := range *namespaces {
-		err := gr.processObjectInstances(ctx, gvk, ns)
+		err := gr.processObjectInstances(ctx, gvk, ns.name)
 		if err != nil {
 			return err
 		}
@@ -178,13 +179,21 @@ func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Un
 	if gr.objectValidationCache.objectAlreadyValidated(obj) {
 		return nil
 	}
-	request := reconcile.Request{
-		NamespacedName: client.ObjectKeyFromObject(obj),
-	}
 
 	var log = logf.Log.WithName(fmt.Sprintf("%s Validation", obj.GetObjectKind().GroupVersionKind()))
+
+	request := utils.NewRequestFromObj(obj)
+	if len(request.Namespace) > 0 {
+		namespaceUID := gr.watchNamespaces.getNamespaceUID(request.Namespace)
+		if len(namespaceUID) == 0 {
+			log.V(2).Info("Namespace UID not found", request.Namespace)
+		}
+		request.NamespaceUID = namespaceUID
+	}
+
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.V(2).Info("Reconcile", "Kind", obj.GetObjectKind().GroupVersionKind())
+
 	typedClientObject, err := unstructuredToTyped(obj)
 	if err != nil {
 		return err
