@@ -80,9 +80,9 @@ objects:
             sourceNamespace: openshift-deployment-validation-operator
         - apiVersion: networking.k8s.io/v1
           kind: NetworkPolicy
-            metadata:
-              name: allow-from-openshift-insights
-              namespace: openshift-deployment-validation-operator
+          metadata:
+            name: allow-from-openshift-insights
+            namespace: openshift-deployment-validation-operator
           spec:
             podSelector: {}
             ingress:
@@ -92,3 +92,18 @@ objects:
                       name: openshift-insights
           policyTypes:
             - Ingress
+        - apiVersion: v1
+          kind: Service
+          metadata:
+            name: deployment-validation-operator-metrics
+            labels:
+              name: deployment-validation-operator
+              namespace: openshift-deployment-validation-operator
+          spec:
+            ports:
+            - name: http-metrics
+              port: 8383
+              protocol: TCP
+              targetPort: 8383
+            selector:
+              name: deployment-validation-operator
