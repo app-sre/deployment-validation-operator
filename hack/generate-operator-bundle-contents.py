@@ -67,6 +67,7 @@ csv['spec']['install']['spec']['deployments'][0]['spec']['template']['spec']['co
     csv['metadata']['annotations']['containerImage'] = f'{args.image}:{args.image_tag}'
 csv['metadata']['name'] = f'{args.name}.v{args.current_version}'
 csv['spec']['version'] = args.current_version
+csv['spec']['skipRange'] = f">=0.2.0 <{args.current_version}"
 csv['spec']['links'][1]['url'] = f'https://{args.image}:{args.image_tag}'
 
 if args.replaces:

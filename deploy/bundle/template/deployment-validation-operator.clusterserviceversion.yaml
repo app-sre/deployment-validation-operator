@@ -10,6 +10,7 @@ metadata:
     certified: "false"
     # containerImage: ${IMAGE}:${IMAGE_TAG}
     createdAt: 08/25/2020
+    node-role.kubernetes.io: infra
     support: Best Effort
     repository: https://github.com/app-sre/deployment-validation-operator
     description: |-
@@ -57,3 +58,4 @@ spec:
       alm-owner-dvo: deployment-validation-operator
       operated-by: deployment-validation-operator
   # version: ${VERSION}
+  # skipRange: ">=0.2.0 <${VERSION}"
