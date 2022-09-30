@@ -42,17 +42,21 @@ var (
 
 // GenericReconciler watches a defined object
 type GenericReconciler struct {
-    listLimit       int64
-    watchNamespaces *watchNamespacesCache
-    client          client.Client
-    discoveryClient *discovery.DiscoveryClient
+    listLimit             int64
+    watchNamespaces       *watchNamespacesCache
+    objectValidationCache *validationCache
+    currentObjects        *validationCache
+    client                client.Client
+    discoveryClient       *discovery.DiscoveryClient
 }
 
 // NewGenericReconciler returns a GenericReconciler struct
 func NewGenericReconciler(kc *rest.Config) (*GenericReconciler, error) {
     return &GenericReconciler{
-        listLimit:       getListLimit(),
-        watchNamespaces: newWatchNamespacesCache(),
+        listLimit:             getListLimit(),
+        watchNamespaces:       newWatchNamespacesCache(),
+        objectValidationCache: newValidationCache(),
+        currentObjects:        newValidationCache(),
     }, nil
 }
 
@@ -118,6 +122,12 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
     }
     gr.watchNamespaces.resetCache()
     err = gr.processAllResources(ctx, apiResources)
+    if err != nil {
+        return err
+    }
+
+    gr.handleResourceDeletions()
+
     return nil
 }
 
@@ -185,6 +195,10 @@ func (gr *GenericReconciler) processObjectInstances(ctx context.Context, gvk sch
 }
 
 func (gr *GenericReconciler) reconcile(ctx context.Context, obj client.Object) error {
+    gr.currentObjects.store(obj, "")
+    if gr.objectValidationCache.objectAlreadyValidated(obj) {
+        return nil
+    }
     request := reconcile.Request{
         NamespacedName: client.ObjectKeyFromObject(obj),
     }
@@ -192,13 +206,26 @@ func (gr *GenericReconciler) reconcile(ctx context.Context, obj client.Object) e
     var log = logf.Log.WithName(fmt.Sprintf("%s Validation", obj.GetObjectKind().GroupVersionKind()))
     reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
     reqLogger.V(2).Info("Reconcile", "Kind", obj.GetObjectKind().GroupVersionKind())
-    reqLogger.Info("Reconcile", "Kind", obj.GetObjectKind().GroupVersionKind())
 
-    // TODO: figure out how to delete metrics when a resource instance is deleted from etcd,
-    // as we are not using informers anymore the current reconciler will not know when a resource deleted and
-    // which instance is deleted. Need to add a inmemory cache and identify deletions (as a first solution)
-    // e.g. keep an index of UIDs for every GVK to check if something was deleted between runs.
-    //var deleted bool
-    validations.RunValidations(request, obj)
+    outcome, err := validations.RunValidations(request, obj)
+    if err != nil {
+        return err
+    }
+
+    gr.objectValidationCache.store(obj, outcome)
+
     return nil
+}
+
+func (gr *GenericReconciler) handleResourceDeletions() {
+    for k := range *gr.objectValidationCache {
+        if gr.currentObjects.has(k) {
+            continue
+        }
+        validations.DeleteMetrics(k.namespace, k.name, k.kind)
+        gr.objectValidationCache.removeKey(k)
+
+    }
+    gr.currentObjects.drain()
+    return
 }

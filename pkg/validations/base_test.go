@@ -130,10 +130,9 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 		t.Errorf("Error creating deployment from template %v", err)
 	}
 
-	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
+	RunValidations(request, deployment)
 
 	labels := getPromLabels(request.Namespace, request.Name, "Deployment")
-
 	metric, err := engine.GetMetric(customCheck.Name).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)
@@ -157,7 +156,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 	// Problem resolved
 	replicaCnt = int32(3)
 	deployment.Spec.Replicas = &replicaCnt
-	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
+	RunValidations(request, deployment)
 
 	// Metric with label combination should be successfully cleared because problem was resolved.
 	// The 'GetMetricWith()' function will create a new metric with provided labels if it
@@ -227,7 +226,7 @@ func TestValidateZeroReplicas(t *testing.T) {
 	}
 
 	// Run validations against test environment
-	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
+	RunValidations(request, deployment)
 
 	// Acquire labels generated from validations
 	labels := getPromLabels(request.Namespace, request.Name, "Deployment")
@@ -248,7 +247,7 @@ func TestValidateZeroReplicas(t *testing.T) {
 	// Check using a replica count above 0
 	replicaCnt = int32(1)
 	deployment.Spec.Replicas = &replicaCnt
-	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
+	RunValidations(request, deployment)
 
 	metric, err = engine.GetMetric(customCheck.Name).GetMetricWith(labels)
 	if err != nil {
@@ -263,7 +262,7 @@ func TestValidateZeroReplicas(t *testing.T) {
 	// Check to see metrics clear by setting replicas to 0
 	replicaCnt = int32(0)
 	deployment.Spec.Replicas = &replicaCnt
-	RunValidations(request, deployment, testutils.ObjectKind(deployment), false)
+	RunValidations(request, deployment)
 
 	metric, err = engine.GetMetric(customCheck.Name).GetMetricWith(labels)
 	if err != nil {
