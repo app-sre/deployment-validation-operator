@@ -156,9 +156,6 @@ github.com/modern-go/reflect2
 ## explicit
 # github.com/openshift/api v3.9.0+incompatible
 github.com/openshift/api/apps/v1
-# github.com/openshift/client-go v3.9.0+incompatible
-## explicit
-github.com/openshift/client-go/apps/clientset/versioned/scheme
 # github.com/operator-framework/operator-lib v0.4.1
 ## explicit
 github.com/operator-framework/operator-lib/internal/utils
