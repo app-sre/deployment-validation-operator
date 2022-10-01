@@ -34,6 +34,7 @@ replace (
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.0.0-20180415031709-bcff419492ee
 	github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v1.7.2
 	github.com/prometheus-operator/prometheus-operator => github.com/prometheus-operator/prometheus-operator v0.46.0
+	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.9.0
 	k8s.io/api => k8s.io/api v0.20.4
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.20.4
 	k8s.io/apimachinery => k8s.io/apimachinery v0.20.4
