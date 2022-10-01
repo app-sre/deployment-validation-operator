@@ -16,21 +16,21 @@ import (
 
 var log = logf.Log.WithName("validations")
 
-// RunValidations will run all the registered validations
-func RunValidations(request reconcile.Request, obj client.Object, kind string, isDeleted bool) {
-	log.V(2).Info("validation", "kind", kind)
+func DeleteMetrics(namespace, name, kind string) {
 	promLabels := getPromLabels(
-		request.Namespace,
-		request.Name,
+		namespace,
+		name,
 		kind,
 	)
+	engine.DeleteMetrics(promLabels)
+}
 
-	// If the object was deleted, then just delete the metrics and
-	// do not run any validations
-	if isDeleted {
-		engine.DeleteMetrics(promLabels)
-		return
-	}
+// RunValidations will run all the registered validations
+func RunValidations(request reconcile.Request, obj client.Object) {
+	kind := obj.GetObjectKind().GroupVersionKind().Kind
+	log.V(2).Info("validation", "kind", kind)
+
+	promLabels := getPromLabels(obj.GetNamespace(), obj.GetName(), kind)
 
 	// Only run checks against an object with no owners.  This should be
 	// the object that controls the configuration
