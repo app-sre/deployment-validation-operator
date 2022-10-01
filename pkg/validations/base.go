@@ -24,7 +24,6 @@ func DeleteMetrics(namespace, name, kind string) {
         kind,
     )
     engine.DeleteMetrics(promLabels)
-    return
 }
 
 type ValidationOutcome string

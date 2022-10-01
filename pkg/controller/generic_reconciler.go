@@ -227,5 +227,4 @@ func (gr *GenericReconciler) handleResourceDeletions() {
 
     }
     gr.currentObjects.drain()
-    return
 }
