@@ -15,13 +15,11 @@ require (
 	github.com/openshift/client-go v3.9.0+incompatible
 	github.com/operator-framework/operator-lib v0.4.1
 	github.com/pelletier/go-toml v1.7.0 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.12.0
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
-	github.com/stretchr/testify v1.7.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/oauth2 v0.0.0-20210210192628-66670185b0cd // indirect
@@ -41,6 +39,7 @@ replace (
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.0.0-20180415031709-bcff419492ee
 	github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v1.7.2
 	github.com/prometheus-operator/prometheus-operator => github.com/prometheus-operator/prometheus-operator v0.46.0
+	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.9.0
 	k8s.io/api => k8s.io/api v0.20.4
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.20.4
 	k8s.io/apimachinery => k8s.io/apimachinery v0.20.4
