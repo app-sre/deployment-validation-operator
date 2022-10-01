@@ -25,17 +25,25 @@ func DeleteMetrics(namespace, name, kind string) {
 	engine.DeleteMetrics(promLabels)
 }
 
+type ValidationOutcome string
+
+var (
+	ObjectNeedsImprovement  ValidationOutcome = "object needs improvement"
+	ObjectValid             ValidationOutcome = "object valid"
+	ObjectValidationIgnored ValidationOutcome = "object validation ignored"
+)
+
 // RunValidations will run all the registered validations
-func RunValidations(request reconcile.Request, obj client.Object) {
+func RunValidations(request reconcile.Request, obj client.Object) (ValidationOutcome, error) {
 	kind := obj.GetObjectKind().GroupVersionKind().Kind
 	log.V(2).Info("validation", "kind", kind)
 
-	promLabels := getPromLabels(obj.GetNamespace(), obj.GetName(), kind)
+	promLabels := getPromLabels(request.Namespace, request.Name, kind)
 
 	// Only run checks against an object with no owners.  This should be
 	// the object that controls the configuration
 	if !utils.IsOwner(obj) {
-		return
+		return ObjectValidationIgnored, nil
 	}
 
 	// If controller has no replicas clear existing metrics and
@@ -51,7 +59,7 @@ func RunValidations(request reconcile.Request, obj client.Object) {
 			// clear labels if we fail to get a value for numReplicas, or if value is <= 0
 			if !ok || numReplicas == nil || *numReplicas <= 0 {
 				engine.DeleteMetrics(promLabels)
-				return
+				return ObjectValidationIgnored, nil
 			}
 		}
 	}
@@ -63,18 +71,19 @@ func RunValidations(request reconcile.Request, obj client.Object) {
 	result, err := run.Run(lintCtxs, engine.CheckRegistry(), engine.EnabledChecks())
 	if err != nil {
 		log.Error(err, "error running validations")
-		return
+		return "", fmt.Errorf("error running validations: %v", err)
 	}
 
 	// Clear labels from past run to ensure only results from this run
 	// are reflected in the metrics
 	engine.ClearMetrics(result.Reports, promLabels)
 
+	outcome := ObjectValid
 	for _, report := range result.Reports {
 		check, err := engine.GetCheckByName(report.Check)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Failed to get check '%s' by name", report.Check))
-			return
+			return "", fmt.Errorf("error running validations: %v", err)
 		}
 		logger := log.WithValues(
 			"request.namespace", request.Namespace,
@@ -91,6 +100,8 @@ func RunValidations(request reconcile.Request, obj client.Object) {
 		} else {
 			metric.With(promLabels).Set(1)
 			logger.Info(report.Remediation)
+			outcome = ObjectNeedsImprovement
 		}
 	}
+	return outcome, nil
 }

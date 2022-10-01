@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
-	"os"
-	"strconv"
-	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
@@ -27,7 +28,7 @@ const (
 	// default interval to run validations in.
 	// A 10 percent jitter will be added to the reconcile interval between reconcilers,
 	// so that not all reconcilers will not send list requests simultaneously.
-	defaultReconcileInterval = 5 * time.Minute
+	defaultReconcileInterval = 1 * time.Minute
 
 	// default number of resources retrieved from the api server per list request
 	// the usage of list-continue mechanism ensures that the memory consumption
@@ -42,17 +43,21 @@ var (
 
 // GenericReconciler watches a defined object
 type GenericReconciler struct {
-	listLimit       int64
-	watchNamespaces *watchNamespacesCache
-	client          client.Client
-	discoveryClient *discovery.DiscoveryClient
+	listLimit             int64
+	watchNamespaces       *watchNamespacesCache
+	objectValidationCache *validationCache
+	currentObjects        *validationCache
+	client                client.Client
+	discoveryClient       *discovery.DiscoveryClient
 }
 
 // NewGenericReconciler returns a GenericReconciler struct
 func NewGenericReconciler(kc *rest.Config) (*GenericReconciler, error) {
 	return &GenericReconciler{
-		listLimit:       getListLimit(),
-		watchNamespaces: newWatchNamespacesCache(),
+		listLimit:             getListLimit(),
+		watchNamespaces:       newWatchNamespacesCache(),
+		objectValidationCache: newValidationCache(),
+		currentObjects:        newValidationCache(),
 	}, nil
 }
 
@@ -85,11 +90,6 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 func (gr *GenericReconciler) Start(ctx context.Context) error {
 	t := time.NewTicker(resyncPeriod(defaultReconcileInterval)())
 	defer t.Stop()
-
-	err := gr.reconcileEverything(ctx)
-	if err != nil {
-		return err
-	}
 	for {
 		select {
 		case <-t.C:
@@ -118,6 +118,11 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 	}
 	gr.watchNamespaces.resetCache()
 	err = gr.processAllResources(ctx, apiResources)
+	if err != nil {
+		return err
+	}
+
+	gr.handleResourceDeletions()
 	return nil
 }
 
@@ -155,7 +160,8 @@ func (gr *GenericReconciler) processClusterscopedObjects(ctx context.Context, gv
 	return gr.processObjectInstances(ctx, gvk, "")
 }
 
-func (gr *GenericReconciler) processObjectInstances(ctx context.Context, gvk schema.GroupVersionKind, namespace string) error {
+func (gr *GenericReconciler) processObjectInstances(ctx context.Context,
+	gvk schema.GroupVersionKind, namespace string) error {
 	gvk.Kind = gvk.Kind + "List"
 	list := unstructured.UnstructuredList{}
 	listOptions := &client.ListOptions{
@@ -185,6 +191,10 @@ func (gr *GenericReconciler) processObjectInstances(ctx context.Context, gvk sch
 }
 
 func (gr *GenericReconciler) reconcile(ctx context.Context, obj client.Object) error {
+	gr.currentObjects.store(obj, "")
+	if gr.objectValidationCache.objectAlreadyValidated(obj) {
+		return nil
+	}
 	request := reconcile.Request{
 		NamespacedName: client.ObjectKeyFromObject(obj),
 	}
@@ -192,13 +202,24 @@ func (gr *GenericReconciler) reconcile(ctx context.Context, obj client.Object) e
 	var log = logf.Log.WithName(fmt.Sprintf("%s Validation", obj.GetObjectKind().GroupVersionKind()))
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.V(2).Info("Reconcile", "Kind", obj.GetObjectKind().GroupVersionKind())
-	reqLogger.Info("Reconcile", "Kind", obj.GetObjectKind().GroupVersionKind())
+	outcome, err := validations.RunValidations(request, obj)
+	if err != nil {
+		return err
+	}
 
-	// TODO: figure out how to delete metrics when a resource instance is deleted from etcd,
-	// as we are not using informers anymore the current reconciler will not know when a resource deleted and
-	// which instance is deleted. Need to add a inmemory cache and identify deletions (as a first solution)
-	// e.g. keep an index of UIDs for every GVK to check if something was deleted between runs.
-	//var deleted bool
-	validations.RunValidations(request, obj)
+	gr.objectValidationCache.store(obj, outcome)
+
 	return nil
+}
+
+func (gr *GenericReconciler) handleResourceDeletions() {
+	for k := range *gr.objectValidationCache {
+		if gr.currentObjects.has(k) {
+			continue
+		}
+		validations.DeleteMetrics(k.namespace, k.name, k.kind)
+		gr.objectValidationCache.removeKey(k)
+
+	}
+	gr.currentObjects.drain()
 }
