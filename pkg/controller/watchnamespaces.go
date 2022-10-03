@@ -16,7 +16,7 @@ type watchNamespacesCache struct {
 }
 
 func newWatchNamespacesCache() *watchNamespacesCache {
-	ignorePatternStr := os.Getenv("NAMESPACE_IGNORE_PATTERN")
+	ignorePatternStr := os.Getenv(EnvNamespaceIgnorePattern)
 	var nsIgnoreRegex *regexp.Regexp
 	if ignorePatternStr != "" {
 		nsIgnoreRegex = regexp.MustCompile(ignorePatternStr)

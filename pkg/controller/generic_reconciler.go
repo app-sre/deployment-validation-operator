@@ -24,19 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const (
-	// default interval to run validations in.
-	// A 10 percent jitter will be added to the reconcile interval between reconcilers,
-	// so that not all reconcilers will not send list requests simultaneously.
-	defaultReconcileInterval = 1 * time.Minute
-
-	// default number of resources retrieved from the api server per list request
-	// the usage of list-continue mechanism ensures that the memory consumption
-	// by this operator always stays under a desired threshold irrespective of the
-	// number of resource instances for any kubernetes resource
-	defaultListLimit = 5
-)
-
 var (
 	_ manager.Runnable = &GenericReconciler{}
 )
@@ -63,7 +50,7 @@ func NewGenericReconciler(kc *rest.Config) (*GenericReconciler, error) {
 
 func getListLimit() int64 {
 	listLimit := defaultListLimit
-	listLimitEnvVal := os.Getenv("LIST_LIMIT_PER_QUERY")
+	listLimitEnvVal := os.Getenv(EnvResorucesPerListQuery)
 	if listLimitEnvVal != "" {
 		var err error
 		listLimit, err = strconv.Atoi(listLimitEnvVal)
@@ -88,7 +75,17 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 
 // Start validating the given object kind every interval.
 func (gr *GenericReconciler) Start(ctx context.Context) error {
-	t := time.NewTicker(resyncPeriod(defaultReconcileInterval)())
+	reconcileInterval := defaultReconcileInterval
+	reconcileIntervalEnvVal := os.Getenv(EnvValidationCheckInterval)
+	if reconcileIntervalEnvVal != "" {
+		intVal, err := strconv.Atoi(reconcileIntervalEnvVal)
+		reconcileInterval = time.Duration(intVal) * time.Minute
+		if err != nil {
+			panic(err.Error())
+		}
+	}
+
+	t := time.NewTicker(resyncPeriod(reconcileInterval)())
 	defer t.Stop()
 	for {
 		select {

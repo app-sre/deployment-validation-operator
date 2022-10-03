@@ -66,6 +66,10 @@ spec:
           value: "deployment-validation-operator"
         - name: NAMESPACE_IGNORE_PATTERN
           value: "openshift.*|kube-.+|default|dedicated-admin"
+        - name: RESOURCES_PER_LIST_QUERY
+          value: "5"
+        - name: VALIDATION_CHECK_INTERVAL
+          value: "2"
         - name: POD_NAME
           valueFrom:
             fieldRef:
