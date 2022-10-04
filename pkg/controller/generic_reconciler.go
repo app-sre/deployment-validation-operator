@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	osappsscheme "github.com/openshift/client-go/apps/clientset/versioned/scheme"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
+
 	"os"
 	"strconv"
 	"time"
@@ -187,7 +191,7 @@ func (gr *GenericReconciler) processObjectInstances(ctx context.Context,
 	return nil
 }
 
-func (gr *GenericReconciler) reconcile(ctx context.Context, obj client.Object) error {
+func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Unstructured) error {
 	gr.currentObjects.store(obj, "")
 	if gr.objectValidationCache.objectAlreadyValidated(obj) {
 		return nil
@@ -199,7 +203,11 @@ func (gr *GenericReconciler) reconcile(ctx context.Context, obj client.Object) e
 	var log = logf.Log.WithName(fmt.Sprintf("%s Validation", obj.GetObjectKind().GroupVersionKind()))
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.V(2).Info("Reconcile", "Kind", obj.GetObjectKind().GroupVersionKind())
-	outcome, err := validations.RunValidations(request, obj)
+	typedClientObject, err := unstructuredToTyped(obj)
+	if err != nil {
+		return err
+	}
+	outcome, err := validations.RunValidations(request, typedClientObject)
 	if err != nil {
 		return err
 	}
@@ -207,6 +215,38 @@ func (gr *GenericReconciler) reconcile(ctx context.Context, obj client.Object) e
 	gr.objectValidationCache.store(obj, outcome)
 
 	return nil
+}
+
+func unstructuredToTyped(obj *unstructured.Unstructured) (client.Object, error) {
+	typedResource, err := lookUpType(obj)
+	if err != nil {
+		return nil, err
+	}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, typedResource)
+	if err != nil {
+		return nil, err
+	}
+	return typedResource.(client.Object), err
+
+}
+
+func lookUpType(obj *unstructured.Unstructured) (runtime.Object, error) {
+	kubeScheme := scheme.Scheme
+	openshiftScheme := osappsscheme.Scheme
+
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	typedObj, err := kubeScheme.New(gvk)
+	if err == nil {
+		return typedObj, nil
+	}
+	if !runtime.IsNotRegisteredError(err) {
+		return nil, err
+	}
+	typedObj, err = openshiftScheme.New(gvk)
+	if err == nil {
+		return typedObj, nil
+	}
+	return nil, err
 }
 
 func (gr *GenericReconciler) handleResourceDeletions() {
