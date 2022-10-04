@@ -20,6 +20,10 @@ parameters:
     displayName: OLM subscription channel
     description: OLM subscription channel
     required: true
+  - name: TARGET_ORG
+    displayName: Target organization
+    description: Target api.openshift.com organization to deploy to
+    required: true
 objects:
   - apiVersion: hive.openshift.io/v1
     kind: SelectorSyncSet
@@ -43,6 +47,9 @@ objects:
           - key: api.openshift.com/environment
             operator: In
             values: ["staging", "integration"]
+          - key: api.openshift.com/legal-entity-id
+            operator: In
+            values: ["${TARGET_ORG}"]
       resourceApplyMode: Sync
       resources:
         - apiVersion: v1
