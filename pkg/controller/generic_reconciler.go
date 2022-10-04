@@ -4,22 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	osappsscheme "github.com/openshift/client-go/apps/clientset/versioned/scheme"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
-
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
+	osappsscheme "github.com/openshift/client-go/apps/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/rest"
-
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/retry"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,26 +39,47 @@ type GenericReconciler struct {
 }
 
 // NewGenericReconciler returns a GenericReconciler struct
-func NewGenericReconciler(kc *rest.Config) (*GenericReconciler, error) {
+func NewGenericReconciler() (*GenericReconciler, error) {
+	listLimit, err := getListLimit()
+	if err != nil {
+		return nil, err
+	}
 	return &GenericReconciler{
-		listLimit:             getListLimit(),
+		listLimit:             listLimit,
 		watchNamespaces:       newWatchNamespacesCache(),
 		objectValidationCache: newValidationCache(),
 		currentObjects:        newValidationCache(),
 	}, nil
 }
 
-func getListLimit() int64 {
-	listLimit := defaultListLimit
-	listLimitEnvVal := os.Getenv(EnvResorucesPerListQuery)
-	if listLimitEnvVal != "" {
-		var err error
-		listLimit, err = strconv.Atoi(listLimitEnvVal)
-		if err != nil {
-			panic(err.Error())
-		}
+func getListLimit() (int64, error) {
+	intVal, err := defaultOrEnv(EnvResorucesPerListQuery, defaultListLimit)
+	return int64(intVal), err
+}
+
+func defaultOrEnv(envName string, defaultIntVal int) (int, error) {
+	envVal, ok, err := intFromEnv(envName)
+	if err != nil {
+		return 0, err
 	}
-	return int64(listLimit)
+	if ok {
+		return envVal, nil
+	}
+	return defaultIntVal, nil
+}
+
+func intFromEnv(envName string) (int, bool, error) {
+	strVal, ok := os.LookupEnv(envName)
+	if !ok || strVal == "" {
+		return 0, false, nil
+	}
+
+	intVal, err := strconv.Atoi(strVal)
+	if err != nil {
+		return 0, false, err
+	}
+
+	return intVal, true, nil
 }
 
 // AddToManager will add the reconciler for the configured obj to a manager.
@@ -79,35 +96,17 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 
 // Start validating the given object kind every interval.
 func (gr *GenericReconciler) Start(ctx context.Context) error {
-	reconcileInterval := defaultReconcileInterval
-	reconcileIntervalEnvVal := os.Getenv(EnvValidationCheckInterval)
-	if reconcileIntervalEnvVal != "" {
-		intVal, err := strconv.Atoi(reconcileIntervalEnvVal)
-		reconcileInterval = time.Duration(intVal) * time.Minute
-		if err != nil {
-			panic(err.Error())
-		}
-	}
-
-	t := time.NewTicker(resyncPeriod(reconcileInterval)())
-	defer t.Stop()
 	for {
 		select {
-		case <-t.C:
-			// Try to reconcile with default exponential backoff until success.
-			err := wait.ExponentialBackoffWithContext(
-				ctx, retry.DefaultBackoff,
-				func() (done bool, err error) {
-					return true, gr.reconcileEverything(ctx)
-				})
+		case <-ctx.Done():
+			// stop reconciling
+			return nil
+		default:
+			err := gr.reconcileEverything(ctx)
 			if err != nil && !errors.Is(err, context.Canceled) {
 				// could not recover
 				return err
 			}
-
-		case <-ctx.Done():
-			// stop reconciling
-			return nil
 		}
 	}
 }
@@ -164,31 +163,14 @@ func (gr *GenericReconciler) processClusterscopedObjects(ctx context.Context, gv
 func (gr *GenericReconciler) processObjectInstances(ctx context.Context,
 	gvk schema.GroupVersionKind, namespace string) error {
 	gvk.Kind = gvk.Kind + "List"
-	list := unstructured.UnstructuredList{}
-	listOptions := &client.ListOptions{
-		Limit:     gr.listLimit,
-		Namespace: namespace,
-	}
-	for {
-		list.SetGroupVersionKind(gvk)
-		err := gr.client.List(ctx, &list, listOptions)
-		if err != nil {
-			return fmt.Errorf("listing %s: %w", gvk.String(), err)
-		}
 
-		for i := range list.Items {
-			err := gr.reconcile(ctx, &list.Items[i])
-			if err != nil {
-				return err
-			}
-		}
-		listContinue := list.GetContinue()
-		if listContinue == "" {
-			break
-		}
-		listOptions.Continue = listContinue
-	}
-	return nil
+	err := wait.ExponentialBackoffWithContext(
+		ctx, retry.DefaultBackoff,
+		func() (done bool, err error) {
+			return true, gr.paginatedList(ctx, gvk, namespace)
+		})
+
+	return err
 }
 
 func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Unstructured) error {
@@ -259,4 +241,32 @@ func (gr *GenericReconciler) handleResourceDeletions() {
 
 	}
 	gr.currentObjects.drain()
+}
+
+func (gr *GenericReconciler) paginatedList(ctx context.Context, gvk schema.GroupVersionKind, namespace string) error {
+	list := unstructured.UnstructuredList{}
+	listOptions := &client.ListOptions{
+		Limit:     gr.listLimit,
+		Namespace: namespace,
+	}
+	for {
+		list.SetGroupVersionKind(gvk)
+		err := gr.client.List(ctx, &list, listOptions)
+		if err != nil {
+			return fmt.Errorf("listing %s: %w", gvk.String(), err)
+		}
+
+		for i := range list.Items {
+			err := gr.reconcile(ctx, &list.Items[i])
+			if err != nil {
+				return err
+			}
+		}
+		listContinue := list.GetContinue()
+		if listContinue == "" {
+			break
+		}
+		listOptions.Continue = listContinue
+	}
+	return nil
 }

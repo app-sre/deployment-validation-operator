@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -198,5 +199,24 @@ func (n *newUncachedClientBuilder) WithUncached(objs ...client.Object) manager.C
 func (n *newUncachedClientBuilder) Build(
 	cache cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
 	// Directly use the API client, without wrapping it in a delegatingClient for cache access.
+	qps, err := kubeClientQPS()
+	if err != nil {
+		return nil, err
+	}
+	config.QPS = qps
 	return client.New(config, options)
+}
+
+func kubeClientQPS() (float32, error) {
+	qps := controller.DefaultKubeClientQPS
+	envVal, ok := os.LookupEnv(controller.EnvKubeClientQPS)
+	if !ok {
+		return qps, nil
+	}
+	val, err := strconv.ParseFloat(envVal, 32)
+	if err != nil {
+		return 0.0, err
+	}
+	qps = float32(val)
+	return qps, err
 }
