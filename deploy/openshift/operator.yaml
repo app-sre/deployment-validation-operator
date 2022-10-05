@@ -22,6 +22,8 @@ spec:
         name: deployment-validation-operator
         app: deployment-validation-operator
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
