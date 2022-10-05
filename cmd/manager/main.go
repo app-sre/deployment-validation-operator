@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -19,8 +18,6 @@ import (
 	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
-
-	"github.com/operator-framework/operator-lib/leader"
 
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -96,22 +93,6 @@ func main() {
 	if err != nil {
 		log.Error(err, "Failed to get config")
 		os.Exit(1)
-	}
-
-	if inCluster {
-		// leader.Become looks for the operator namespace using a hard-coded
-		// path that assumes it is running inside a cluster and no workaround
-		// is immediately obvious.  If running outside the cluster then the
-		// file wouldn't normally exist and this call will fail.  If running
-		// outside a cluster, then leader election probably isn't that
-		// important anyway so we don't even try to do it.
-		ctx := context.TODO()
-		// Become the leader before proceeding
-		err = leader.Become(ctx, "deployment-validation-operator-lock")
-		if err != nil {
-			log.Error(err, "Failed to get leader lock")
-			os.Exit(1)
-		}
 	}
 
 	// Set default manager options
