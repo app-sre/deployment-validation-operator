@@ -49,7 +49,7 @@ objects:
             values: ["staging", "integration"]
           - key: api.openshift.com/legal-entity-id
             operator: In
-            values: ["${TARGET_ORG}"]
+            values: "${{TARGET_ORG}}"
       resourceApplyMode: Sync
       resources:
         - apiVersion: v1
