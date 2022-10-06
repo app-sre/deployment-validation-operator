@@ -48,11 +48,11 @@ spec:
         - --config /config/deployment-validation-operator-config.yaml
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "100n"
+            memory: "200Mi"
+            cpu: "100m"
           limits:
-            memory: "4Gi"
-            cpu: "1"
+            memory: "200Mi"
+            cpu: "100m"
         livenessProbe:
           tcpSocket:
             port: 8383
