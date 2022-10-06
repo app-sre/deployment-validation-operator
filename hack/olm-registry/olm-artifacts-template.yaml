@@ -118,9 +118,9 @@ objects:
           kind: Service
           metadata:
             name: deployment-validation-operator-metrics
+            namespace: openshift-deployment-validation-operator
             labels:
               name: deployment-validation-operator
-              namespace: openshift-deployment-validation-operator
           spec:
             ports:
             - name: http-metrics
