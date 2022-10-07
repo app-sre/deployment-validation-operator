@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go v0.74.0 // indirect
 	github.com/Azure/go-autorest/autorest v0.11.18 // indirect
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
+	github.com/go-logr/logr v0.3.0
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20191106031601-ce3c9ade29de // indirect
 	github.com/mcuadros/go-defaults v1.2.0
