@@ -12,6 +12,7 @@ import (
 type options struct {
 	MetricsPort    int32
 	MetricsPath    string
+	ProbeAddr      string
 	ConfigFile     string
 	watchNamespace *string
 	Zap            zap.Options
@@ -49,6 +50,11 @@ func (o *options) processFlags() {
 		&o.ConfigFile,
 		"config", o.ConfigFile,
 		"Path to config file",
+	)
+	flags.StringVar(
+		&o.ProbeAddr,
+		"health-probe-bind-address", o.ProbeAddr,
+		"The address the probe endpoint binds to.",
 	)
 
 	pflag.CommandLine.AddFlagSet(flags)

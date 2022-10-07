@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -40,6 +41,7 @@ func main() {
 	opts := options{
 		MetricsPort: 8383,
 		MetricsPath: "metrics",
+		ProbeAddr:   ":8081",
 		ConfigFile:  "config/deployment-validation-operator-config.yaml",
 	}
 
@@ -89,6 +91,14 @@ func setupManager(log logr.Logger, opts options) (manager.Manager, error) {
 	mgr, err := manager.New(cfg, mgrOpts)
 	if err != nil {
 		return nil, fmt.Errorf("initializing manager: %w", err)
+	}
+
+	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
+		return nil, fmt.Errorf("adding healthz check: %w", err)
+	}
+
+	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
+		return nil, fmt.Errorf("adding readyz check: %w", err)
 	}
 
 	log.Info("Registering Components")
@@ -157,8 +167,9 @@ func getManagerOptions(opts options) (manager.Options, error) {
 	}
 
 	mgrOpts := manager.Options{
-		Namespace:          ns,
-		MetricsBindAddress: "0", // disable controller-runtime managed prometheus endpoint
+		Namespace:              ns,
+		HealthProbeBindAddress: opts.ProbeAddr,
+		MetricsBindAddress:     "0", // disable controller-runtime managed prometheus endpoint
 		// disable caching of everything
 		ClientBuilder: &newUncachedClientBuilder{},
 	}
