@@ -18,6 +18,7 @@ import (
 	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/go-logr/logr"
 	"k8s.io/client-go/discovery"
@@ -111,11 +112,24 @@ func setupManager(log logr.Logger, opts options) (manager.Manager, error) {
 		return nil, fmt.Errorf("adding generic reconciler to manager: %w", err)
 	}
 
+	log.Info("Initializing Prometheus Registry")
+
+	reg := prometheus.NewRegistry()
+
 	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %q", opts.MetricsEndpoint()))
-	dvo_prom.InitMetricsEndpoint(opts.MetricsPath, opts.MetricsPort)
+
+	srv, err := dvo_prom.NewServer(reg, opts.MetricsPath, fmt.Sprintf(":%d", opts.MetricsPort))
+	if err != nil {
+		return nil, fmt.Errorf("initializing metrics server: %w", err)
+	}
+
+	if err := mgr.Add(srv); err != nil {
+		return nil, fmt.Errorf("adding metrics server to manager: %w", err)
+	}
 
 	log.Info("Initializing Validation Engine")
-	if err := validations.InitializeValidationEngine(opts.ConfigFile); err != nil {
+
+	if err := validations.InitializeValidationEngine(opts.ConfigFile, reg); err != nil {
 		return nil, fmt.Errorf("initializing validation engine: %w", err)
 	}
 

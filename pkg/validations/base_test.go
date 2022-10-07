@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -34,7 +33,7 @@ func newEngine(c config.Config) (validationEngine, error) {
 	ve := validationEngine{
 		config: c,
 	}
-	loadErr := ve.InitRegistry()
+	loadErr := ve.InitRegistry(prometheus.NewRegistry())
 	if loadErr != nil {
 		return validationEngine{}, loadErr
 	}
@@ -87,10 +86,6 @@ func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
 }
 
 func initializeEngine(customCheck ...config.Check) error {
-
-	// Reset global prometheus registry to avoid testing conflicts
-	dvo_prom.PrometheusRegistry = prometheus.NewRegistry()
-
 	// Check if custom check has been set
 	if len(customCheck) > 0 {
 		// Initialize engine with custom check

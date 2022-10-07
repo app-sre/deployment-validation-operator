@@ -1,33 +1,75 @@
 package prometheus
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	dto "github.com/prometheus/client_model/go"
 )
 
-var PrometheusRegistry *prometheus.Registry
+type Registry interface {
+	Register(prometheus.Collector) error
+	Gather() ([]*dto.MetricFamily, error)
+}
 
-var log = logf.Log.WithName("prometheus")
+func NewServer(registry Registry, path, addr string) (*Server, error) {
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
 
-func InitMetricsEndpoint(metricsPath string, metricsPort int32) {
-	PrometheusRegistry = prometheus.NewRegistry()
-	processCollector := prometheus.NewProcessCollector(
-		prometheus.ProcessCollectorOpts{},
+	var (
+		processCollector = prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{})
+		goCollector      = prometheus.NewGoCollector()
 	)
-	goCollector := prometheus.NewGoCollector()
-	PrometheusRegistry.MustRegister(processCollector)
-	PrometheusRegistry.MustRegister(goCollector)
 
-	handler := promhttp.HandlerFor(PrometheusRegistry, promhttp.HandlerOpts{})
-	http.Handle(fmt.Sprintf("/%s", metricsPath), handler)
+	if err := registry.Register(processCollector); err != nil {
+		return nil, fmt.Errorf("registering process collector: %w", err)
+	}
+
+	if err := registry.Register(goCollector); err != nil {
+		return nil, fmt.Errorf("registering go collector: %w", err)
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle(path, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+
+	return &Server{
+		s: &http.Server{
+			Addr:              addr,
+			Handler:           mux,
+			ReadHeaderTimeout: 2 * time.Second,
+		},
+	}, nil
+}
+
+type Server struct {
+	s *http.Server
+}
+
+func (s *Server) Start(ctx context.Context) error {
+	errCh := make(chan error)
+	drain := func() {
+		for range errCh {
+		}
+	}
+
+	defer drain()
 
 	go func() {
-		err := http.ListenAndServe(fmt.Sprintf(":%d", metricsPort), nil)
-		log.Error(err, "Prometheus metrics server stopped unexpectedly")
+		defer close(errCh)
+
+		errCh <- s.s.ListenAndServe()
 	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		return s.s.Close()
+	}
 }
