@@ -7,20 +7,17 @@ import (
 
 	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
+	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 
 	"github.com/prometheus/client_golang/prometheus"
 	prom_tu "github.com/prometheus/client_golang/prometheus/testutil"
 
 	appsv1 "k8s.io/api/apps/v1"
 
-	"k8s.io/apimachinery/pkg/types"
-
 	"golang.stackrox.io/kube-linter/pkg/builtinchecks"
 	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"golang.stackrox.io/kube-linter/pkg/configresolver"
-
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -120,8 +117,11 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 		t.Errorf("Error initializing engine %v", err)
 	}
 
-	request := reconcile.Request{
-		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
+	request := utils.Request{
+		NamespaceUID: "namespace-valid-uid",
+		Namespace:    "bar",
+		NameUID:      "name-valid-uid",
+		Name:         "foo",
 	}
 
 	replicaCnt := int32(1)
@@ -135,7 +135,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 		t.Errorf("Error running validations: %v", err)
 	}
 
-	labels := getPromLabels(request.Namespace, request.Name, "Deployment")
+	labels := getPromLabels(request.NamespaceUID, request.Namespace, request.NameUID, request.Name, "Deployment")
 	metric, err := engine.GetMetric(customCheck.Name).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)
@@ -219,8 +219,11 @@ func TestValidateZeroReplicas(t *testing.T) {
 		t.Errorf("Error initializing engine %v", err)
 	}
 
-	request := reconcile.Request{
-		NamespacedName: types.NamespacedName{Name: "foo", Namespace: "bar"},
+	request := utils.Request{
+		NamespaceUID: "namespace-valid-uid",
+		Namespace:    "bar",
+		NameUID:      "name-valid-uid",
+		Name:         "foo",
 	}
 
 	// Setup test deployment file with 0 replicas
@@ -236,7 +239,7 @@ func TestValidateZeroReplicas(t *testing.T) {
 		t.Errorf("Error running validations: %v", err)
 	}
 	// Acquire labels generated from validations
-	labels := getPromLabels(request.Namespace, request.Name, "Deployment")
+	labels := getPromLabels(request.NamespaceUID, request.Namespace, request.NameUID, request.Name, "Deployment")
 
 	// The 'GetMetricWith()' function will create a new metric with provided labels if it
 	// does not exist. The default value of a metric is 0. Therefore, a value of 0 implies we

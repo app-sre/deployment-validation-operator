@@ -9,12 +9,25 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func getPromLabels(namespace, name, kind string) prometheus.Labels {
+func getPromLabels(namespaceUID, namespace, nameUID, name, kind string) prometheus.Labels {
 	return prometheus.Labels{
-		"namespace": namespace,
-		"name":      name,
-		"kind":      kind,
+		"namespace_uid": namespaceUID,
+		"namespace":     namespace,
+		"name_uid":      nameUID,
+		"name":          name,
+		"kind":          kind,
 	}
+}
+
+func DeleteMetrics(namespace, name, kind string) {
+	promLabels := getPromLabels(
+		"",
+		namespace,
+		"",
+		name,
+		kind,
+	)
+	engine.DeleteMetrics(promLabels)
 }
 
 func newGaugeVecMetric(
