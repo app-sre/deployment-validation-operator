@@ -20,6 +20,7 @@ import (
 	"github.com/app-sre/deployment-validation-operator/version"
 
 	"github.com/go-logr/logr"
+	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -96,9 +97,18 @@ func setupManager(log logr.Logger, opts options) (manager.Manager, error) {
 		return nil, fmt.Errorf("adding APIs to scheme: %w", err)
 	}
 
-	// Setup all Controllers
-	if err := controller.AddControllersToManager(mgr); err != nil {
-		return nil, fmt.Errorf("adding controllers to manager: %w", err)
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
+	if err != nil {
+		return nil, fmt.Errorf("initializing discovery client: %w", err)
+	}
+
+	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient)
+	if err != nil {
+		return nil, fmt.Errorf("initializing generic reconciler: %w", err)
+	}
+
+	if err = gr.AddToManager(mgr); err != nil {
+		return nil, fmt.Errorf("adding generic reconciler to manager: %w", err)
 	}
 
 	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %q", opts.MetricsEndpoint()))

@@ -7,8 +7,8 @@ import (
 	"k8s.io/client-go/discovery"
 )
 
-func reconcileResourceList(c *discovery.DiscoveryClient) ([]metav1.APIResource, error) {
-	apiResourceLists, err := c.ServerPreferredResources()
+func reconcileResourceList(client discovery.DiscoveryInterface) ([]metav1.APIResource, error) {
+	apiResourceLists, err := client.ServerPreferredResources()
 	if err != nil {
 		return nil, err
 	}
