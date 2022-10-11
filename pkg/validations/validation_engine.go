@@ -7,8 +7,6 @@ import (
 	"os"
 	"strings"
 
-	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
-
 	// Import checks from DVO
 	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all"
 
@@ -72,7 +70,11 @@ func (ve *validationEngine) LoadConfig(path string) error {
 	return nil
 }
 
-func (ve *validationEngine) InitRegistry() error {
+type PrometheusRegistry interface {
+	Register(prometheus.Collector) error
+}
+
+func (ve *validationEngine) InitRegistry(promReg PrometheusRegistry) error {
 	disableIncompatibleChecks(&ve.config)
 	disableChecks(&ve.config)
 
@@ -111,7 +113,11 @@ func (ve *validationEngine) InitRegistry() error {
 				"check_remediation": check.Spec.Remediation,
 			},
 		)
-		dvo_prom.PrometheusRegistry.MustRegister(metric)
+
+		if err := promReg.Register(metric); err != nil {
+			return fmt.Errorf("registering metric for check %q: %w", check.Spec.Name, err)
+		}
+
 		validationMetrics[checkName] = metric
 	}
 
@@ -156,12 +162,12 @@ func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, label
 // InitializeValidationEngine will initialize the validation engine from scratch.
 // If an existing engine exists, it will not be replaced with the new one unless all
 // initialization steps succeed.
-func InitializeValidationEngine(path string) error {
+func InitializeValidationEngine(configPath string, reg PrometheusRegistry) error {
 	ve := validationEngine{}
 
-	err := ve.LoadConfig(path)
+	err := ve.LoadConfig(configPath)
 	if err == nil {
-		err = ve.InitRegistry()
+		err = ve.InitRegistry(reg)
 	}
 
 	// Only replace the exisiting engine if no errors occurred

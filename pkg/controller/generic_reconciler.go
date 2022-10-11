@@ -36,16 +36,19 @@ type GenericReconciler struct {
 	objectValidationCache *validationCache
 	currentObjects        *validationCache
 	client                client.Client
-	discoveryClient       *discovery.DiscoveryClient
+	discovery             discovery.DiscoveryInterface
 }
 
 // NewGenericReconciler returns a GenericReconciler struct
-func NewGenericReconciler() (*GenericReconciler, error) {
+func NewGenericReconciler(client client.Client, discovery discovery.DiscoveryInterface) (*GenericReconciler, error) {
 	listLimit, err := getListLimit()
 	if err != nil {
 		return nil, err
 	}
+
 	return &GenericReconciler{
+		client:                client,
+		discovery:             discovery,
 		listLimit:             listLimit,
 		watchNamespaces:       newWatchNamespacesCache(),
 		objectValidationCache: newValidationCache(),
@@ -85,13 +88,6 @@ func intFromEnv(envName string) (int, bool, error) {
 
 // AddToManager will add the reconciler for the configured obj to a manager.
 func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
-	kubeconfig := mgr.GetConfig()
-	dc, err := discovery.NewDiscoveryClientForConfig(kubeconfig)
-	if err != nil {
-		return err
-	}
-	gr.discoveryClient = dc
-	gr.client = mgr.GetClient()
 	return mgr.Add(gr)
 }
 
@@ -113,7 +109,7 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 }
 
 func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
-	apiResources, err := reconcileResourceList(gr.discoveryClient)
+	apiResources, err := reconcileResourceList(gr.discovery)
 	if err != nil {
 		return err
 	}

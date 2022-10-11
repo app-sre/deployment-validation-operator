@@ -1,7 +1,7 @@
 package main
 
 import (
-	"flag"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -18,54 +18,34 @@ import (
 	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
+	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/go-logr/logr"
+	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
-
-	"github.com/spf13/pflag"
 )
 
-// Change below variables to serve metrics on different host or port.
-var (
-	metricsPort       int32  = 8383
-	metricsPath       string = "metrics"
-	defaultConfigFile        = "config/deployment-validation-operator-config.yaml"
-)
-
-var log = logf.Log.WithName("DeploymentValidation")
-
-func printVersion() {
-	log.Info(fmt.Sprintf("Operator Version: %s", version.Version))
-	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
-	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
-}
+const operatorNameEnvVar = "OPERATOR_NAME"
 
 func main() {
-	var configFile string
-
 	// Make sure the operator name is what we want
-	os.Setenv("OPERATOR_NAME", dv_config.OperatorName)
+	os.Setenv(operatorNameEnvVar, dv_config.OperatorName)
 
-	// Add the zap logger flag set to the CLI. The flag set must
-	// be added before calling pflag.Parse().
-	opts := zap.Options{}
-	opts.BindFlags(flag.CommandLine)
+	opts := options{
+		MetricsPort: 8383,
+		MetricsPath: "metrics",
+		ProbeAddr:   ":8081",
+		ConfigFile:  "config/deployment-validation-operator-config.yaml",
+	}
 
-	// Add flags registered by imported packages (e.g. glog and
-	// controller-runtime)
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-
-	// Add app specific flags
-	appFlags := pflag.NewFlagSet("dvo", pflag.ExitOnError)
-	appFlags.StringVar(&configFile, "config", defaultConfigFile, "Path to config file")
-	pflag.CommandLine.AddFlagSet(appFlags)
-
-	pflag.Parse()
+	opts.Process()
 
 	// Use a zap logr.Logger implementation. If none of the zap
 	// flags are configured (or if the zap flag set is not being
@@ -75,28 +55,121 @@ func main() {
 	// implementing the logr.Logger interface. This logger will
 	// be propagated through the whole operator, generating
 	// uniform and structured logs.
-	logger := zap.New(zap.UseFlagOptions(&opts))
-	logf.SetLogger(logger)
+	logf.SetLogger(zap.New(zap.UseFlagOptions(&opts.Zap)))
 
-	printVersion()
+	log := logf.Log.WithName("DeploymentValidation")
 
-	namespace, err := getWatchNamespace()
+	log.Info("Setting Up Manager")
+
+	mgr, err := setupManager(log, opts)
 	if err != nil {
-		log.Error(err, "Failed to get watch namespace")
-		os.Exit(1)
+		fail(log, err, "Unexpected error occurred while setting up manager")
 	}
+
+	log.Info("Starting Manager")
+
+	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
+		fail(log, err, "Unexpected error occurred while running manager")
+	}
+}
+
+func setupManager(log logr.Logger, opts options) (manager.Manager, error) {
+	logVersion(log)
 
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Error(err, "Failed to get config")
-		os.Exit(1)
+		return nil, fmt.Errorf("getting config: %w", err)
 	}
 
-	// Set default manager options
-	options := manager.Options{
-		Namespace:          namespace,
-		MetricsBindAddress: "0", // disable controller-runtime managed prometheus endpoint
+	mgrOpts, err := getManagerOptions(opts)
+	if err != nil {
+		return nil, fmt.Errorf("getting manager options: %w", err)
+	}
+
+	// Create a new manager to provide shared dependencies and start components
+	mgr, err := manager.New(cfg, mgrOpts)
+	if err != nil {
+		return nil, fmt.Errorf("initializing manager: %w", err)
+	}
+
+	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
+		return nil, fmt.Errorf("adding healthz check: %w", err)
+	}
+
+	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
+		return nil, fmt.Errorf("adding readyz check: %w", err)
+	}
+
+	log.Info("Registering Components")
+
+	// Setup Scheme for all resources
+	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+		return nil, fmt.Errorf("adding APIs to scheme: %w", err)
+	}
+
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
+	if err != nil {
+		return nil, fmt.Errorf("initializing discovery client: %w", err)
+	}
+
+	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient)
+	if err != nil {
+		return nil, fmt.Errorf("initializing generic reconciler: %w", err)
+	}
+
+	if err = gr.AddToManager(mgr); err != nil {
+		return nil, fmt.Errorf("adding generic reconciler to manager: %w", err)
+	}
+
+	log.Info("Initializing Prometheus Registry")
+
+	reg := prometheus.NewRegistry()
+
+	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %q", opts.MetricsEndpoint()))
+
+	srv, err := dvo_prom.NewServer(reg, opts.MetricsPath, fmt.Sprintf(":%d", opts.MetricsPort))
+	if err != nil {
+		return nil, fmt.Errorf("initializing metrics server: %w", err)
+	}
+
+	if err := mgr.Add(srv); err != nil {
+		return nil, fmt.Errorf("adding metrics server to manager: %w", err)
+	}
+
+	log.Info("Initializing Validation Engine")
+
+	if err := validations.InitializeValidationEngine(opts.ConfigFile, reg); err != nil {
+		return nil, fmt.Errorf("initializing validation engine: %w", err)
+	}
+
+	return mgr, nil
+}
+
+func fail(log logr.Logger, err error, msg string) {
+	log.Error(err, msg)
+
+	os.Exit(1)
+}
+
+func logVersion(log logr.Logger) {
+	log.Info(fmt.Sprintf("Operator Version: %s", version.Version))
+	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
+	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
+}
+
+var errWatchNamespaceNotSet = errors.New("'WatchNamespace' not set")
+
+func getManagerOptions(opts options) (manager.Options, error) {
+	ns, ok := opts.GetWatchNamespace()
+	if !ok {
+		return manager.Options{}, errWatchNamespaceNotSet
+	}
+
+	mgrOpts := manager.Options{
+		Namespace:              ns,
+		HealthProbeBindAddress: opts.ProbeAddr,
+		MetricsBindAddress:     "0", // disable controller-runtime managed prometheus endpoint
 		// disable caching of everything
 		ClientBuilder: &newUncachedClientBuilder{},
 	}
@@ -105,65 +178,12 @@ func main() {
 	// Note that this is not intended to be used for excluding namespaces, this is better done via a Predicate
 	// Also note that you may face performance issues when using this with a high number of namespaces.
 	// More: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/cache#MultiNamespacedCacheBuilder
-	if strings.Contains(namespace, ",") {
-		options.Namespace = ""
-		options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(namespace, ","))
+	if strings.Contains(ns, ",") {
+		mgrOpts.Namespace = ""
+		mgrOpts.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(ns, ","))
 	}
 
-	// Create a new manager to provide shared dependencies and start components
-	mgr, err := manager.New(cfg, options)
-	if err != nil {
-		log.Error(err, "Failed to create manager")
-		os.Exit(1)
-	}
-
-	log.Info("Registering Components")
-
-	// Setup Scheme for all resources
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Error(err, "Failed to add api schemes")
-		os.Exit(1)
-	}
-
-	// Setup all Controllers
-	if err := controller.AddControllersToManager(mgr); err != nil {
-		log.Error(err, "Failed to setup the controllers")
-		os.Exit(1)
-	}
-
-	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %s", getFullMetricsEndpoint()))
-	dvo_prom.InitMetricsEndpoint(metricsPath, metricsPort)
-
-	log.Info("Initializing Validation Engine")
-	if err := validations.InitializeValidationEngine(configFile); err != nil {
-		log.Error(err, "Failed to initialize validation engine")
-		os.Exit(1)
-	}
-
-	log.Info("Starting")
-
-	// Start the Cmd
-	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-		log.Error(err, "Manager exited non-zero")
-		os.Exit(1)
-	}
-}
-
-func getFullMetricsEndpoint() string {
-	return fmt.Sprintf("http://0.0.0.0:%d/%s", metricsPort, metricsPath)
-}
-
-func getWatchNamespace() (string, error) {
-	// WatchNamespaceEnvVar is the constant for env variable WATCH_NAMESPACE
-	// which specifies the Namespace to watch.
-	// An empty value means the operator is running with cluster scope.
-	var watchNamespaceEnvVar = "WATCH_NAMESPACE"
-
-	ns, found := os.LookupEnv(watchNamespaceEnvVar)
-	if !found {
-		return "", fmt.Errorf("%s must be set", watchNamespaceEnvVar)
-	}
-	return ns, nil
+	return mgrOpts, nil
 }
 
 type newUncachedClientBuilder struct {

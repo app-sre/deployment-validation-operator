@@ -54,14 +54,16 @@ spec:
             memory: "200Mi"
             cpu: "100m"
         livenessProbe:
-          tcpSocket:
-            port: 8383
+          httpGet:
+            path: /healthz
+            port: 8081
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 3
         readinessProbe:
-          tcpSocket:
-            port: 8383
+          httpGet:
+            path: /readyz
+            port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 3
