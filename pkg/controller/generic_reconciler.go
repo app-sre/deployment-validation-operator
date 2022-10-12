@@ -113,9 +113,16 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 }
 
 func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
-	apiResources, err := reconcileResourceList(gr.discovery)
+	var log = logf.Log.WithName("reconcileEverything")
+	apiResources, err := reconcileResourceList(gr.discovery, gr.client.Scheme())
 	if err != nil {
 		return fmt.Errorf("retrieving resources to reconcile: %w", err)
+	}
+
+	for i, resource := range apiResources {
+		log.Info("apiResource", "no:", i+1, "Group:", resource.Group,
+			"Version:", resource.Version,
+			"Kind:", resource.Kind)
 	}
 
 	gr.watchNamespaces.resetCache()
