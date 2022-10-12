@@ -156,10 +156,8 @@ github.com/modern-go/reflect2
 # github.com/onsi/gomega v1.10.5
 ## explicit
 # github.com/openshift/api v3.9.0+incompatible
-github.com/openshift/api/apps/v1
-# github.com/openshift/client-go v3.9.0+incompatible
 ## explicit
-github.com/openshift/client-go/apps/clientset/versioned/scheme
+github.com/openshift/api/apps/v1
 # github.com/pelletier/go-toml v1.7.0
 ## explicit
 github.com/pelletier/go-toml
@@ -221,6 +219,7 @@ github.com/xeipuuv/gojsonschema
 ## explicit
 go.uber.org/atomic
 # go.uber.org/multierr v1.5.0
+## explicit
 go.uber.org/multierr
 # go.uber.org/zap v1.15.0
 go.uber.org/zap
@@ -687,7 +686,6 @@ sigs.k8s.io/controller-runtime/pkg/log/zap
 sigs.k8s.io/controller-runtime/pkg/manager
 sigs.k8s.io/controller-runtime/pkg/manager/signals
 sigs.k8s.io/controller-runtime/pkg/metrics
-sigs.k8s.io/controller-runtime/pkg/reconcile
 sigs.k8s.io/controller-runtime/pkg/recorder
 sigs.k8s.io/controller-runtime/pkg/runtime/inject
 sigs.k8s.io/controller-runtime/pkg/scheme
