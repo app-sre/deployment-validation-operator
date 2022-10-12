@@ -93,6 +93,8 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 
 // Start validating the given object kind every interval.
 func (gr *GenericReconciler) Start(ctx context.Context) error {
+	var log = logf.Log.WithName("controller")
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -101,8 +103,12 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 		default:
 			err := gr.reconcileEverything(ctx)
 			if err != nil && !errors.Is(err, context.Canceled) {
-				// could not recover
-				return err
+				// TODO: Improve error handling so that error can be returned to manager from here
+				// this is done to make sure errors caused by skew in k8s version on server and
+				// client-go version in the operator code does not create issues like
+				// `batch/v1 CronJobs` failing in while `lookUpType()
+				// nikthoma: oct 11, 2022
+				log.Error(err, "error fetching and validating resource types")
 			}
 		}
 	}
@@ -220,7 +226,7 @@ func unstructuredToTyped(obj *unstructured.Unstructured) (client.Object, error) 
 func lookUpType(obj *unstructured.Unstructured) (runtime.Object, error) {
 	kubeScheme := scheme.Scheme
 	openshiftScheme := osappsscheme.Scheme
-
+	var log = logf.Log.WithName("gvk look up")
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	typedObj, err := kubeScheme.New(gvk)
 	if err == nil {
@@ -229,9 +235,19 @@ func lookUpType(obj *unstructured.Unstructured) (runtime.Object, error) {
 	if !runtime.IsNotRegisteredError(err) {
 		return nil, err
 	}
+	log.Info("gvk not registered", "scheme", "kubernetes", "gvk", gvk.String())
 	typedObj, err = openshiftScheme.New(gvk)
 	if err == nil {
 		return typedObj, nil
+	}
+	if runtime.IsNotRegisteredError(err) {
+		log.Info(
+			"gvk not registered in any of the schemes",
+			"schemes",
+			"kubernetes,openshift",
+			"gvk",
+			gvk.String(),
+		)
 	}
 	return nil, err
 }
