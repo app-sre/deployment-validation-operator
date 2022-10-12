@@ -142,12 +142,13 @@ func (gr *GenericReconciler) processAllResources(ctx context.Context, resources 
 					fmt.Errorf("processing namespace scoped resources of type %q: %w", gvk, err),
 				)
 			}
-		}
-
-		if err := gr.processClusterscopedResources(ctx, gvk); err != nil {
-			multierr.AppendInto(
-				&finalErr, fmt.Errorf("processing cluster scoped resources of type %q: %w", gvk, err),
-			)
+		} else {
+			if err := gr.processClusterscopedResources(ctx, gvk); err != nil {
+				multierr.AppendInto(
+					&finalErr,
+					fmt.Errorf("processing cluster scoped resources of type %q: %w", gvk, err),
+				)
+			}
 		}
 	}
 
