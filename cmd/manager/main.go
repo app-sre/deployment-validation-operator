@@ -21,7 +21,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/go-logr/logr"
+	osappsv1 "github.com/openshift/api/apps/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/discovery"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -76,18 +79,27 @@ func main() {
 func setupManager(log logr.Logger, opts options) (manager.Manager, error) {
 	logVersion(log)
 
-	// Get a config to talk to the apiserver
+	log.Info("Load KubeConfig")
+
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, fmt.Errorf("getting config: %w", err)
 	}
 
-	mgrOpts, err := getManagerOptions(opts)
+	log.Info("Initialize Scheme")
+
+	scheme, err := initializeScheme()
+	if err != nil {
+		return nil, fmt.Errorf("initializing scheme: %w", err)
+	}
+
+	log.Info("Initialize Manager")
+
+	mgrOpts, err := getManagerOptions(scheme, opts)
 	if err != nil {
 		return nil, fmt.Errorf("getting manager options: %w", err)
 	}
 
-	// Create a new manager to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, mgrOpts)
 	if err != nil {
 		return nil, fmt.Errorf("initializing manager: %w", err)
@@ -102,11 +114,6 @@ func setupManager(log logr.Logger, opts options) (manager.Manager, error) {
 	}
 
 	log.Info("Registering Components")
-
-	// Setup Scheme for all resources
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		return nil, fmt.Errorf("adding APIs to scheme: %w", err)
-	}
 
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
 	if err != nil {
@@ -158,9 +165,27 @@ func logVersion(log logr.Logger) {
 	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 }
 
+func initializeScheme() (*k8sruntime.Scheme, error) {
+	scheme := k8sruntime.NewScheme()
+
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		return nil, fmt.Errorf("adding client-go APIs to scheme: %w", err)
+	}
+
+	if err := osappsv1.AddToScheme(scheme); err != nil {
+		return nil, fmt.Errorf("adding OpenShift Apps V1 API to scheme: %w", err)
+	}
+
+	if err := apis.AddToScheme(scheme); err != nil {
+		return nil, fmt.Errorf("adding DVO APIs to scheme: %w", err)
+	}
+
+	return scheme, nil
+}
+
 var errWatchNamespaceNotSet = errors.New("'WatchNamespace' not set")
 
-func getManagerOptions(opts options) (manager.Options, error) {
+func getManagerOptions(scheme *k8sruntime.Scheme, opts options) (manager.Options, error) {
 	ns, ok := opts.GetWatchNamespace()
 	if !ok {
 		return manager.Options{}, errWatchNamespaceNotSet
@@ -172,6 +197,7 @@ func getManagerOptions(opts options) (manager.Options, error) {
 		MetricsBindAddress:     "0", // disable controller-runtime managed prometheus endpoint
 		// disable caching of everything
 		ClientBuilder: &newUncachedClientBuilder{},
+		Scheme:        scheme,
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)

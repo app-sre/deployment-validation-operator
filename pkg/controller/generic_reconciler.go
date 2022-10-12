@@ -7,14 +7,13 @@ import (
 	"os"
 	"strconv"
 
-	osappsscheme "github.com/openshift/client-go/apps/clientset/versioned/scheme"
+	"go.uber.org/multierr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/retry"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/utils"
@@ -101,8 +100,7 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 			// stop reconciling
 			return nil
 		default:
-			err := gr.reconcileEverything(ctx)
-			if err != nil && !errors.Is(err, context.Canceled) {
+			if err := gr.reconcileEverything(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				// TODO: Improve error handling so that error can be returned to manager from here
 				// this is done to make sure errors caused by skew in k8s version on server and
 				// client-go version in the operator code does not create issues like
@@ -117,49 +115,63 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 	apiResources, err := reconcileResourceList(gr.discovery)
 	if err != nil {
-		return err
+		return fmt.Errorf("retrieving resources to reconcile: %w", err)
 	}
+
 	gr.watchNamespaces.resetCache()
-	err = gr.processAllResources(ctx, apiResources)
-	if err != nil {
-		return err
+
+	if err := gr.processAllResources(ctx, apiResources); err != nil {
+		return fmt.Errorf("processing all resources: %w", err)
 	}
 
 	gr.handleResourceDeletions()
+
 	return nil
 }
 
 func (gr *GenericReconciler) processAllResources(ctx context.Context, resources []metav1.APIResource) error {
+	var finalErr error
+
 	for _, resource := range resources {
 		gvk := gvkFromMetav1APIResource(resource)
-		var err error
+
 		if resource.Namespaced {
-			err = gr.processNamespacedResource(ctx, gvk)
-		} else {
-			err = gr.processClusterscopedObjects(ctx, gvk)
+			if err := gr.processNamespacedResource(ctx, gvk); err != nil {
+				multierr.AppendInto(
+					&finalErr,
+					fmt.Errorf("processing namespace scoped resources of type %q: %w", gvk, err),
+				)
+			}
 		}
-		if err != nil {
-			return err
+
+		if err := gr.processClusterscopedResources(ctx, gvk); err != nil {
+			multierr.AppendInto(
+				&finalErr, fmt.Errorf("processing cluster scoped resources of type %q: %w", gvk, err),
+			)
 		}
 	}
-	return nil
+
+	return finalErr
 }
 
 func (gr *GenericReconciler) processNamespacedResource(ctx context.Context, gvk schema.GroupVersionKind) error {
+	var finalErr error
+
 	namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting watched namespaces: %w", err)
 	}
+
 	for _, ns := range *namespaces {
-		err := gr.processObjectInstances(ctx, gvk, ns.name)
-		if err != nil {
-			return err
+		if err := gr.processObjectInstances(ctx, gvk, ns.name); err != nil {
+			multierr.AppendInto(&finalErr, fmt.Errorf("processing resources: %w", err))
 		}
 	}
-	return nil
+
+	return finalErr
 }
 
-func (gr *GenericReconciler) processClusterscopedObjects(ctx context.Context, gvk schema.GroupVersionKind) error {
+func (gr *GenericReconciler) processClusterscopedResources(ctx context.Context, gvk schema.GroupVersionKind) error {
 	return gr.processObjectInstances(ctx, gvk, "")
 }
 
@@ -167,13 +179,15 @@ func (gr *GenericReconciler) processObjectInstances(ctx context.Context,
 	gvk schema.GroupVersionKind, namespace string) error {
 	gvk.Kind = gvk.Kind + "List"
 
-	err := wait.ExponentialBackoffWithContext(
-		ctx, retry.DefaultBackoff,
-		func() (done bool, err error) {
-			return true, gr.paginatedList(ctx, gvk, namespace)
-		})
+	do := func() (done bool, err error) {
+		return true, gr.paginatedList(ctx, gvk, namespace)
+	}
 
-	return err
+	if err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, do); err != nil {
+		return fmt.Errorf("processing list: %w", err)
+	}
+
+	return nil
 }
 
 func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Unstructured) error {
@@ -196,13 +210,14 @@ func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Un
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.V(2).Info("Reconcile", "Kind", obj.GetObjectKind().GroupVersionKind())
 
-	typedClientObject, err := unstructuredToTyped(obj)
+	typedClientObject, err := gr.unstructuredToTyped(obj)
 	if err != nil {
-		return err
+		return fmt.Errorf("instantiating typed object: %w", err)
 	}
+
 	outcome, err := validations.RunValidations(request, typedClientObject)
 	if err != nil {
-		return err
+		return fmt.Errorf("running validations: %w", err)
 	}
 
 	gr.objectValidationCache.store(obj, outcome)
@@ -210,46 +225,28 @@ func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Un
 	return nil
 }
 
-func unstructuredToTyped(obj *unstructured.Unstructured) (client.Object, error) {
-	typedResource, err := lookUpType(obj)
+func (gr *GenericReconciler) unstructuredToTyped(obj *unstructured.Unstructured) (client.Object, error) {
+	typedResource, err := gr.lookUpType(obj)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("looking up object type: %w", err)
 	}
-	err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, typedResource)
-	if err != nil {
-		return nil, err
-	}
-	return typedResource.(client.Object), err
 
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, typedResource); err != nil {
+		return nil, fmt.Errorf("converting unstructured to typed object: %w", err)
+	}
+
+	return typedResource.(client.Object), nil
 }
 
-func lookUpType(obj *unstructured.Unstructured) (runtime.Object, error) {
-	kubeScheme := scheme.Scheme
-	openshiftScheme := osappsscheme.Scheme
-	var log = logf.Log.WithName("gvk look up")
+func (gr *GenericReconciler) lookUpType(obj *unstructured.Unstructured) (runtime.Object, error) {
 	gvk := obj.GetObjectKind().GroupVersionKind()
-	typedObj, err := kubeScheme.New(gvk)
-	if err == nil {
-		return typedObj, nil
+
+	typedObj, err := gr.client.Scheme().New(gvk)
+	if err != nil {
+		return nil, fmt.Errorf("creating new object of type %s: %w", gvk, err)
 	}
-	if !runtime.IsNotRegisteredError(err) {
-		return nil, err
-	}
-	log.Info("gvk not registered", "scheme", "kubernetes", "gvk", gvk.String())
-	typedObj, err = openshiftScheme.New(gvk)
-	if err == nil {
-		return typedObj, nil
-	}
-	if runtime.IsNotRegisteredError(err) {
-		log.Info(
-			"gvk not registered in any of the schemes",
-			"schemes",
-			"kubernetes,openshift",
-			"gvk",
-			gvk.String(),
-		)
-	}
-	return nil, err
+
+	return typedObj, nil
 }
 
 func (gr *GenericReconciler) handleResourceDeletions() {
@@ -272,15 +269,18 @@ func (gr *GenericReconciler) paginatedList(ctx context.Context, gvk schema.Group
 	}
 	for {
 		list.SetGroupVersionKind(gvk)
-		err := gr.client.List(ctx, &list, listOptions)
-		if err != nil {
+
+		if err := gr.client.List(ctx, &list, listOptions); err != nil {
 			return fmt.Errorf("listing %s: %w", gvk.String(), err)
 		}
 
 		for i := range list.Items {
-			err := gr.reconcile(ctx, &list.Items[i])
-			if err != nil {
-				return err
+			obj := list.Items[i]
+
+			if err := gr.reconcile(ctx, &obj); err != nil {
+				return fmt.Errorf(
+					"reconciling object '%s/%s': %w", obj.GetNamespace(), obj.GetName(), err,
+				)
 			}
 		}
 		listContinue := list.GetContinue()

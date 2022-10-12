@@ -13,7 +13,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/onsi/ginkgo v1.15.0 // indirect
 	github.com/onsi/gomega v1.10.5 // indirect
-	github.com/openshift/client-go v3.9.0+incompatible
+	github.com/openshift/api v3.9.0+incompatible
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/prometheus/client_golang v1.12.0
 	github.com/prometheus/client_model v0.2.0
@@ -22,6 +22,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.5.0
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/oauth2 v0.0.0-20210210192628-66670185b0cd // indirect
 	golang.org/x/sys v0.0.0-20210309074719-68d13333faf2 // indirect
