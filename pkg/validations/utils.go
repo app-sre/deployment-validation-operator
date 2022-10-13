@@ -9,11 +9,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func getPromLabels(namespaceUID, namespace, nameUID, name, kind string) prometheus.Labels {
+func getPromLabels(namespaceUID, namespace, uid, name, kind string) prometheus.Labels {
 	return prometheus.Labels{
 		"namespace_uid": namespaceUID,
 		"namespace":     namespace,
-		"name_uid":      nameUID,
+		"uid":           uid,
 		"name":          name,
 		"kind":          kind,
 	}
