@@ -107,7 +107,7 @@ func (ve *validationEngine) InitRegistry(promReg PrometheusRegistry) error {
 			strings.ReplaceAll(check.Spec.Name, "-", "_"),
 			fmt.Sprintf("Description: %s ; Remediation: %s",
 				check.Spec.Description, check.Spec.Remediation),
-			[]string{"namespace_uid", "namespace", "name_uid", "name", "kind"},
+			[]string{"namespace_uid", "namespace", "uid", "name", "kind"},
 			prometheus.Labels{
 				"check_description": check.Spec.Description,
 				"check_remediation": check.Spec.Remediation,

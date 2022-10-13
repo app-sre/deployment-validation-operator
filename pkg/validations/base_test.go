@@ -115,7 +115,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 	request := utils.Request{
 		NamespaceUID: "namespace-valid-uid",
 		Namespace:    "bar",
-		NameUID:      "name-valid-uid",
+		UID:          "name-valid-uid",
 		Name:         "foo",
 	}
 
@@ -130,7 +130,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 		t.Errorf("Error running validations: %v", err)
 	}
 
-	labels := getPromLabels(request.NamespaceUID, request.Namespace, request.NameUID, request.Name, "Deployment")
+	labels := getPromLabels(request.NamespaceUID, request.Namespace, request.UID, request.Name, "Deployment")
 	metric, err := engine.GetMetric(customCheck.Name).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)
@@ -217,7 +217,7 @@ func TestValidateZeroReplicas(t *testing.T) {
 	request := utils.Request{
 		NamespaceUID: "namespace-valid-uid",
 		Namespace:    "bar",
-		NameUID:      "name-valid-uid",
+		UID:          "name-valid-uid",
 		Name:         "foo",
 	}
 
@@ -234,7 +234,7 @@ func TestValidateZeroReplicas(t *testing.T) {
 		t.Errorf("Error running validations: %v", err)
 	}
 	// Acquire labels generated from validations
-	labels := getPromLabels(request.NamespaceUID, request.Namespace, request.NameUID, request.Name, "Deployment")
+	labels := getPromLabels(request.NamespaceUID, request.Namespace, request.UID, request.Name, "Deployment")
 
 	// The 'GetMetricWith()' function will create a new metric with provided labels if it
 	// does not exist. The default value of a metric is 0. Therefore, a value of 0 implies we

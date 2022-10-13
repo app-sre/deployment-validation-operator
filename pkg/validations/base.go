@@ -28,7 +28,7 @@ func RunValidations(request utils.Request, obj client.Object) (ValidationOutcome
 	kind := obj.GetObjectKind().GroupVersionKind().Kind
 	log.V(2).Info("validation", "kind", kind)
 
-	promLabels := getPromLabels(request.NamespaceUID, request.Namespace, request.NameUID, request.Name, kind)
+	promLabels := getPromLabels(request.NamespaceUID, request.Namespace, request.UID, request.Name, kind)
 
 	// Only run checks against an object with no owners.  This should be
 	// the object that controls the configuration
