@@ -196,8 +196,8 @@ func getManagerOptions(scheme *k8sruntime.Scheme, opts options) (manager.Options
 		HealthProbeBindAddress: opts.ProbeAddr,
 		MetricsBindAddress:     "0", // disable controller-runtime managed prometheus endpoint
 		// disable caching of everything
-		ClientBuilder: &newUncachedClientBuilder{},
-		Scheme:        scheme,
+		NewClient: newClient,
+		Scheme:    scheme,
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
@@ -212,24 +212,15 @@ func getManagerOptions(scheme *k8sruntime.Scheme, opts options) (manager.Options
 	return mgrOpts, nil
 }
 
-type newUncachedClientBuilder struct {
-	uncached []client.Object
-}
-
-func (n *newUncachedClientBuilder) WithUncached(objs ...client.Object) manager.ClientBuilder {
-	n.uncached = append(n.uncached, objs...)
-	return n
-}
-
-func (n *newUncachedClientBuilder) Build(
-	cache cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
-	// Directly use the API client, without wrapping it in a delegatingClient for cache access.
+func newClient(_ cache.Cache, cfg *rest.Config, opts client.Options, _ ...client.Object) (client.Client, error) {
 	qps, err := kubeClientQPS()
 	if err != nil {
 		return nil, err
 	}
-	config.QPS = qps
-	return client.New(config, options)
+
+	cfg.QPS = qps
+
+	return client.New(cfg, opts)
 }
 
 func kubeClientQPS() (float32, error) {
