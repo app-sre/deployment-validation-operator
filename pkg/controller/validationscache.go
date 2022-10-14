@@ -5,40 +5,37 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type validationCache map[validationKey]validationResource
+
 type validationKey struct {
-	group, version, kind, namespace, name string
+	namespace, name, uid string
 }
 
 type resourceVersion string
+
+type validationResource struct {
+	version resourceVersion
+	status  validations.ValidationStatus
+}
 
 func newResourceversionVal(str string) resourceVersion {
 	return resourceVersion(str)
 }
 
 func newValidationKey(obj client.Object) validationKey {
-	gvk := obj.GetObjectKind().GroupVersionKind()
 	return validationKey{
-		group:     gvk.Group,
-		version:   gvk.Version,
-		kind:      gvk.Kind,
 		namespace: obj.GetNamespace(),
 		name:      obj.GetName(),
+		uid:       string(obj.GetUID()),
 	}
 }
 
-type validationResource struct {
-	version resourceVersion
-	outcome validations.ValidationOutcome
-}
-
-func newValidationResource(rscVer resourceVersion, outcome validations.ValidationOutcome) validationResource {
+func newValidationResource(rscVer resourceVersion, status validations.ValidationStatus) validationResource {
 	return validationResource{
 		version: rscVer,
-		outcome: outcome,
+		status:  status,
 	}
 }
-
-type validationCache map[validationKey]validationResource
 
 func newValidationCache() *validationCache {
 	return &validationCache{}
@@ -49,11 +46,11 @@ func (vc *validationCache) has(key validationKey) bool {
 	return ok
 }
 
-func (vc *validationCache) store(obj client.Object, outcome validations.ValidationOutcome) {
+func (vc *validationCache) store(obj client.Object, status validations.ValidationStatus) {
 	key := newValidationKey(obj)
 	(*vc)[key] = newValidationResource(
 		newResourceversionVal(obj.GetResourceVersion()),
-		outcome,
+		status,
 	)
 }
 
@@ -72,6 +69,10 @@ func (vc *validationCache) removeKey(key validationKey) {
 
 func (vc *validationCache) retrieve(obj client.Object) (validationResource, bool) {
 	key := newValidationKey(obj)
+	return vc.retrieveKey(key)
+}
+
+func (vc *validationCache) retrieveKey(key validationKey) (validationResource, bool) {
 	val, ok := (*vc)[key]
 	return val, ok
 }

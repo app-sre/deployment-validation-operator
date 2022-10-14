@@ -19,14 +19,7 @@ func getPromLabels(namespaceUID, namespace, uid, name, kind string) prometheus.L
 	}
 }
 
-func DeleteMetrics(namespace, name, kind string) {
-	promLabels := getPromLabels(
-		"",
-		namespace,
-		"",
-		name,
-		kind,
-	)
+func DeleteMetrics(promLabels prometheus.Labels) {
 	engine.DeleteMetrics(promLabels)
 }
 

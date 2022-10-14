@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sync"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,6 +18,7 @@ type namespace struct {
 type watchNamespacesCache struct {
 	namespaces    *[]namespace
 	ignorePattern *regexp.Regexp
+	lock          sync.RWMutex
 }
 
 func newWatchNamespacesCache() *watchNamespacesCache {
@@ -31,10 +33,15 @@ func newWatchNamespacesCache() *watchNamespacesCache {
 }
 
 func (nsc *watchNamespacesCache) setCache(namespaces *[]namespace) {
+	nsc.lock.Lock()
+	defer nsc.lock.Unlock()
 	nsc.namespaces = namespaces
 }
 
 func (nsc *watchNamespacesCache) getNamespaceUID(namespace string) string {
+	if nsc.namespaces == nil {
+		return ""
+	}
 	for _, ns := range *nsc.namespaces {
 		if ns.name == namespace {
 			return ns.uid

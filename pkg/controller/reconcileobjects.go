@@ -16,6 +16,37 @@ type resourceSet struct {
 	apiResources map[schema.GroupKind]metav1.APIResource
 }
 
+type hashableAPIResource struct {
+	// name is the plural name of the resource.
+	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	// singularName is the singular name of the resource.  This allows clients to handle
+	// plural and singular opaquely.
+	// The singularName is more correct for reporting status on a single item and both
+	// singular and plural are allowed from the kubectl CLI interface.
+	SingularName string `json:"singularName" protobuf:"bytes,6,opt,name=singularName"`
+	// namespaced indicates if a resource is namespaced or not.
+	Namespaced bool `json:"namespaced" protobuf:"varint,2,opt,name=namespaced"`
+	// group is the preferred group of the resource.  Empty implies the group of the
+	// containing resource list.
+	// For subresources, this may have a different value, for example: Scale".
+	Group string `json:"group,omitempty" protobuf:"bytes,8,opt,name=group"`
+	// version is the preferred version of the resource.  Empty implies the version of the
+	// containing resource list
+	// For subresources, this may have a different value,
+	//for example: v1 (while inside a v1beta1 version of the core resource's group)".
+	Version string `json:"version,omitempty" protobuf:"bytes,9,opt,name=version"`
+	// kind is the kind for the resource (e.g. 'Foo' is the kind for a resource 'foo')
+	Kind string `json:"kind" protobuf:"bytes,3,opt,name=kind"`
+}
+
+func (hr *hashableAPIResource) gvk() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   hr.Group,
+		Version: hr.Version,
+		Kind:    hr.Kind,
+	}
+}
+
 func newResourceSet(scheme *runtime.Scheme) *resourceSet {
 	return &resourceSet{
 		scheme:       scheme,
@@ -64,18 +95,26 @@ func (s *resourceSet) getPriorityVersion(group, existingVer, currentVer string) 
 	return existingVer
 }
 
-func (s *resourceSet) ToSlice() []metav1.APIResource {
-	res := make([]metav1.APIResource, 0, len(s.apiResources))
+func (s *resourceSet) ToSlice() []hashableAPIResource {
+	res := make([]hashableAPIResource, 0, len(s.apiResources))
 
 	for _, v := range s.apiResources {
-		res = append(res, v)
+		hashable := hashableAPIResource{
+			Name:         v.Name,
+			SingularName: v.SingularName,
+			Namespaced:   v.Namespaced,
+			Group:        v.Group,
+			Version:      v.Version,
+			Kind:         v.Kind,
+		}
+		res = append(res, hashable)
 	}
 
 	return res
 }
 
 func reconcileResourceList(client discovery.DiscoveryInterface,
-	scheme *runtime.Scheme) ([]metav1.APIResource, error) {
+	scheme *runtime.Scheme) ([]hashableAPIResource, error) {
 	set := newResourceSet(scheme)
 
 	_, apiResourceLists, err := client.ServerGroupsAndResources()

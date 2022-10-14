@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
+
+	"k8s.io/client-go/util/workqueue"
 
 	"go.uber.org/multierr"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -25,37 +27,58 @@ import (
 )
 
 var (
-	_ manager.Runnable = &GenericReconciler{}
+	_                    manager.Runnable = &GenericReconciler{}
+	ctxKeyCurrentObjects                  = struct{}{}
 )
 
 // GenericReconciler watches a defined object
 type GenericReconciler struct {
 	listLimit             int64
 	watchNamespaces       *watchNamespacesCache
-	objectValidationCache *validationCache
-	currentObjects        *validationCache
+	objectValidationCache *cacheSet
 	client                client.Client
 	discovery             discovery.DiscoveryInterface
+	workqueue             workqueue.RateLimitingInterface
+	workers               int
+	enqueueInterval       time.Duration
 }
 
 // NewGenericReconciler returns a GenericReconciler struct
 func NewGenericReconciler(client client.Client, discovery discovery.DiscoveryInterface) (*GenericReconciler, error) {
-	listLimit, err := getListLimit()
+	lLimit, err := listLimit()
 	if err != nil {
 		return nil, err
 	}
-
+	wCount, err := workerCount()
+	if err != nil {
+		return nil, err
+	}
+	eInterval, err := enqueueInterval()
+	if err != nil {
+		return nil, err
+	}
 	return &GenericReconciler{
 		client:                client,
 		discovery:             discovery,
-		listLimit:             listLimit,
+		listLimit:             lLimit,
 		watchNamespaces:       newWatchNamespacesCache(),
-		objectValidationCache: newValidationCache(),
-		currentObjects:        newValidationCache(),
+		objectValidationCache: newCacheSet(),
+		workqueue:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		workers:               wCount,
+		enqueueInterval:       eInterval,
 	}, nil
 }
 
-func getListLimit() (int64, error) {
+func enqueueInterval() (time.Duration, error) {
+	val, err := defaultOrEnv(EnvValidationCheckInterval, defaultValidationCheckInterval)
+	return time.Duration(val) * time.Second, err
+}
+
+func workerCount() (int, error) {
+	return defaultOrEnv(EnvNumberOfWorkers, defaultNumberOfWorkers)
+}
+
+func listLimit() (int64, error) {
 	intVal, err := defaultOrEnv(EnvResorucesPerListQuery, defaultListLimit)
 	return int64(intVal), err
 }
@@ -93,27 +116,35 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 // Start validating the given object kind every interval.
 func (gr *GenericReconciler) Start(ctx context.Context) error {
 	var log = logf.Log.WithName("controller")
+	ticker := time.NewTicker(gr.enqueueInterval)
+	defer gr.workqueue.ShutDown()
+
+	// start workers
+	for i := 0; i < gr.workers; i++ {
+		go gr.runWorker(i + 1)
+	}
+
+	if err := gr.enqueueAllResources(); err != nil && !errors.Is(err, context.Canceled) {
+		log.Error(err, "error enqueueing all resource types for validation")
+		return err
+	}
 
 	for {
 		select {
 		case <-ctx.Done():
 			// stop reconciling
 			return nil
-		default:
-			if err := gr.reconcileEverything(ctx); err != nil && !errors.Is(err, context.Canceled) {
-				// TODO: Improve error handling so that error can be returned to manager from here
-				// this is done to make sure errors caused by skew in k8s version on server and
-				// client-go version in the operator code does not create issues like
-				// `batch/v1 CronJobs` failing in while `lookUpType()
-				// nikthoma: oct 11, 2022
-				log.Error(err, "error fetching and validating resource types")
+		case <-ticker.C:
+			if err := gr.enqueueAllResources(); err != nil && !errors.Is(err, context.Canceled) {
+				log.Error(err, "error enqueueing all resource types for validation")
+				return err
 			}
 		}
 	}
 }
 
-func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
-	var log = logf.Log.WithName("reconcileEverything")
+func (gr *GenericReconciler) enqueueAllResources() error {
+	var log = logf.Log.WithName("enqueueAllResources")
 	apiResources, err := reconcileResourceList(gr.discovery, gr.client.Scheme())
 	if err != nil {
 		return fmt.Errorf("retrieving resources to reconcile: %w", err)
@@ -123,43 +154,63 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 		log.Info("apiResource", "no:", i+1, "Group:", resource.Group,
 			"Version:", resource.Version,
 			"Kind:", resource.Kind)
+		gr.workqueue.Add(resource)
 	}
-
 	gr.watchNamespaces.resetCache()
-
-	if err := gr.processAllResources(ctx, apiResources); err != nil {
-		return fmt.Errorf("processing all resources: %w", err)
-	}
-
-	gr.handleResourceDeletions()
-
 	return nil
 }
 
-func (gr *GenericReconciler) processAllResources(ctx context.Context, resources []metav1.APIResource) error {
-	var finalErr error
-
-	for _, resource := range resources {
-		gvk := gvkFromMetav1APIResource(resource)
-
-		if resource.Namespaced {
-			if err := gr.processNamespacedResource(ctx, gvk); err != nil {
-				multierr.AppendInto(
-					&finalErr,
-					fmt.Errorf("processing namespace scoped resources of type %q: %w", gvk, err),
-				)
-			}
-		} else {
-			if err := gr.processClusterscopedResources(ctx, gvk); err != nil {
-				multierr.AppendInto(
-					&finalErr,
-					fmt.Errorf("processing cluster scoped resources of type %q: %w", gvk, err),
-				)
-			}
-		}
+func (gr *GenericReconciler) runWorker(i int) {
+	log := logf.Log.WithName("runWorker")
+	log.Info("started", "worker", i)
+	for gr.attendNextWorkItem() {
 	}
+}
 
-	return finalErr
+func (gr *GenericReconciler) attendNextWorkItem() bool {
+	var log = logf.Log.WithName("attendNextWorkItem")
+	item, shutdown := gr.workqueue.Get()
+	if shutdown {
+		return false
+	}
+	apiResource := item.(hashableAPIResource)
+	err := gr.processWorkItem(context.Background(), apiResource)
+	log.Info("processing API Resource",
+		"Group", apiResource.Group,
+		"Version", apiResource.Version,
+		"Kind", apiResource.Kind)
+	if err != nil {
+		log.Error(err, "error processing API Resource",
+			"Group", apiResource.Group,
+			"Version", apiResource.Version,
+			"Kind", apiResource.Kind)
+		if gr.workqueue.NumRequeues(item) > 5 {
+			gr.workqueue.Forget(item)
+			gr.workqueue.Done(item)
+		}
+		gr.workqueue.AddRateLimited(item)
+	}
+	gr.workqueue.Done(item)
+	return true
+}
+
+func (gr *GenericReconciler) processWorkItem(ctx context.Context, resource hashableAPIResource) error {
+	currentObjects := newValidationCache()
+	ctx = context.WithValue(ctx, ctxKeyCurrentObjects, currentObjects)
+	gvk := resource.gvk()
+	var err error
+	if resource.Namespaced {
+		err = gr.processNamespacedResource(ctx, gvk)
+
+	} else {
+		err = gr.processClusterscopedResource(ctx, gvk)
+	}
+	if err != nil {
+		return err
+	}
+	gr.handleResourceDeletions(ctx, gvk)
+	currentObjects.drain()
+	return err
 }
 
 func (gr *GenericReconciler) processNamespacedResource(ctx context.Context, gvk schema.GroupVersionKind) error {
@@ -179,14 +230,12 @@ func (gr *GenericReconciler) processNamespacedResource(ctx context.Context, gvk 
 	return finalErr
 }
 
-func (gr *GenericReconciler) processClusterscopedResources(ctx context.Context, gvk schema.GroupVersionKind) error {
+func (gr *GenericReconciler) processClusterscopedResource(ctx context.Context, gvk schema.GroupVersionKind) error {
 	return gr.processObjectInstances(ctx, gvk, "")
 }
 
 func (gr *GenericReconciler) processObjectInstances(ctx context.Context,
 	gvk schema.GroupVersionKind, namespace string) error {
-	gvk.Kind = gvk.Kind + "List"
-
 	do := func() (done bool, err error) {
 		return true, gr.paginatedList(ctx, gvk, namespace)
 	}
@@ -194,12 +243,12 @@ func (gr *GenericReconciler) processObjectInstances(ctx context.Context,
 	if err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, do); err != nil {
 		return fmt.Errorf("processing list: %w", err)
 	}
-
 	return nil
 }
 
 func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Unstructured) error {
-	gr.currentObjects.store(obj, "")
+	currentObjects := ctx.Value(ctxKeyCurrentObjects).(*validationCache)
+	currentObjects.store(obj, validations.ValidationStatus{})
 	if gr.objectValidationCache.objectAlreadyValidated(obj) {
 		return nil
 	}
@@ -223,12 +272,12 @@ func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Un
 		return fmt.Errorf("instantiating typed object: %w", err)
 	}
 
-	outcome, err := validations.RunValidations(request, typedClientObject)
+	vStatus, err := validations.RunValidations(request, typedClientObject)
 	if err != nil {
 		return fmt.Errorf("running validations: %w", err)
 	}
 
-	gr.objectValidationCache.store(obj, outcome)
+	gr.objectValidationCache.store(obj, vStatus)
 
 	return nil
 }
@@ -257,16 +306,20 @@ func (gr *GenericReconciler) lookUpType(obj *unstructured.Unstructured) (runtime
 	return typedObj, nil
 }
 
-func (gr *GenericReconciler) handleResourceDeletions() {
-	for k := range *gr.objectValidationCache {
-		if gr.currentObjects.has(k) {
+func (gr *GenericReconciler) handleResourceDeletions(ctx context.Context, gvk schema.GroupVersionKind) {
+	currentObjects := ctx.Value(ctxKeyCurrentObjects).(*validationCache)
+	objectHistory, ok := (*gr.objectValidationCache)[cacheSetKey(gvk)]
+	if !ok {
+		return
+	}
+	for k, vStatus := range *objectHistory {
+		if currentObjects.has(k) {
 			continue
 		}
-		validations.DeleteMetrics(k.namespace, k.name, k.kind)
-		gr.objectValidationCache.removeKey(k)
-
+		promLabels := vStatus.status.PromLabels
+		validations.DeleteMetrics(promLabels)
+		objectHistory.removeKey(k)
 	}
-	gr.currentObjects.drain()
 }
 
 func (gr *GenericReconciler) paginatedList(ctx context.Context, gvk schema.GroupVersionKind, namespace string) error {
@@ -275,6 +328,7 @@ func (gr *GenericReconciler) paginatedList(ctx context.Context, gvk schema.Group
 		Limit:     gr.listLimit,
 		Namespace: namespace,
 	}
+	gvk.Kind = gvk.Kind + "List"
 	for {
 		list.SetGroupVersionKind(gvk)
 

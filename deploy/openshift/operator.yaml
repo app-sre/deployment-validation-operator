@@ -77,6 +77,10 @@ spec:
         - name: RESOURCES_PER_LIST_QUERY
           value: "5"
         - name: VALIDATION_CHECK_INTERVAL
+          value: "120"
+        - name: KUBECLIENT_QPS
+          value: "0.5"
+        - name: WORKERS
           value: "2"
         - name: POD_NAME
           valueFrom:
