@@ -44,7 +44,7 @@ BUNDLE_PERMITTED_RESOURCES = (
 parser = argparse.ArgumentParser()
 parser.add_argument("-o", "--operator-name", type=str, help="Name of the operator", required=True)
 parser.add_argument("-d", "--output-dir", type=str, help="Directory for the CSV generation", required=True)
-parser.add_argument("-p", "--previous-version", type=str, help="Semver of the version being replaced", required=True)
+parser.add_argument("-p", "--previous-version", type=str, help="Semver of the version being replaced", required=False)
 parser.add_argument("-i", "--operator-image", type=str, help="Base index image to be used", required=True)
 parser.add_argument("-V", "--operator-version", type=str, help="The full version of the operator (without the leading `v`): {major}.{minor}.{commit-number}-{hash}", required=True)
 args = parser.parse_args()
@@ -240,16 +240,18 @@ if 'CustomResourceDefinition' in by_kind:
     csv['spec']['customresourcedefinitions'] = {'owned': []}
 for crd in by_kind.get('CustomResourceDefinition', []):
     log_resource(crd)
+
     # And register the CRD as "owned" in the CSV
-    csv['spec']['customresourcedefinitions']['owned'].append(
-        {
-            "name": crd["metadata"]["name"],
-            "description": crd["spec"]["names"]["kind"],
-            "displayName": crd["spec"]["names"]["kind"],
-            "kind": crd["spec"]["names"]["kind"],
-            "version": crd["spec"]["version"]
-        }
-    )
+    for version in crd["spec"]["versions"]:
+        csv['spec']['customresourcedefinitions']['owned'].append(
+            {
+                "name": crd["metadata"]["name"],
+                "description": crd["spec"]["names"]["kind"],
+                "displayName": crd["spec"]["names"]["kind"],
+                "kind": crd["spec"]["names"]["kind"],
+                "version": version["name"]
+            }
+        )
 # These will be written to the bundle at the end along with generic resources
 
 ## Process [Cluster]Role[Binding]s (TODO: Match up ServiceAccounts)
@@ -305,7 +307,7 @@ if 'Role' in by_kind:
                 csv['spec']['install']['spec']['permissions'].append(
                     {
                         'rules': role['rules'],
-                        'serviceAccountName': role_binding['subjects'][0]['name'] 
+                        'serviceAccountName': role_binding['subjects'][0]['name']
                     }
                 )
                 trim_index(by_kind, 'Role', role)
@@ -316,6 +318,21 @@ if 'Role' in by_kind:
 deploy = by_kind['Deployment'][0]
 # Use the operator image pull spec we were passed
 deploy['spec']['template']['spec']['containers'][0]['image'] = operator_image
+# Add or replace OPERATOR_IMAGE env var
+env = deploy['spec']['template']['spec']['containers'][0].get('env')
+if env:
+    # Does OPERATOR_IMAGE key already exist in spec? If so, update value
+    for entry in env:
+        if entry['name'] == 'OPERATOR_IMAGE':
+            entry['value'] = operator_image
+            break
+    # If not, add it
+    else:
+        env.append(dict(name='OPERATOR_IMAGE', value=operator_image))
+else:
+    # The container has no environment variables, so just set this one
+    env = dict(name='OPERATOR_IMAGE', value=operator_image)
+
 csv['spec']['install']['spec']['deployments'] = [
     {
         'name': deploy['metadata']['name'],
@@ -346,7 +363,8 @@ for kind, docs in by_kind.items():
 # Update the versions to include git hash:
 csv['metadata']['name'] = f"{OPERATOR_NAME}.v{full_version}"
 csv['spec']['version'] = full_version
-csv['spec']['replaces'] = f"{OPERATOR_NAME}.v{prev_version}"
+if prev_version:
+    csv['spec']['replaces'] = f"{OPERATOR_NAME}.v{prev_version}"
 
 # Set the CSV createdAt annotation:
 now = datetime.datetime.now()

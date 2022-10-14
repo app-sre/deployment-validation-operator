@@ -320,6 +320,14 @@ function main() {
     local versions
     # shellcheck disable=SC2207
     versions=($(get_prev_operator_version "$bundle_versions_file"))
+    # This condition is triggered when an operator is built for the first time. In such case the
+    # get_prev_operator_version returns an empty string and causes undefined variables failures
+    # in a few lines below.
+    if [ -z ${versions+x} ]
+    then
+        versions[0]=""
+        versions[1]=""
+    fi
     local prev_operator_version="${versions[0]}"
     local prev_good_operator_version="${versions[1]}"
     local skip_versions=("${versions[@]:2}")
