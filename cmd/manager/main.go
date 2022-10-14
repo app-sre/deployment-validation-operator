@@ -1,12 +1,10 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
-	"strconv"
-	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -29,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -43,6 +42,7 @@ func main() {
 	os.Setenv(operatorNameEnvVar, dvconfig.OperatorName)
 
 	opts := options.Options{
+		ClientQPS:   0.5,
 		MetricsPort: 8383,
 		MetricsPath: "metrics",
 		ProbeAddr:   ":8081",
@@ -62,6 +62,8 @@ func main() {
 	logf.SetLogger(zap.New(zap.UseFlagOptions(&opts.Zap)))
 
 	log := logf.Log.WithName("DeploymentValidation")
+
+	log.V(1).Info("Running with Options", opts.ToLogValues()...)
 
 	log.Info("Setting Up Manager")
 
@@ -121,7 +123,12 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 		return nil, fmt.Errorf("initializing discovery client: %w", err)
 	}
 
-	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient)
+	grOpts, err := getReconcilierOptions(opts)
+	if err != nil {
+		return nil, fmt.Errorf("getting reconcilier options: %w", err)
+	}
+
+	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient, grOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("initializing generic reconciler: %w", err)
 	}
@@ -184,20 +191,12 @@ func initializeScheme() (*k8sruntime.Scheme, error) {
 	return scheme, nil
 }
 
-var errWatchNamespaceNotSet = errors.New("'WatchNamespace' not set")
-
 func getManagerOptions(scheme *k8sruntime.Scheme, opts options.Options) (manager.Options, error) {
-	ns, ok := opts.GetWatchNamespace()
-	if !ok {
-		return manager.Options{}, errWatchNamespaceNotSet
-	}
-
 	mgrOpts := manager.Options{
-		Namespace:              ns,
 		HealthProbeBindAddress: opts.ProbeAddr,
 		MetricsBindAddress:     "0", // disable controller-runtime managed prometheus endpoint
 		// disable caching of everything
-		NewClient: newClient,
+		NewClient: newClientWithOpts(opts),
 		Scheme:    scheme,
 	}
 
@@ -205,35 +204,47 @@ func getManagerOptions(scheme *k8sruntime.Scheme, opts options.Options) (manager
 	// Note that this is not intended to be used for excluding namespaces, this is better done via a Predicate
 	// Also note that you may face performance issues when using this with a high number of namespaces.
 	// More: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/cache#MultiNamespacedCacheBuilder
-	if strings.Contains(ns, ",") {
-		mgrOpts.Namespace = ""
-		mgrOpts.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(ns, ","))
+	if nss := opts.WatchNamespaces; len(nss) > 1 {
+		mgrOpts.NewCache = cache.MultiNamespacedCacheBuilder(nss)
+	} else if len(nss) > 0 {
+		mgrOpts.Namespace = nss[0]
 	}
 
 	return mgrOpts, nil
 }
 
-func newClient(_ cache.Cache, cfg *rest.Config, opts client.Options, _ ...client.Object) (client.Client, error) {
-	qps, err := kubeClientQPS()
-	if err != nil {
-		return nil, err
+func newClientWithOpts(options options.Options) cluster.NewClientFunc {
+	return func(_ cache.Cache, cfg *rest.Config, opts client.Options, _ ...client.Object) (client.Client, error) {
+		cfg.QPS = options.ClientQPS
+
+		return client.New(cfg, opts)
 	}
-
-	cfg.QPS = qps
-
-	return client.New(cfg, opts)
 }
 
-func kubeClientQPS() (float32, error) {
-	qps := controller.DefaultKubeClientQPS
-	envVal, ok := os.LookupEnv(controller.EnvKubeClientQPS)
-	if !ok {
-		return qps, nil
+func getReconcilierOptions(opts options.Options) ([]controller.GenericReconcilerOption, error) {
+	var pattern *regexp.Regexp
+
+	if patStr, ok := opts.GetNamespaceIgnorePattern(); ok {
+		var err error
+
+		pattern, err = regexp.Compile(patStr)
+		if err != nil {
+			return nil, fmt.Errorf("compiling namespace ignore pattern: %w", err)
+		}
 	}
-	val, err := strconv.ParseFloat(envVal, 32)
-	if err != nil {
-		return 0.0, err
+
+	grOpts := []controller.GenericReconcilerOption{
+		controller.WithLog{Log: logf.Log.WithName("controllers").WithName("generic-reconcilier")},
+		controller.WithNamespaceCache{
+			Cache: controller.NewWatchNamespacesCache(
+				controller.WithIgnorePattern{Pattern: pattern},
+			),
+		},
 	}
-	qps = float32(val)
-	return qps, err
+
+	if limit, ok := opts.GetResourceListLimit(); ok {
+		grOpts = append(grOpts, controller.WithListLimit(limit))
+	}
+
+	return grOpts, nil
 }

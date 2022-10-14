@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"strconv"
 
 	"go.uber.org/multierr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,11 +15,21 @@ import (
 	"k8s.io/client-go/util/retry"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
+	"github.com/go-logr/logr"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
+
+type NamespaceCache interface {
+	GetNamespaceUID(namespace string) string
+	GetWatchNamespaces(ctx context.Context, c client.Client) (*[]Namespace, error)
+	Reset()
+}
+
+type Namespace struct {
+	UID, Name string
+}
 
 var (
 	_ manager.Runnable = &GenericReconciler{}
@@ -29,8 +37,7 @@ var (
 
 // GenericReconciler watches a defined object
 type GenericReconciler struct {
-	listLimit             int64
-	watchNamespaces       *watchNamespacesCache
+	cfg                   GenericReconcilierConfig
 	objectValidationCache *validationCache
 	currentObjects        *validationCache
 	client                client.Client
@@ -38,50 +45,22 @@ type GenericReconciler struct {
 }
 
 // NewGenericReconciler returns a GenericReconciler struct
-func NewGenericReconciler(client client.Client, discovery discovery.DiscoveryInterface) (*GenericReconciler, error) {
-	listLimit, err := getListLimit()
-	if err != nil {
-		return nil, err
-	}
+func NewGenericReconciler(
+	client client.Client,
+	discovery discovery.DiscoveryInterface,
+	opts ...GenericReconcilerOption) (*GenericReconciler, error) {
+	var cfg GenericReconcilierConfig
+
+	cfg.Option(opts...)
+	cfg.Default()
 
 	return &GenericReconciler{
+		cfg:                   cfg,
 		client:                client,
 		discovery:             discovery,
-		listLimit:             listLimit,
-		watchNamespaces:       newWatchNamespacesCache(),
 		objectValidationCache: newValidationCache(),
 		currentObjects:        newValidationCache(),
 	}, nil
-}
-
-func getListLimit() (int64, error) {
-	intVal, err := defaultOrEnv(EnvResorucesPerListQuery, defaultListLimit)
-	return int64(intVal), err
-}
-
-func defaultOrEnv(envName string, defaultIntVal int) (int, error) {
-	envVal, ok, err := intFromEnv(envName)
-	if err != nil {
-		return 0, err
-	}
-	if ok {
-		return envVal, nil
-	}
-	return defaultIntVal, nil
-}
-
-func intFromEnv(envName string) (int, bool, error) {
-	strVal, ok := os.LookupEnv(envName)
-	if !ok || strVal == "" {
-		return 0, false, nil
-	}
-
-	intVal, err := strconv.Atoi(strVal)
-	if err != nil {
-		return 0, false, err
-	}
-
-	return intVal, true, nil
 }
 
 // AddToManager will add the reconciler for the configured obj to a manager.
@@ -91,8 +70,6 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 
 // Start validating the given object kind every interval.
 func (gr *GenericReconciler) Start(ctx context.Context) error {
-	var log = logf.Log.WithName("controller")
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -105,26 +82,29 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 				// client-go version in the operator code does not create issues like
 				// `batch/v1 CronJobs` failing in while `lookUpType()
 				// nikthoma: oct 11, 2022
-				log.Error(err, "error fetching and validating resource types")
+				gr.cfg.Log.Error(err, "error fetching and validating resource types")
 			}
 		}
 	}
 }
 
 func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
-	var log = logf.Log.WithName("reconcileEverything")
+	log := gr.cfg.Log.WithName("reconcileEverything")
 	apiResources, err := reconcileResourceList(gr.discovery, gr.client.Scheme())
 	if err != nil {
 		return fmt.Errorf("retrieving resources to reconcile: %w", err)
 	}
 
 	for i, resource := range apiResources {
-		log.Info("apiResource", "no:", i+1, "Group:", resource.Group,
-			"Version:", resource.Version,
-			"Kind:", resource.Kind)
+		log.Info("identifying resources for reconciliation",
+			"no", i+1,
+			"Group", resource.Group,
+			"Version", resource.Version,
+			"Kind", resource.Kind,
+		)
 	}
 
-	gr.watchNamespaces.resetCache()
+	gr.cfg.NamespaceCache.Reset()
 
 	if err := gr.processAllResources(ctx, apiResources); err != nil {
 		return fmt.Errorf("processing all resources: %w", err)
@@ -164,13 +144,13 @@ func (gr *GenericReconciler) processAllResources(ctx context.Context, resources 
 func (gr *GenericReconciler) processNamespacedResource(ctx context.Context, gvk schema.GroupVersionKind) error {
 	var finalErr error
 
-	namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client)
+	namespaces, err := gr.cfg.NamespaceCache.GetWatchNamespaces(ctx, gr.client)
 	if err != nil {
 		return fmt.Errorf("getting watched namespaces: %w", err)
 	}
 
 	for _, ns := range *namespaces {
-		if err := gr.processObjectInstances(ctx, gvk, ns.name); err != nil {
+		if err := gr.processObjectInstances(ctx, gvk, ns.Name); err != nil {
 			multierr.AppendInto(&finalErr, fmt.Errorf("processing resources: %w", err))
 		}
 	}
@@ -203,11 +183,11 @@ func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Un
 		return nil
 	}
 
-	var log = logf.Log.WithName(fmt.Sprintf("%s Validation", obj.GetObjectKind().GroupVersionKind()))
+	log := gr.cfg.Log.WithName(fmt.Sprintf("%s Validation", obj.GetObjectKind().GroupVersionKind()))
 
 	request := validations.NewRequestFromObject(obj)
 	if len(request.Namespace) > 0 {
-		namespaceUID := gr.watchNamespaces.getNamespaceUID(request.Namespace)
+		namespaceUID := gr.cfg.NamespaceCache.GetNamespaceUID(request.Namespace)
 		if len(namespaceUID) == 0 {
 			log.V(2).Info("Namespace UID not found", request.Namespace)
 		}
@@ -266,7 +246,7 @@ func (gr *GenericReconciler) handleResourceDeletions() {
 			Kind:         k.kind,
 			Name:         k.name,
 			Namespace:    k.namespace,
-			NamespaceUID: gr.watchNamespaces.getNamespaceUID(k.namespace),
+			NamespaceUID: gr.cfg.NamespaceCache.GetNamespaceUID(k.namespace),
 			UID:          v.uid,
 		}
 
@@ -285,7 +265,7 @@ func (gr *GenericReconciler) paginatedList(
 ) error {
 	list := unstructured.UnstructuredList{}
 	listOptions := &client.ListOptions{
-		Limit:     gr.listLimit,
+		Limit:     gr.cfg.ListLimit,
 		Namespace: namespace,
 	}
 	for {
@@ -311,4 +291,30 @@ func (gr *GenericReconciler) paginatedList(
 		listOptions.Continue = listContinue
 	}
 	return nil
+}
+
+type GenericReconcilierConfig struct {
+	Log            logr.Logger
+	ListLimit      int64
+	NamespaceCache NamespaceCache
+}
+
+func (c *GenericReconcilierConfig) Option(opts ...GenericReconcilerOption) {
+	for _, opt := range opts {
+		opt.ConfigureGenericReconcilier(c)
+	}
+}
+
+func (c *GenericReconcilierConfig) Default() {
+	if c.Log == nil {
+		c.Log = logr.Discard()
+	}
+
+	if c.ListLimit == 0 {
+		c.ListLimit = 5
+	}
+}
+
+type GenericReconcilerOption interface {
+	ConfigureGenericReconcilier(*GenericReconcilierConfig)
 }

@@ -24,33 +24,7 @@ func TestOptionsStruct(t *testing.T) {
 		opt.processEnv()
 
 		// Assert
-		assert.Equal(t, expectedValue, *opt.watchNamespace)
-	})
-
-	t.Run("GetWatchNamespace function (no result)", func(t *testing.T) {
-		// Given
-		opt := Options{}
-
-		// When
-		_, isSet := opt.GetWatchNamespace()
-
-		// Assert
-		assert.Equal(t, false, isSet)
-	})
-
-	t.Run("GetWatchNamespace function", func(t *testing.T) {
-		// Given
-		expectedValue := "test"
-		opt := Options{
-			watchNamespace: &expectedValue,
-		}
-
-		// When
-		namespace, isSet := opt.GetWatchNamespace()
-
-		// Assert
-		assert.Equal(t, true, isSet)
-		assert.Equal(t, expectedValue, namespace)
+		assert.ElementsMatch(t, []string{expectedValue}, opt.WatchNamespaces)
 	})
 
 	t.Run("MetricsEndpoint", func(t *testing.T) {

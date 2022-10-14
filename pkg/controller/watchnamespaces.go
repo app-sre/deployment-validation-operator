@@ -3,51 +3,45 @@ package controller
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type namespace struct {
-	uid, name string
+type WatchNamespacesCache struct {
+	cfg        watchNamespacesCacheConfig
+	namespaces *[]Namespace
 }
 
-type watchNamespacesCache struct {
-	namespaces    *[]namespace
-	ignorePattern *regexp.Regexp
-}
+func NewWatchNamespacesCache(opts ...watchNamespacesCacheOption) *WatchNamespacesCache {
+	var cfg watchNamespacesCacheConfig
 
-func newWatchNamespacesCache() *watchNamespacesCache {
-	ignorePatternStr := os.Getenv(EnvNamespaceIgnorePattern)
-	var nsIgnoreRegex *regexp.Regexp
-	if ignorePatternStr != "" {
-		nsIgnoreRegex = regexp.MustCompile(ignorePatternStr)
-	}
-	return &watchNamespacesCache{
-		ignorePattern: nsIgnoreRegex,
+	cfg.Option(opts...)
+
+	return &WatchNamespacesCache{
+		cfg: cfg,
 	}
 }
 
-func (nsc *watchNamespacesCache) setCache(namespaces *[]namespace) {
+func (nsc *WatchNamespacesCache) setCache(namespaces *[]Namespace) {
 	nsc.namespaces = namespaces
 }
 
-func (nsc *watchNamespacesCache) getNamespaceUID(namespace string) string {
+func (nsc *WatchNamespacesCache) GetNamespaceUID(namespace string) string {
 	for _, ns := range *nsc.namespaces {
-		if ns.name == namespace {
-			return ns.uid
+		if ns.Name == namespace {
+			return ns.UID
 		}
 	}
 	return ""
 }
 
-func (nsc *watchNamespacesCache) resetCache() {
+func (nsc *WatchNamespacesCache) Reset() {
 	nsc.setCache(nil)
 }
 
-func (nsc *watchNamespacesCache) getWatchNamespaces(ctx context.Context, c client.Client) (*[]namespace, error) {
+func (nsc *WatchNamespacesCache) GetWatchNamespaces(ctx context.Context, c client.Client) (*[]Namespace, error) {
 	if nsc.namespaces != nil {
 		return nsc.namespaces, nil
 	}
@@ -55,14 +49,28 @@ func (nsc *watchNamespacesCache) getWatchNamespaces(ctx context.Context, c clien
 	if err := c.List(ctx, &namespaceList); err != nil {
 		return nil, fmt.Errorf("listing %s: %w", namespaceList.GroupVersionKind().String(), err)
 	}
-	watchNamespaces := []namespace{}
+	watchNamespaces := []Namespace{}
 	for _, ns := range namespaceList.Items {
 		name := ns.GetName()
-		if nsc.ignorePattern != nil && nsc.ignorePattern.Match([]byte(name)) {
+		if nsc.cfg.IgnorePattern != nil && nsc.cfg.IgnorePattern.MatchString(name) {
 			continue
 		}
-		watchNamespaces = append(watchNamespaces, namespace{uid: string(ns.GetUID()), name: name})
+		watchNamespaces = append(watchNamespaces, Namespace{UID: string(ns.GetUID()), Name: name})
 	}
 	nsc.setCache(&watchNamespaces)
 	return nsc.namespaces, nil
+}
+
+type watchNamespacesCacheConfig struct {
+	IgnorePattern *regexp.Regexp
+}
+
+func (c *watchNamespacesCacheConfig) Option(opts ...watchNamespacesCacheOption) {
+	for _, opt := range opts {
+		opt.ConfigureWatchNamespacesCache(c)
+	}
+}
+
+type watchNamespacesCacheOption interface {
+	ConfigureWatchNamespacesCache(c *watchNamespacesCacheConfig)
 }
