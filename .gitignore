@@ -20,3 +20,6 @@ build/_output/*
 
 # goland
 .idea
+
+# go
+vendor
