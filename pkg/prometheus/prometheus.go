@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
 )
@@ -23,8 +24,8 @@ func NewServer(registry Registry, path, addr string) (*Server, error) {
 	}
 
 	var (
-		processCollector = prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{})
-		goCollector      = prometheus.NewGoCollector()
+		processCollector = collectors.NewProcessCollector(collectors.ProcessCollectorOpts{})
+		goCollector      = collectors.NewGoCollector()
 	)
 
 	if err := registry.Register(processCollector); err != nil {

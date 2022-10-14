@@ -1,7 +1,0 @@
-name: "dangling-service"
-description: "Indicates when services do not have any associated deployments."
-remediation: "Confirm that your service's selector correctly matches the labels on one of your deployments."
-scope:
-  objectKinds:
-    - Service
-template: "dangling-service"
