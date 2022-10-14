@@ -7,9 +7,12 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/mcuadros/go-defaults v1.2.0
+	github.com/onsi/ginkgo/v2 v2.3.1
+	github.com/onsi/gomega v1.22.0
 	github.com/openshift/api v3.9.0+incompatible
 	github.com/prometheus/client_golang v1.12.0
 	github.com/prometheus/client_model v0.2.0
+	github.com/prometheus/common v0.32.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.9.0
 	go.uber.org/multierr v1.6.0
