@@ -17,6 +17,7 @@ import (
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/go-logr/logr"
 
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
@@ -64,7 +65,7 @@ func NewGenericReconciler(
 }
 
 // AddToManager will add the reconciler for the configured obj to a manager.
-func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
+func (gr *GenericReconciler) AddToManager(mgr ctrl.Manager) error {
 	return mgr.Add(gr)
 }
 

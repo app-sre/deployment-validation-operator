@@ -24,6 +24,7 @@ import (
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/discovery"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -103,7 +104,7 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 		return nil, fmt.Errorf("getting manager options: %w", err)
 	}
 
-	mgr, err := manager.New(cfg, mgrOpts)
+	mgr, err := ctrl.NewManager(cfg, mgrOpts)
 	if err != nil {
 		return nil, fmt.Errorf("initializing manager: %w", err)
 	}
@@ -191,8 +192,8 @@ func initializeScheme() (*k8sruntime.Scheme, error) {
 	return scheme, nil
 }
 
-func getManagerOptions(scheme *k8sruntime.Scheme, opts options.Options) (manager.Options, error) {
-	mgrOpts := manager.Options{
+func getManagerOptions(scheme *k8sruntime.Scheme, opts options.Options) (ctrl.Options, error) {
+	mgrOpts := ctrl.Options{
 		HealthProbeBindAddress: opts.ProbeAddr,
 		MetricsBindAddress:     "0", // disable controller-runtime managed prometheus endpoint
 		// disable caching of everything
