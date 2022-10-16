@@ -7,15 +7,15 @@ linters:
   - gofmt
   - goimports
   - golint
+  - govet
   - misspell
   - unused
   - gocyclo
-  - maligned
-  - interfacer
   - unconvert
   - goconst
   - gosec
   - lll
+  - staticcheck
 
 linters-settings:
   golint:
