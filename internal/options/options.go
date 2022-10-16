@@ -12,6 +12,7 @@ import (
 type Options struct {
 	MetricsPort    int32
 	MetricsPath    string
+	PprofAddr      string
 	ProbeAddr      string
 	ConfigFile     string
 	watchNamespace *string
@@ -50,6 +51,11 @@ func (o *Options) processFlags() {
 		&o.ConfigFile,
 		"config", o.ConfigFile,
 		"Path to config file",
+	)
+	flags.StringVar(
+		&o.PprofAddr,
+		"pprof-bind-addr", o.PprofAddr,
+		"The address the pprof endpoint binds to.",
 	)
 	flags.StringVar(
 		&o.ProbeAddr,

@@ -1,12 +1,11 @@
 package prometheus
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
+	"github.com/app-sre/deployment-validation-operator/internal/runnable"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -40,37 +39,10 @@ func NewServer(registry Registry, path, addr string) (*Server, error) {
 	mux.Handle(path, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 
 	return &Server{
-		s: &http.Server{
-			Addr:              addr,
-			Handler:           mux,
-			ReadHeaderTimeout: 2 * time.Second,
-		},
+		Server: runnable.NewHTTPServer(mux, addr),
 	}, nil
 }
 
 type Server struct {
-	s *http.Server
-}
-
-func (s *Server) Start(ctx context.Context) error {
-	errCh := make(chan error)
-	drain := func() {
-		for range errCh {
-		}
-	}
-
-	defer drain()
-
-	go func() {
-		defer close(errCh)
-
-		errCh <- s.s.ListenAndServe()
-	}()
-
-	select {
-	case err := <-errCh:
-		return err
-	case <-ctx.Done():
-		return s.s.Close()
-	}
+	runnable.Server
 }

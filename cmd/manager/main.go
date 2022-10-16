@@ -14,6 +14,7 @@ import (
 
 	dvconfig "github.com/app-sre/deployment-validation-operator/config"
 	"github.com/app-sre/deployment-validation-operator/internal/options"
+	"github.com/app-sre/deployment-validation-operator/internal/pprof"
 	"github.com/app-sre/deployment-validation-operator/pkg/apis"
 	"github.com/app-sre/deployment-validation-operator/pkg/controller"
 	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
@@ -45,6 +46,7 @@ func main() {
 	opts := options.Options{
 		MetricsPort: 8383,
 		MetricsPath: "metrics",
+		PprofAddr:   "127.0.0.1:8070",
 		ProbeAddr:   ":8081",
 		ConfigFile:  "config/deployment-validation-operator-config.yaml",
 	}
@@ -128,6 +130,14 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 
 	if err = gr.AddToManager(mgr); err != nil {
 		return nil, fmt.Errorf("adding generic reconciler to manager: %w", err)
+	}
+
+	if opts.PprofAddr != "" {
+		log.Info("Initializing Pprof Server")
+
+		if err := mgr.Add(pprof.NewServer(opts.PprofAddr)); err != nil {
+			return nil, fmt.Errorf("initializing pprof server: %w", err)
+		}
 	}
 
 	log.Info("Initializing Prometheus Registry")
