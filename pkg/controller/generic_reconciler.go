@@ -258,18 +258,23 @@ func (gr *GenericReconciler) lookUpType(obj *unstructured.Unstructured) (runtime
 }
 
 func (gr *GenericReconciler) handleResourceDeletions() {
-	for k := range *gr.objectValidationCache {
+	for k, v := range *gr.objectValidationCache {
 		if gr.currentObjects.has(k) {
 			continue
 		}
-		validations.DeleteMetrics(k.namespace, k.name, k.kind)
+		namespaceUID := gr.watchNamespaces.getNamespaceUID(k.namespace)
+		validations.DeleteMetrics(k.namespace, namespaceUID, k.name, v.uid, k.kind)
 		gr.objectValidationCache.removeKey(k)
 
 	}
 	gr.currentObjects.drain()
 }
 
-func (gr *GenericReconciler) paginatedList(ctx context.Context, gvk schema.GroupVersionKind, namespace string) error {
+func (gr *GenericReconciler) paginatedList(
+	ctx context.Context,
+	gvk schema.GroupVersionKind,
+	namespace string,
+) error {
 	list := unstructured.UnstructuredList{}
 	listOptions := &client.ListOptions{
 		Limit:     gr.listLimit,

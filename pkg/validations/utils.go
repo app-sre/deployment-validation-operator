@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func getPromLabels(namespaceUID, namespace, uid, name, kind string) prometheus.Labels {
+func getPromLabels(namespaceUID, namespace, name, uid, kind string) prometheus.Labels {
 	return prometheus.Labels{
 		"namespace_uid": namespaceUID,
 		"namespace":     namespace,
@@ -19,11 +19,11 @@ func getPromLabels(namespaceUID, namespace, uid, name, kind string) prometheus.L
 	}
 }
 
-func DeleteMetrics(namespace, name, kind string) {
+func DeleteMetrics(namespace, namespaceUID, name, uid, kind string) {
 	promLabels := getPromLabels(
-		"",
+		namespaceUID,
 		namespace,
-		"",
+		uid,
 		name,
 		kind,
 	)
