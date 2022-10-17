@@ -39,7 +39,7 @@ objects:
     - ${NAMESPACE}
 parameters:
 - name: IMAGE
-  value: quay.io/operatorhubio/catalog
+  value: "quay.io/app-sre/deployment-validation-operator-catalog"
   displayName: Catalog image with the deployment-validation-operator
   description: the image of a catalog to deploy that contains the deployment-validation-operator
   required: true
@@ -63,7 +63,7 @@ parameters:
   displayName: Namespace ignore pattern
   description: A golang regex to ignore checks from matching patterns
 - name: SOURCE
-  value: "operatorhubio-catalog"
+  value: "deployment-validation-operator-catalog"
   displayName: Operator catalog source
   description: Catalog source that provides the operator
 - name: SOURCE_NAMESPACE

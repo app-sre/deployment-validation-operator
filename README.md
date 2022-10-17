@@ -53,8 +53,8 @@ There is a manifest to deploy DVO via OLM artifacts.  This assumes that OLM is a
 
 ```
 # deploy this if you DO NOT want OLM to automatically upgrade DVO
-
-oc process --local NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' -f deploy/openshift/deployment-validation-operator-olm.yaml | oc create -f -
+oc new-project deployment-validation-operator
+oc process --local NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' -f deploy/openshift/deployment-validation-operator-olm.yaml | oc apply -f -
 ```
 
 ```
@@ -64,18 +64,22 @@ oc process --local NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' -f deploy/open
 # read more about OLM catalog polling: https://github.com/operator-framework/
 operator-lifecycle-manager/blob/master/doc/design/catalog-polling.md
 
+oc new-project deployment-validation-operator
 oc process --local \
 NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' \
 REGISTRY_POLLING_INTERVAL='24h' \
 -f deploy/openshift/deployment-validation-operator-olm-with-polling.yaml \
-| oc create -f -
+| oc apply -f -
 ```
 
 If DVO is deployed to a namespace other than the one where OLM is deployed, which is usually the case, then a network policy may be required to allow OLM to see the artifacts in the DVO namespace.  For example, if OLM is deployed in the namespace `operator-lifecycle-manager` then the network policy would be deployed like this:
 
 ```
-oc process --local NAMESPACE='operator-lifecycle-manager' -f deploy/openshift/network-policies.yaml | oc create -f -
+oc process --local NAMESPACE='operator-lifecycle-manager' -f deploy/openshift/network-policies.yaml | oc apply -f -
 ```
+
+> Note: When installing on OSD it would be beneficial to use an expanced NAMESPACE_IGNORE_PATTERN like
+`NAMESPACE_IGNORE_PATTERN='^(openshift.|kube-.|default|dedicated-admin|redhat-.|acm|addon-dba-operator|codeready-.|prow)$'`
 
 ## Install Grafana dashboard
 
