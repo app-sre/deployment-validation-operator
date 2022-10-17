@@ -28,11 +28,17 @@ func newValidationKey(obj client.Object) validationKey {
 
 type validationResource struct {
 	version resourceVersion
+	uid     string
 	outcome validations.ValidationOutcome
 }
 
-func newValidationResource(rscVer resourceVersion, outcome validations.ValidationOutcome) validationResource {
+func newValidationResource(
+	rscVer resourceVersion,
+	uid string,
+	outcome validations.ValidationOutcome,
+) validationResource {
 	return validationResource{
+		uid:     uid,
 		version: rscVer,
 		outcome: outcome,
 	}
@@ -53,6 +59,7 @@ func (vc *validationCache) store(obj client.Object, outcome validations.Validati
 	key := newValidationKey(obj)
 	(*vc)[key] = newValidationResource(
 		newResourceversionVal(obj.GetResourceVersion()),
+		string(obj.GetUID()),
 		outcome,
 	)
 }
