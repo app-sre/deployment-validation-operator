@@ -312,3 +312,5 @@ func (gr *GenericReconciler) paginatedList(
 	}
 	return nil
 }
+
+func (gr *GenericReconciler) NeedLeaderElection() bool { return false }

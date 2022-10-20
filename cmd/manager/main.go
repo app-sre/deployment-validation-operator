@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"runtime"
 	"strconv"
@@ -19,7 +20,6 @@ import (
 	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/go-logr/logr"
 	osappsv1 "github.com/openshift/api/apps/v1"
@@ -43,13 +43,18 @@ func main() {
 	os.Setenv(operatorNameEnvVar, dvconfig.OperatorName)
 
 	opts := options.Options{
-		MetricsPort: 8383,
-		MetricsPath: "metrics",
-		ProbeAddr:   ":8081",
-		ConfigFile:  "config/deployment-validation-operator-config.yaml",
+		MetricsBindAddr:    ":8383",
+		MetricsPath:        "metrics",
+		MetricsServiceName: "deployment-validation-operator-metrics",
+		ProbeAddr:          ":8081",
+		ConfigFile:         "config/deployment-validation-operator-config.yaml",
 	}
 
-	opts.Process()
+	if err := opts.Process(); err != nil {
+		fmt.Fprintf(os.Stdout, "processing options: %v\n", err)
+
+		os.Exit(1)
+	}
 
 	// Use a zap logr.Logger implementation. If none of the zap
 	// flags are configured (or if the zap flag set is not being
@@ -106,12 +111,8 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 		return nil, fmt.Errorf("initializing manager: %w", err)
 	}
 
-	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
-		return nil, fmt.Errorf("adding healthz check: %w", err)
-	}
-
-	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
-		return nil, fmt.Errorf("adding readyz check: %w", err)
+	if err := setupProbes(mgr, opts); err != nil {
+		return nil, fmt.Errorf("setting up probes: %w", err)
 	}
 
 	log.Info("Registering Components")
@@ -126,29 +127,12 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 		return nil, fmt.Errorf("initializing generic reconciler: %w", err)
 	}
 
-	if err = gr.AddToManager(mgr); err != nil {
+	if err := gr.AddToManager(mgr); err != nil {
 		return nil, fmt.Errorf("adding generic reconciler to manager: %w", err)
 	}
 
-	log.Info("Initializing Prometheus Registry")
-
-	reg := prometheus.NewRegistry()
-
-	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %q", opts.MetricsEndpoint()))
-
-	srv, err := dvo_prom.NewServer(reg, opts.MetricsPath, fmt.Sprintf(":%d", opts.MetricsPort))
-	if err != nil {
-		return nil, fmt.Errorf("initializing metrics server: %w", err)
-	}
-
-	if err := mgr.Add(srv); err != nil {
-		return nil, fmt.Errorf("adding metrics server to manager: %w", err)
-	}
-
-	log.Info("Initializing Validation Engine")
-
-	if err := validations.InitializeValidationEngine(opts.ConfigFile, reg); err != nil {
-		return nil, fmt.Errorf("initializing validation engine: %w", err)
+	if err := setupComponents(log, mgr, opts); err != nil {
+		return nil, fmt.Errorf("setting up components: %w", err)
 	}
 
 	return mgr, nil
@@ -193,9 +177,13 @@ func getManagerOptions(scheme *k8sruntime.Scheme, opts options.Options) (manager
 	}
 
 	mgrOpts := manager.Options{
-		Namespace:              ns,
-		HealthProbeBindAddress: opts.ProbeAddr,
-		MetricsBindAddress:     "0", // disable controller-runtime managed prometheus endpoint
+		LeaderElection:             opts.EnableLeaderElection,
+		LeaderElectionID:           "23h85e23.deployment-validation-operator-lock",
+		LeaderElectionNamespace:    opts.LeaderElectionNamespace,
+		LeaderElectionResourceLock: "leases",
+		Namespace:                  ns,
+		HealthProbeBindAddress:     opts.ProbeAddr,
+		MetricsBindAddress:         "0", // disable controller-runtime managed prometheus endpoint
 		// disable caching of everything
 		NewClient: newClient,
 		Scheme:    scheme,
@@ -236,4 +224,63 @@ func kubeClientQPS() (float32, error) {
 	}
 	qps = float32(val)
 	return qps, err
+}
+
+func setupProbes(mgr manager.Manager, opts options.Options) error {
+	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
+		return fmt.Errorf("adding healthz check: %w", err)
+	}
+
+	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
+		return fmt.Errorf("adding readyz check: %w", err)
+	}
+
+	return nil
+}
+
+func setupComponents(log logr.Logger, mgr manager.Manager, opts options.Options) error {
+	log.Info("Initializing Prometheus Registry")
+
+	reg, err := dvo_prom.NewRegistry()
+	if err != nil {
+		return fmt.Errorf("initializing prometheus registry: %w", err)
+	}
+
+	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %q", opts.MetricsEndpoint()))
+
+	svcURL := &url.URL{
+		Scheme: "http",
+		Host:   opts.MetricsServiceName,
+	}
+	if parts := strings.Split(opts.MetricsBindAddr, ":"); len(parts) > 0 {
+		if len(parts) > 1 {
+			svcURL.Host += parts[len(parts)-1]
+		}
+	}
+
+	srv, err := dvo_prom.NewServer(reg,
+		dvo_prom.WithMetricsAddr(opts.MetricsBindAddr),
+		dvo_prom.WithMetricsPath(opts.MetricsPath),
+		dvo_prom.WithServiceURL(svcURL.String()),
+	)
+	if err != nil {
+		return fmt.Errorf("initializing metrics server: %w", err)
+	}
+
+	go func() {
+		<-mgr.Elected()
+		srv.Ready()
+	}()
+
+	if err := mgr.Add(srv); err != nil {
+		return fmt.Errorf("adding metrics server to manager: %w", err)
+	}
+
+	log.Info("Initializing Validation Engine")
+
+	if err := validations.InitializeValidationEngine(opts.ConfigFile, reg); err != nil {
+		return fmt.Errorf("initializing validation engine: %w", err)
+	}
+
+	return nil
 }

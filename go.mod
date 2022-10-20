@@ -15,8 +15,9 @@ require (
 	github.com/prometheus/common v0.32.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.9.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	go.uber.org/multierr v1.6.0
+	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f // indirect
 	golang.stackrox.io/kube-linter v0.0.0-20210928184316-5e1ead387f43
 	k8s.io/api v0.22.2
 	k8s.io/apimachinery v0.22.2

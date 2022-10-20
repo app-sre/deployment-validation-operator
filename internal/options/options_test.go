@@ -55,11 +55,11 @@ func TestOptionsStruct(t *testing.T) {
 
 	t.Run("MetricsEndpoint", func(t *testing.T) {
 		// Given
-		mockPort := int32(80)
+		mockBindAddr := ":80"
 		mockPath := "path/"
 		opt := Options{
-			MetricsPort: mockPort,
-			MetricsPath: mockPath,
+			MetricsBindAddr: mockBindAddr,
+			MetricsPath:     mockPath,
 		}
 
 		// When
