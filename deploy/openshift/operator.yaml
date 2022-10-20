@@ -22,13 +22,18 @@ spec:
         name: deployment-validation-operator
         app: deployment-validation-operator
     spec:
-      nodeSelector:
-        node-role.kubernetes.io/infra: ""
       tolerations:
         - key: node-role.kubernetes.io/infra
           operator: Exists
           effect: NoSchedule
       affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+                - key: node-role.kubernetes.io/infra
+                  operator: Exists
+            weight: 100
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
           - podAffinityTerm:
