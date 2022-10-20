@@ -34,6 +34,37 @@ objects:
   spec:
     targetNamespaces:
     - ${NAMESPACE}
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: deployment-validation-operator-config
+    labels:
+      name: deployment-validation-operator
+  data:
+    deployment-validation-operator-config.yaml: |-
+      checks:
+        # if doNotAutoAddDefaults is true, default checks are not automatically added.
+        doNotAutoAddDefaults: false
+
+        # addAllBuiltIn, if set, adds all built-in checks. This allows users to
+        # explicitly opt-out of checks that are not relevant using Exclude.
+        # Takes precedence over doNotAutoAddDefaults, if both are set.
+        addAllBuiltIn: true
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: deployment-validation-operator-metrics
+    namespace: openshift-deployment-validation-operator
+    labels:
+      name: deployment-validation-operator
+  spec:
+    ports:
+    - name: http-metrics
+      port: 8383
+      protocol: TCP
+      targetPort: 8383
+    selector:
+      name: deployment-validation-operator
 parameters:
 - name: IMAGE
   value: "quay.io/app-sre/deployment-validation-operator-catalog"
@@ -56,7 +87,7 @@ parameters:
   description: OLM subscription channel
   required: true
 - name: NAMESPACE_IGNORE_PATTERN
-  value: ""
+  value: "^(openshift.*|kube-.*|default|dedicated-admin|redhat-.*|acm|addon-dba-operator|codeready-.*|prow)$"
   displayName: Namespace ignore pattern
   description: A golang regex to ignore checks from matching patterns
 - name: SOURCE
