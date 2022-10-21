@@ -16,7 +16,6 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/util/retry"
 
-	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -206,7 +205,7 @@ func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Un
 
 	var log = logf.Log.WithName(fmt.Sprintf("%s Validation", obj.GetObjectKind().GroupVersionKind()))
 
-	request := utils.NewRequestFromObj(obj)
+	request := validations.NewRequestFromObject(obj)
 	if len(request.Namespace) > 0 {
 		namespaceUID := gr.watchNamespaces.getNamespaceUID(request.Namespace)
 		if len(namespaceUID) == 0 {
@@ -262,8 +261,17 @@ func (gr *GenericReconciler) handleResourceDeletions() {
 		if gr.currentObjects.has(k) {
 			continue
 		}
-		namespaceUID := gr.watchNamespaces.getNamespaceUID(k.namespace)
-		validations.DeleteMetrics(k.namespace, namespaceUID, k.name, v.uid, k.kind)
+
+		req := validations.Request{
+			Kind:         k.kind,
+			Name:         k.name,
+			Namespace:    k.namespace,
+			NamespaceUID: gr.watchNamespaces.getNamespaceUID(k.namespace),
+			UID:          v.uid,
+		}
+
+		validations.DeleteMetrics(req.ToPromLabels())
+
 		gr.objectValidationCache.removeKey(k)
 
 	}
