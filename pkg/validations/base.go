@@ -9,6 +9,7 @@ import (
 
 	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.stackrox.io/kube-linter/pkg/lintcontext"
 	"golang.stackrox.io/kube-linter/pkg/run"
 )
@@ -24,11 +25,10 @@ var (
 )
 
 // RunValidations will run all the registered validations
-func RunValidations(request utils.Request, obj client.Object) (ValidationOutcome, error) {
-	kind := obj.GetObjectKind().GroupVersionKind().Kind
-	log.V(2).Info("validation", "kind", kind)
+func RunValidations(request Request, obj client.Object) (ValidationOutcome, error) {
+	log.V(2).Info("validation", "kind", request.Kind)
 
-	promLabels := getPromLabels(request.NamespaceUID, request.Namespace, request.UID, request.Name, kind)
+	promLabels := request.ToPromLabels()
 
 	// Only run checks against an object with no owners.  This should be
 	// the object that controls the configuration
@@ -78,7 +78,7 @@ func RunValidations(request utils.Request, obj client.Object) (ValidationOutcome
 		logger := log.WithValues(
 			"request.namespace", request.Namespace,
 			"request.name", request.Name,
-			"kind", kind,
+			"kind", request.Kind,
 			"validation", report.Check,
 			"check_description", check.Description,
 			"check_remediation", report.Remediation,
@@ -94,4 +94,35 @@ func RunValidations(request utils.Request, obj client.Object) (ValidationOutcome
 		}
 	}
 	return outcome, nil
+}
+
+// NewRequestFromObject converts a client.Object into
+// a validation request. Note that the NamespaceUID of the
+// request cannot be derived from the object and should
+// be optionally be set after instantiation.
+func NewRequestFromObject(obj client.Object) Request {
+	return Request{
+		Kind:      obj.GetObjectKind().GroupVersionKind().Kind,
+		Name:      obj.GetName(),
+		Namespace: obj.GetNamespace(),
+		UID:       string(obj.GetUID()),
+	}
+}
+
+type Request struct {
+	Kind         string
+	Name         string
+	Namespace    string
+	NamespaceUID string
+	UID          string
+}
+
+func (r *Request) ToPromLabels() prometheus.Labels {
+	return prometheus.Labels{
+		"kind":          r.Kind,
+		"name":          r.Name,
+		"namespace":     r.Namespace,
+		"namespace_uid": r.NamespaceUID,
+		"uid":           r.UID,
+	}
 }

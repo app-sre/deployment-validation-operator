@@ -6,17 +6,19 @@ import (
 	"testing"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
-	"github.com/app-sre/deployment-validation-operator/pkg/utils"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/prometheus/client_golang/prometheus"
 	prom_tu "github.com/prometheus/client_golang/prometheus/testutil"
 
 	appsv1 "k8s.io/api/apps/v1"
 
+	"github.com/stretchr/testify/assert"
 	"golang.stackrox.io/kube-linter/pkg/builtinchecks"
 	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"golang.stackrox.io/kube-linter/pkg/configresolver"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -112,11 +114,12 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 		t.Errorf("Error initializing engine %v", err)
 	}
 
-	request := utils.Request{
+	request := Request{
+		Kind:         "Deployment",
 		NamespaceUID: "namespace-valid-uid",
 		Namespace:    "bar",
-		UID:          "name-valid-uid",
 		Name:         "foo",
+		UID:          "name-valid-uid",
 	}
 
 	replicaCnt := int32(1)
@@ -130,7 +133,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 		t.Errorf("Error running validations: %v", err)
 	}
 
-	labels := getPromLabels(request.NamespaceUID, request.Namespace, request.UID, request.Name, "Deployment")
+	labels := request.ToPromLabels()
 	metric, err := engine.GetMetric(customCheck.Name).GetMetricWith(labels)
 	if err != nil {
 		t.Errorf("Error getting prometheus metric: %v", err)
@@ -214,11 +217,12 @@ func TestValidateZeroReplicas(t *testing.T) {
 		t.Errorf("Error initializing engine %v", err)
 	}
 
-	request := utils.Request{
+	request := Request{
+		Kind:         "Deployment",
 		NamespaceUID: "namespace-valid-uid",
 		Namespace:    "bar",
-		UID:          "name-valid-uid",
 		Name:         "foo",
+		UID:          "name-valid-uid",
 	}
 
 	// Setup test deployment file with 0 replicas
@@ -234,7 +238,7 @@ func TestValidateZeroReplicas(t *testing.T) {
 		t.Errorf("Error running validations: %v", err)
 	}
 	// Acquire labels generated from validations
-	labels := getPromLabels(request.NamespaceUID, request.Namespace, request.UID, request.Name, "Deployment")
+	labels := request.ToPromLabels()
 
 	// The 'GetMetricWith()' function will create a new metric with provided labels if it
 	// does not exist. The default value of a metric is 0. Therefore, a value of 0 implies we
@@ -310,4 +314,65 @@ func getAllBuiltInKubeLinterChecks() ([]string, error) {
 	}
 
 	return enabledChecks, nil
+}
+
+func TestRequest(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		Object         client.Object
+		NamespaceUID   string
+		ExpectedLabels prometheus.Labels
+	}{
+		"without namespace UID": {
+			Object: &appsv1.Deployment{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "Deployment",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace",
+					UID:       "abcdefgh",
+				},
+			},
+			ExpectedLabels: prometheus.Labels{
+				"kind":          "Deployment",
+				"name":          "test",
+				"namespace":     "test-namespace",
+				"namespace_uid": "",
+				"uid":           "abcdefgh",
+			},
+		},
+		"with namespace UID": {
+			Object: &appsv1.Deployment{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "Deployment",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-namespace",
+					UID:       "abcdefgh",
+				},
+			},
+			NamespaceUID: "12345678",
+			ExpectedLabels: prometheus.Labels{
+				"kind":          "Deployment",
+				"name":          "test",
+				"namespace":     "test-namespace",
+				"namespace_uid": "12345678",
+				"uid":           "abcdefgh",
+			},
+		},
+	} {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			req := NewRequestFromObject(tc.Object)
+			req.NamespaceUID = tc.NamespaceUID
+
+			assert.Equal(t, tc.ExpectedLabels, req.ToPromLabels())
+		})
+	}
 }
