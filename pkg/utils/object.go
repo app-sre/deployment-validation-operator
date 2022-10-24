@@ -3,12 +3,8 @@ package utils
 import (
 	"golang.stackrox.io/kube-linter/pkg/objectkinds"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-var log = logf.Log.WithName("DeploymentValidation")
 
 var deploymentLikeMatcher, _ = objectkinds.ConstructMatcher(objectkinds.DeploymentLike)
 
