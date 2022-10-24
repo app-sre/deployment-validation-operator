@@ -5,11 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/app-sre/deployment-validation-operator/pkg/testutils"
+
 	"github.com/prometheus/client_golang/prometheus"
-	prom_tu "github.com/prometheus/client_golang/prometheus/testutil"
+	promTu "github.com/prometheus/client_golang/prometheus/testutil"
 
 	appsv1 "k8s.io/api/apps/v1"
 
@@ -150,7 +151,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 			metric.Desc().String())
 	}
 
-	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 1 {
+	if metricValue := int(promTu.ToFloat64(metric)); metricValue != 1 {
 		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 1)
 	}
 
@@ -170,7 +171,7 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 		t.Errorf("Error getting prometheus metric: %v", err)
 	}
 
-	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
+	if metricValue := int(promTu.ToFloat64(metric)); metricValue != 0 {
 		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 0)
 	}
 }
@@ -249,7 +250,7 @@ func TestValidateZeroReplicas(t *testing.T) {
 	}
 
 	// If metrics are cleared then the value will be == 0
-	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
+	if metricValue := int(promTu.ToFloat64(metric)); metricValue != 0 {
 		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 0)
 	}
 
@@ -266,7 +267,7 @@ func TestValidateZeroReplicas(t *testing.T) {
 	}
 
 	// If metrics exist then value will be non 0
-	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue == 0 {
+	if metricValue := int(promTu.ToFloat64(metric)); metricValue == 0 {
 		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 1)
 	}
 
@@ -283,7 +284,7 @@ func TestValidateZeroReplicas(t *testing.T) {
 	}
 
 	// If metrics are cleared then the value will be == 0
-	if metricValue := int(prom_tu.ToFloat64(metric)); metricValue != 0 {
+	if metricValue := int(promTu.ToFloat64(metric)); metricValue != 0 {
 		t.Errorf("Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 0)
 	}
 
