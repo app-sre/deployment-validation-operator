@@ -55,7 +55,7 @@ func NewGenericReconciler(client client.Client, discovery discovery.DiscoveryInt
 }
 
 func getListLimit() (int64, error) {
-	intVal, err := defaultOrEnv(EnvResorucesPerListQuery, defaultListLimit)
+	intVal, err := defaultOrEnv(EnvResourcesPerListQuery, defaultListLimit)
 	return int64(intVal), err
 }
 

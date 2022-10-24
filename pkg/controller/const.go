@@ -14,8 +14,8 @@ const (
 	// EnvKubeClientQPS overrides defaultKubeClientQPS
 	EnvKubeClientQPS string = "KUBECLIENT_QPS"
 
-	// EnvResorucesPerListQuery overrides defaultListLimit
-	EnvResorucesPerListQuery string = "RESOURCES_PER_LIST_QUERY"
+	// EnvResourcesPerListQuery overrides defaultListLimit
+	EnvResourcesPerListQuery string = "RESOURCES_PER_LIST_QUERY"
 
 	// EnvNamespaceIgnorePattern sets the pattern for ignoring namespaces from the list of namespaces
 	// that are in the validate list of this operator
