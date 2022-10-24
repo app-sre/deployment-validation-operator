@@ -10,7 +10,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/mcuadros/go-defaults"
-	apps_v1 "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 )
 
 type TemplateArgs struct {
@@ -25,8 +25,8 @@ func NewTemplateArgs() *TemplateArgs {
 	return args
 }
 
-func CreateDeploymentFromTemplate(args *TemplateArgs) (apps_v1.Deployment, error) {
-	var deployment apps_v1.Deployment
+func CreateDeploymentFromTemplate(args *TemplateArgs) (appsv1.Deployment, error) {
+	var deployment appsv1.Deployment
 
 	yamlManifest, err := createYamlManifest("Deployment", args)
 	if err != nil {
