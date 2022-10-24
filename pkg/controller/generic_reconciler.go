@@ -197,7 +197,7 @@ func (gr *GenericReconciler) processObjectInstances(ctx context.Context,
 	return nil
 }
 
-func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Unstructured) error {
+func (gr *GenericReconciler) reconcile(_ context.Context, obj *unstructured.Unstructured) error {
 	gr.currentObjects.store(obj, "")
 	if gr.objectValidationCache.objectAlreadyValidated(obj) {
 		return nil
