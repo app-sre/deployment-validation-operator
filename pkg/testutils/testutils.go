@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
-	"reflect"
 	"runtime"
-	"strings"
 	"text/template"
 
 	"github.com/ghodss/yaml"
@@ -25,23 +23,6 @@ func NewTemplateArgs() *TemplateArgs {
 	args := new(TemplateArgs)
 	defaults.SetDefaults(args)
 	return args
-}
-
-func CreateReplicaSetFromTemplate(args *TemplateArgs) (apps_v1.ReplicaSet, error) {
-	var replicaSet apps_v1.ReplicaSet
-
-	yamlManifest, err := createYamlManifest("ReplicaSet", args)
-	if err != nil {
-		return replicaSet, err
-	}
-
-	// deserialise from YAML by using the json struct tags that are defined in the k8s API object structs
-	err = yaml.Unmarshal(yamlManifest, &replicaSet)
-	if err != nil {
-		return replicaSet, err
-	}
-
-	return replicaSet, nil
 }
 
 func CreateDeploymentFromTemplate(args *TemplateArgs) (apps_v1.Deployment, error) {
@@ -83,9 +64,4 @@ func createYamlManifest(objectType string, args *TemplateArgs) ([]byte, error) {
 func templatePath(objectName string) string {
 	_, thisFile, _, _ := runtime.Caller(0)
 	return path.Join(path.Dir(thisFile), fmt.Sprintf("templates/%s.yaml.tpl", objectName))
-}
-
-func ObjectKind(obj interface{}) string {
-	kind := reflect.TypeOf(obj).String()
-	return strings.SplitN(kind, ".", 2)[1]
 }
