@@ -2,7 +2,7 @@ package controller
 
 const (
 
-	// defaultKubeClientQPS defines the default Queries Per Second (QPS) of the kubeclient used by the operator
+	// DefaultKubeClientQPS defines the default Queries Per Second (QPS) of the kubeclient used by the operator
 	DefaultKubeClientQPS = float32(0.5)
 
 	// default number of resources retrieved from the api server per list request
