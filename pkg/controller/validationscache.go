@@ -1,8 +1,9 @@
 package controller
 
 import (
-	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 )
 
 type validationKey struct {
