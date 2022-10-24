@@ -54,7 +54,7 @@ func RunValidations(request Request, obj client.Object) (ValidationOutcome, erro
 		}
 	}
 
-	lintCtxs := []lintcontext.LintContext{}
+	var lintCtxs []lintcontext.LintContext
 	lintCtx := &lintContextImpl{}
 	lintCtx.addObjects(lintcontext.Object{K8sObject: obj})
 	lintCtxs = append(lintCtxs, lintCtx)

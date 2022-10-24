@@ -55,7 +55,7 @@ func (nsc *watchNamespacesCache) getWatchNamespaces(ctx context.Context, c clien
 	if err := c.List(ctx, &namespaceList); err != nil {
 		return nil, fmt.Errorf("listing %s: %w", namespaceList.GroupVersionKind().String(), err)
 	}
-	watchNamespaces := []namespace{}
+	var watchNamespaces []namespace
 	for _, ns := range namespaceList.Items {
 		name := ns.GetName()
 		if nsc.ignorePattern != nil && nsc.ignorePattern.Match([]byte(name)) {
