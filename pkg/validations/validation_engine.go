@@ -60,12 +60,12 @@ func (ve *validationEngine) LoadConfig(path string) error {
 	}
 
 	// Load Configuration
-	config, err := config.Load(v, path)
+	cfg, err := config.Load(v, path)
 	if err != nil {
 		log.Error(err, "failed to load config")
 		return err
 	}
-	ve.config = config
+	ve.config = cfg
 
 	return nil
 }
