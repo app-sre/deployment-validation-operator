@@ -12,13 +12,14 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
-	dv_config "github.com/app-sre/deployment-validation-operator/config"
+	"github.com/prometheus/client_golang/prometheus"
+
+	dvConfig "github.com/app-sre/deployment-validation-operator/config"
 	"github.com/app-sre/deployment-validation-operator/pkg/apis"
 	"github.com/app-sre/deployment-validation-operator/pkg/controller"
-	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
+	dvoProm "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/go-logr/logr"
 	osappsv1 "github.com/openshift/api/apps/v1"
@@ -39,7 +40,7 @@ const operatorNameEnvVar = "OPERATOR_NAME"
 
 func main() {
 	// Make sure the operator name is what we want
-	os.Setenv(operatorNameEnvVar, dv_config.OperatorName)
+	os.Setenv(operatorNameEnvVar, dvConfig.OperatorName)
 
 	opts := options{
 		MetricsPort: 8383,
@@ -135,7 +136,7 @@ func setupManager(log logr.Logger, opts options) (manager.Manager, error) {
 
 	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %q", opts.MetricsEndpoint()))
 
-	srv, err := dvo_prom.NewServer(reg, opts.MetricsPath, fmt.Sprintf(":%d", opts.MetricsPort))
+	srv, err := dvoProm.NewServer(reg, opts.MetricsPath, fmt.Sprintf(":%d", opts.MetricsPort))
 	if err != nil {
 		return nil, fmt.Errorf("initializing metrics server: %w", err)
 	}
