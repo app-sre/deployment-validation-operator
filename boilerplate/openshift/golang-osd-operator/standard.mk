@@ -15,24 +15,8 @@ ifndef VERSION_MINOR
 $(error VERSION_MINOR is not set; check project.mk file)
 endif
 
-### Accommodate docker or podman
-#
-# The docker/podman creds cache needs to be in a location unique to this
-# invocation; otherwise it could collide across jenkins jobs. We'll use
-# a .docker folder relative to pwd (the repo root).
-CONTAINER_ENGINE_CONFIG_DIR = .docker
-# But docker and podman use different options to configure it :eyeroll:
-# ==> Podman uses --authfile=PATH *after* the `login` subcommand; but
-# also accepts REGISTRY_AUTH_FILE from the env. See
-# https://www.mankier.com/1/podman-login#Options---authfile=path
-export REGISTRY_AUTH_FILE = ${CONTAINER_ENGINE_CONFIG_DIR}/config.json
-# ==> Docker uses --config=PATH *before* (any) subcommand; so we'll glue
-# that to the CONTAINER_ENGINE variable itself. (NOTE: I tried half a
-# dozen other ways to do this. This was the least ugly one that actually
-# works.)
-ifndef CONTAINER_ENGINE
-CONTAINER_ENGINE=$(shell command -v podman 2>/dev/null || echo docker --config=$(CONTAINER_ENGINE_CONFIG_DIR))
-endif
+# Accommodate docker or podman
+CONTAINER_ENGINE=$(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 
 # Generate version and tag information from inputs
 COMMIT_NUMBER=$(shell git rev-list `git rev-list --parents HEAD | egrep "^[a-f0-9]{40}$$"`..HEAD --count)
@@ -46,9 +30,6 @@ OPERATOR_IMAGE_URI=${IMG}
 OPERATOR_IMAGE_URI_LATEST=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):latest
 OPERATOR_DOCKERFILE ?=build/Dockerfile
 REGISTRY_IMAGE=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME)-registry
-#The api dir that latest osdk generated
-NEW_API_DIR=./api
-USE_OLD_SDK=$(shell if [[ -d "$(NEW_API_DIR)" ]];then echo FALSE;else echo TRUE;fi)
 
 # Consumer can optionally define ADDITIONAL_IMAGE_SPECS like:
 #     define ADDITIONAL_IMAGE_SPECS
@@ -68,37 +49,18 @@ OLM_CHANNEL ?= alpha
 
 REGISTRY_USER ?=
 REGISTRY_TOKEN ?=
+CONTAINER_ENGINE_CONFIG_DIR = .docker
 
 BINFILE=build/_output/bin/$(OPERATOR_NAME)
-MAINPACKAGE = ./
-API_DIR = $(NEW_API_DIR)
-ifeq ($(USE_OLD_SDK), TRUE)
-MAINPACKAGE = ./cmd/manager
-API_DIR = ./pkg/apis
-endif
+MAINPACKAGE ?= ./cmd/manager
 
 GOOS?=$(shell go env GOOS)
 GOARCH?=$(shell go env GOARCH)
-GOBIN?=$(shell go env GOBIN)
 
 # Consumers may override GOFLAGS_MOD e.g. to use `-mod=vendor`
 unexport GOFLAGS
 GOFLAGS_MOD ?=
-
-# In openshift ci (Prow), we need to set $HOME to a writable directory else tests will fail
-# because they don't have permissions to create /.local or /.cache directories
-# as $HOME is set to "/" by default.
-ifeq ($(HOME),/)
-export HOME=/tmp/home
-endif
-PWD=$(shell pwd)
-
-ifeq (${FIPS_ENABLED}, true)
-GOFLAGS_MOD+=-tags=fips_enabled
-GOFLAGS_MOD:=$(strip ${GOFLAGS_MOD})
-endif
-
-GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 GOFLAGS="${GOFLAGS_MOD}"
+GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 GOFLAGS=${GOFLAGS_MOD}
 
 GOBUILDFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
 
@@ -118,7 +80,6 @@ ALLOW_DIRTY_CHECKOUT?=false
 
 # TODO: Figure out how to discover this dynamically
 CONVENTION_DIR := boilerplate/openshift/golang-osd-operator
-BOILERPLATE_CONTAINER_MAKE := boilerplate/_lib/container-make
 
 # Set the default goal in a way that works for older & newer versions of `make`:
 # Older versions (<=3.8.0) will pay attention to the `default` target.
@@ -141,20 +102,20 @@ isclean:
 docker-build-push-one: isclean docker-login
 	@(if [[ -z "${IMAGE_URI}" ]]; then echo "Must specify IMAGE_URI"; exit 1; fi)
 	@(if [[ -z "${DOCKERFILE_PATH}" ]]; then echo "Must specify DOCKERFILE_PATH"; exit 1; fi)
-	${CONTAINER_ENGINE} build --pull -f $(DOCKERFILE_PATH) -t $(IMAGE_URI) .
-	${CONTAINER_ENGINE} push ${IMAGE_URI}
+	${CONTAINER_ENGINE} build . -f $(DOCKERFILE_PATH) -t $(IMAGE_URI)
+	${CONTAINER_ENGINE} --config=${CONTAINER_ENGINE_CONFIG_DIR} push ${IMAGE_URI}
 
 # TODO: Get rid of docker-build. It's only used by opm-build-push
 .PHONY: docker-build
 docker-build: isclean
-	${CONTAINER_ENGINE} build --pull -f $(OPERATOR_DOCKERFILE) -t $(OPERATOR_IMAGE_URI) .
+	${CONTAINER_ENGINE} build . -f $(OPERATOR_DOCKERFILE) -t $(OPERATOR_IMAGE_URI)
 	${CONTAINER_ENGINE} tag $(OPERATOR_IMAGE_URI) $(OPERATOR_IMAGE_URI_LATEST)
 
 # TODO: Get rid of docker-push. It's only used by opm-build-push
 .PHONY: docker-push
 docker-push: docker-login docker-build
-	${CONTAINER_ENGINE} push ${OPERATOR_IMAGE_URI}
-	${CONTAINER_ENGINE} push ${OPERATOR_IMAGE_URI_LATEST}
+	${CONTAINER_ENGINE} --config=${CONTAINER_ENGINE_CONFIG_DIR} push ${OPERATOR_IMAGE_URI}
+	${CONTAINER_ENGINE} --config=${CONTAINER_ENGINE_CONFIG_DIR} push ${OPERATOR_IMAGE_URI_LATEST}
 
 # TODO: Get rid of push. It's not used.
 .PHONY: push
@@ -164,7 +125,7 @@ push: docker-push
 docker-login:
 	@test "${REGISTRY_USER}" != "" && test "${REGISTRY_TOKEN}" != "" || (echo "REGISTRY_USER and REGISTRY_TOKEN must be defined" && exit 1)
 	mkdir -p ${CONTAINER_ENGINE_CONFIG_DIR}
-	@${CONTAINER_ENGINE} login -u="${REGISTRY_USER}" -p="${REGISTRY_TOKEN}" quay.io
+	@${CONTAINER_ENGINE} --config=${CONTAINER_ENGINE_CONFIG_DIR} login -u="${REGISTRY_USER}" -p="${REGISTRY_TOKEN}" quay.io
 
 .PHONY: go-check
 go-check: ## Golang linting and other static analysis
@@ -177,63 +138,28 @@ go-generate:
 	${GOENV} go generate $(TESTTARGETS)
 	# Don't forget to commit generated files
 
-# go-get-tool will 'go install' any package $2 and install it to $1.
-define go-get-tool
-@{ \
-set -e ;\
-TMP_DIR=$$(mktemp -d) ;\
-cd $$TMP_DIR ;\
-go mod init tmp ;\
-echo "Downloading $(2)" ;\
-GOBIN=$(shell dirname $(1)) go install $(2) ;\
-echo "Installed in $(1)" ;\
-rm -rf $$TMP_DIR ;\
-}
-endef
-
-# Deciding on the binary versions
-CONTROLLER_GEN_VERSION = v0.8.0
-CONTROLLER_GEN = controller-gen-$(CONTROLLER_GEN_VERSION)
-
-OPENAPI_GEN_VERSION = v0.23.0
-OPENAPI_GEN = openapi-gen-$(OPENAPI_GEN_VERSION)
-
-ifeq ($(USE_OLD_SDK), TRUE)
-#If we are using the old osdk, we use the default controller-gen and openapi-gen versions.
-# Default version is 0.3.0 for now.
-CONTROLLER_GEN = controller-gen
-# Default version is 0.19.4 for now.
-OPENAPI_GEN = openapi-gen
-endif
-
 .PHONY: op-generate
-## CRD v1beta1 is no longer supported.
 op-generate:
-	cd $(API_DIR); $(CONTROLLER_GEN) crd:crdVersions=v1 paths=./... output:dir=$(PWD)/deploy/crds
-	cd $(API_DIR); $(CONTROLLER_GEN) object paths=./...
-
-API_DIR_MIN_DEPTH = 1
-ifeq ($(USE_OLD_SDK), TRUE)
-API_DIR_MIN_DEPTH = 2
-endif
+	${CONVENTION_DIR}/operator-sdk-generate.sh
+	# HACK: Due to an OLM bug in 3.11, we need to remove the
+	# spec.validation.openAPIV3Schema.type from CRDs. Remove once
+	# 3.11 is no longer supported.
+	find deploy/ -name '*_crd.yaml' | xargs -n1 -I{} yq d -i {} spec.validation.openAPIV3Schema.type
+	# Don't forget to commit generated files
 
 .PHONY: openapi-generate
 openapi-generate:
-	find $(API_DIR) -maxdepth 2 -mindepth $(API_DIR_MIN_DEPTH) -type d | xargs -t -I% \
-		$(OPENAPI_GEN) --logtostderr=true \
+	find ./pkg/apis/ -maxdepth 2 -mindepth 2 -type d | xargs -t -n1 -I% \
+		openapi-gen --logtostderr=true \
 			-i % \
 			-o "" \
 			-O zz_generated.openapi \
 			-p % \
 			-h /dev/null \
 			-r "-"
-	
+
 .PHONY: generate
 generate: op-generate go-generate openapi-generate
-
-ifeq (${FIPS_ENABLED}, true)
-go-build: ensure-fips
-endif
 
 .PHONY: go-build
 go-build: ## Build binary
@@ -241,23 +167,9 @@ go-build: ## Build binary
 	# This is temporary until a better container build method is developed
 	${GOENV} GOOS=linux go build ${GOBUILDFLAGS} -o ${BINFILE} ${MAINPACKAGE}
 
-# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.23
-SETUP_ENVTEST = setup-envtest
-
-.PHONY: setup-envtest
-setup-envtest:
-	$(eval KUBEBUILDER_ASSETS := "$(shell $(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir /tmp/envtest/bin)")
-	
-# Setting SHELL to bash allows bash commands to be executed by recipes.
-# This is a requirement for 'setup-envtest.sh' in the test target.
-# Options are set to exit when a recipe line exits non-zero or a piped command fails.
-SHELL = /usr/bin/env bash -o pipefail
-.SHELLFLAGS = -ec
-
 .PHONY: go-test
-go-test: setup-envtest
-	KUBEBUILDER_ASSETS=$(KUBEBUILDER_ASSETS) go test $(TESTOPTS) $(TESTTARGETS)
+go-test:
+	${GOENV} go test $(TESTOPTS) $(TESTTARGETS)
 
 .PHONY: python-venv
 python-venv:
@@ -282,6 +194,10 @@ olm-deploy-yaml-validate: python-venv
 .PHONY: prow-config
 prow-config:
 	${CONVENTION_DIR}/prow-config ${RELEASE_CLONE}
+
+.PHONY: codecov-secret-mapping
+codecov-secret-mapping:
+	${CONVENTION_DIR}/codecov-secret-mapping ${RELEASE_CLONE}
 
 
 ######################
@@ -330,45 +246,3 @@ opm-build-push: docker-push
 	OPERATOR_IMAGE_TAG="${OPERATOR_IMAGE_TAG}" \
 	OLM_CHANNEL="${OLM_CHANNEL}" \
 	${CONVENTION_DIR}/build-opm-catalog.sh
-
-.PHONY: ensure-fips
-ensure-fips:
-	${CONVENTION_DIR}/configure-fips.sh
-
-# You will need to export the forked/cloned operator repository directory as OLD_SDK_REPO_DIR to make this work.
-# Example: export OLD_SDK_REPO_DIR=~/Projects/My-Operator-Fork
-.PHONY: migrate-to-osdk1
-migrate-to-osdk1:
-ifndef OLD_SDK_REPO_DIR
-	$(error OLD_SDK_REPO_DIR is not set)
-endif
-	# Copying files & folders from old repository to current project
-	rm -rf config
-	rsync -a $(OLD_SDK_REPO_DIR)/deploy . --exclude=crds
-	rsync -a $(OLD_SDK_REPO_DIR)/pkg . --exclude={'apis','controller'}
-	rsync -a $(OLD_SDK_REPO_DIR)/Makefile .
-	rsync -a $(OLD_SDK_REPO_DIR)/.gitignore .
-	rsync -a $(OLD_SDK_REPO_DIR)/ . --exclude={'cmd','version','boilerplate','deploy','pkg'} --ignore-existing
-
-# Boilerplate container-make targets.
-# Runs 'make' in the boilerplate backing container.
-# If the command fails, starts a shell in the container so you can debug.
-.PHONY: container-test
-container-test:
-	${BOILERPLATE_CONTAINER_MAKE} test
-
-.PHONY: container-generate
-container-generate:
-	${BOILERPLATE_CONTAINER_MAKE} generate
-
-.PHONY: container-lint
-container-lint:
-	${BOILERPLATE_CONTAINER_MAKE} lint
-
-.PHONY: container-validate
-container-validate:
-	${BOILERPLATE_CONTAINER_MAKE} validate
-
-.PHONY: container-coverage
-container-coverage:
-	${BOILERPLATE_CONTAINER_MAKE} coverage
