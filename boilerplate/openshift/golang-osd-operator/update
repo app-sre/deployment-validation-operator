@@ -14,9 +14,8 @@ echo "Copying .codecov.yml to your repository root."
 cp ${HERE}/.codecov.yml $REPO_ROOT
 
 # TODO: boilerplate more of Dockerfile
-DOCKERFILE=build/Dockerfile
-echo "Overwriting $DOCKERFILE's initial FROM with $IMAGE_PULL_PATH"
-${SED?} -i "1s,.*,FROM $IMAGE_PULL_PATH AS builder," $DOCKERFILE
+echo "Overwriting build/Dockerfile's initial FROM with $IMAGE_PULL_PATH"
+${SED?} -i "1s,.*,FROM $IMAGE_PULL_PATH AS builder," build/Dockerfile
 
 echo "Writing .ci-operator.yaml in your repository root with:"
 echo "    namespace: $IMAGE_NAMESPACE"
