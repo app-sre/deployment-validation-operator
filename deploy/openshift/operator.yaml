@@ -28,7 +28,7 @@ spec:
           effect: NoSchedule
       affinity:
         nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
+          requiredDuringSchedulingIgnoredDuringExecution:
           - preference:
               matchExpressions:
                 - key: node-role.kubernetes.io/infra
