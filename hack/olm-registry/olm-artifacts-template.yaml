@@ -44,9 +44,9 @@ objects:
           - key: hive.openshift.io/version-major-minor
             operator: NotIn
             values: ["4.1", "4.2", "4.3", "4.4", "4.5", "4.6", "4.7", "4.8", "4.9", "4.10"]
-          - key: api.openshift.com/environment
-            operator: In
-            values: ["staging", "integration", "production"]
+          - key: hive.openshift.io/version-major-minor-patch
+            operator: NotIn
+            values: ["4.11.0", "4.11.1", "4.11.2", "4.11.3", "4.11.4", "4.11.5", "4.11.6", "4.11.7", "4.11.8", "4.11.9"]
           - key: api.openshift.com/legal-entity-id
             operator: In
             values: ${{TARGET_ORG}}
@@ -148,7 +148,7 @@ objects:
               checks:
                 # if doNotAutoAddDefaults is true, default checks are not automatically added.
                 doNotAutoAddDefaults: false
-                
+
                 # addAllBuiltIn, if set, adds all built-in checks. This allows users to
                 # explicitly opt-out of checks that are not relevant using Exclude.
                 # Takes precedence over doNotAutoAddDefaults, if both are set.
