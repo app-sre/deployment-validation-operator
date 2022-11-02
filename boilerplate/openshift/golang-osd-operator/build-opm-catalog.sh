@@ -71,7 +71,7 @@ function check_bundle_contents_cmd() {
 # Check we are running an opm supported container engine
 function check_opm_supported_container_engine() {
     local image_builder=${1}
-    if [[ "$image_builder" != docker* && "$image_builder" != "podman" ]]; then
+    if [[ "$image_builder" != "docker" && "$image_builder" != "podman" ]]; then
         # opm error messages are obscure. Let's make this clear
         log "image_builder $image_builder is not one of docker or podman"
         return 1
@@ -309,7 +309,7 @@ function main() {
     opm_local_executable=$(setup_local_executable opm)
     grpcurl_local_executable=$(setup_local_executable grpcurl)
     engine_cmd=$(setup_authenticated_registry_command)
-    image_builder=$(basename "$CONTAINER_ENGINE")
+    image_builder=$(basename "$CONTAINER_ENGINE" | awk '{print $1}')
 
     check_opm_supported_container_engine "$image_builder" || return 1
 
