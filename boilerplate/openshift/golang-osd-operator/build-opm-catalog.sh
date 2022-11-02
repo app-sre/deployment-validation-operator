@@ -71,7 +71,7 @@ function check_bundle_contents_cmd() {
 # Check we are running an opm supported container engine
 function check_opm_supported_container_engine() {
     local image_builder=${1}
-    if [[ "$image_builder" != "docker" && "$image_builder" != "podman" ]]; then
+    if [[ "$image_builder" != docker* && "$image_builder" != "podman" ]]; then
         # opm error messages are obscure. Let's make this clear
         log "image_builder $image_builder is not one of docker or podman"
         return 1
@@ -320,6 +320,14 @@ function main() {
     local versions
     # shellcheck disable=SC2207
     versions=($(get_prev_operator_version "$bundle_versions_file"))
+    # This condition is triggered when an operator is built for the first time. In such case the
+    # get_prev_operator_version returns an empty string and causes undefined variables failures
+    # in a few lines below.
+    if [ -z ${versions+x} ]
+    then
+        versions[0]=""
+        versions[1]=""
+    fi
     local prev_operator_version="${versions[0]}"
     local prev_good_operator_version="${versions[1]}"
     local skip_versions=("${versions[@]:2}")
