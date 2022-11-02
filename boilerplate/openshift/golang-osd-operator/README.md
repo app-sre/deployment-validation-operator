@@ -14,6 +14,7 @@ This convention is suitable for both cluster- and hive-deployed operators.
 The following components are included:
 
 ## `make` targets and functions.
+
 **Note:** Your repository's main `Makefile` needs to be edited to include the
 "nexus makefile include":
 
@@ -28,7 +29,7 @@ following:
 ### Prow
 
 | Test name / `make` target | Purpose                                                                                                         |
-|---------------------------|-----------------------------------------------------------------------------------------------------------------|
+| ------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `validate`                | Ensure code generation has not been forgotten; and ensure generated and boilerplate code has not been modified. |
 | `lint`                    | Perform static analysis.                                                                                        |
 | `test`                    | "Local" unit and functional testing.                                                                            |
@@ -48,17 +49,25 @@ $ make RELEASE_CLONE=/home/me/github/openshift/release prow-config
 ```
 
 This will generate a delta configuring prow to:
+
 - Build your `build/Dockerfile`.
 - Run the above targets in presubmit tests.
 - Run the `coverage` target in a postsubmit. This is the step that
   updates your coverage report in codecov.io.
 
 #### Local Testing
+
 You can run these `make` targets locally during development to test your
 code changes. However, differences in platforms and environments may
 lead to unpredictable results. Therefore boilerplate provides a utility
 to run targets in a container environment that is designed to be as
 similar as possible to CI:
+
+```shell
+$ make container-{target}
+```
+
+or
 
 ```shell
 $ ./boilerplate/_lib/container-make {target}
@@ -72,26 +81,14 @@ By default it is configured to be run from the app-sre jenkins pipelines.
 Consult [this doc](app-sre.md) for information on local execution/testing.
 
 ## Code coverage
+
 - A `codecov.sh` script, referenced by the `coverage` `make` target, to
-run code coverage analysis per [this SOP](https://github.com/openshift/ops-sop/blob/93d100347746ce04ad552591136818f82043c648/services/codecov.md).
+  run code coverage analysis per [this SOP](https://github.com/openshift/ops-sop/blob/93d100347746ce04ad552591136818f82043c648/services/codecov.md).
 
 - A `.codecov.yml` configuration file for
   [codecov.io](https://docs.codecov.io/docs/codecov-yaml). Note that
   this is copied into the repository root, because that's
   [where codecov.io expects it](https://docs.codecov.io/docs/codecov-yaml#can-i-name-the-file-codecovyml).
-
-- A `make` target to [request the secret mapping in openshift/release](https://github.com/openshift/ops-sop/blob/be43125239deb1f2bbc1ef54f010410e97ff6146/services/codecov.md#openshiftrelease-pr-1---secret-mapping):
-
-```shell
-$ make codecov-secret-mapping
-```
-
-If you already have the openshift/release repository cloned locally, you
-may specify its path via `$RELEASE_CLONE`:
-
-```shell
-$ make RELEASE_CLONE=/home/me/github/openshift/release codecov-secret-mapping
-```
 
 ## Linting and other static analysis with `golangci-lint`
 
@@ -107,13 +104,35 @@ The convention embeds default checks to ensure generated code generation is curr
 To trigger the check, you can use `make generate-check` provided your Makefile properly includes the boilerplate-generated include `boilerplate/generated-includes.mk`.
 
 Checks consist of:
-* Checking all files are committed to ensure a safe point to revert to in case of error
-* Running the `make generate` command (see below) to regenerate the needed code
-* Checking if this results in any new uncommitted files in the git project or if all is clean.
+
+- Checking all files are committed to ensure a safe point to revert to in case of error
+- Running the `make generate` command (see below) to regenerate the needed code
+- Checking if this results in any new uncommitted files in the git project or if all is clean.
 
 `make generate` does the following:
-* `operator-sdk generate crds` and `k8s`. This is a no-op if your
+
+- generate crds and deepcopy via controller-gen. This is a no-op if your
   operator has no APIs.
-* `openapi-gen`. This is a no-op if your operator has no APIs.
-* `go generate`. This is a no-op if you have no `//go:generate`
+- `openapi-gen`. This is a no-op if your operator has no APIs.
+- `go generate`. This is a no-op if you have no `//go:generate`
   directives in your code.
+
+## FIPS (Federal Information Processing Standards)
+
+To enable FIPS in your build there is a `make ensure-fips` target.
+
+Add `FIPS_ENABLED=true` to your repos Makefile. Please ensure that this variable is added **before** including boilerplate Makefiles.
+
+e.g.
+
+```.mk
+FIPS_ENABLED=true
+
+include boilerplate/generated-includes.mk
+```
+
+`ensure-fips` will add a [fips.go](./fips.go) file in the same directory as the `main.go` file. (Please commit this file as normal)
+
+`fips.go` will import the necessary packages to restrict all TLS configuration to FIPS-approved settings.
+
+With `FIPS_ENABLED=true`, `ensure-fips` is always run before `make go-build`

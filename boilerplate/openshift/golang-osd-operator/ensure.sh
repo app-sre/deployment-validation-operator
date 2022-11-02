@@ -6,7 +6,7 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 source $REPO_ROOT/boilerplate/_lib/common.sh
 
 GOLANGCI_LINT_VERSION="1.30.0"
-OPM_VERSION="v1.15.2"
+OPM_VERSION="v1.23.2"
 GRPCURL_VERSION="1.7.0"
 DEPENDENCY=${1:-}
 GOOS=$(go env GOOS)
@@ -28,59 +28,6 @@ golangci-lint)
         DOWNLOAD_URL="https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCI_LINT_VERSION}/golangci-lint-${GOLANGCI_LINT_VERSION}-${GOOS}-amd64.tar.gz"
         curl -sfL "${DOWNLOAD_URL}" | tar -C "${GOPATH}/bin" -zx --strip-components=1 "golangci-lint-${GOLANGCI_LINT_VERSION}-${GOOS}-amd64/golangci-lint"
     fi
-    ;;
-
-operator-sdk)
-    #########################################################
-    # Ensure operator-sdk is installed at the desired version
-    # When done, ./.operator-sdk/bin/operator-sdk will be a
-    # symlink to the appropriate executable.
-    #########################################################
-    # First discover the desired version from go.mod
-    # The following properly takes `replace` directives into account.
-    wantver=$(go list -json -m github.com/operator-framework/operator-sdk | jq -r 'if .Replace != null then .Replace.Version else .Version end')
-    echo "go.mod says you want operator-sdk $wantver"
-    # Where we'll put our (binary and) symlink
-    mkdir -p .operator-sdk/bin
-    cd .operator-sdk/bin
-    # Discover existing, giving preference to one already installed in
-    # this path, because that has a higher probability of being the
-    # right one.
-    if [[ -x ./operator-sdk ]] && [[ "$(osdk_version ./operator-sdk)" == "$wantver" ]]; then
-        echo "operator-sdk $wantver already installed"
-        exit 0
-    fi
-    # Is there one in $PATH?
-    if which operator-sdk && [[ $(osdk_version $(which operator-sdk)) == "$wantver" ]]; then
-        osdk=$(realpath $(which operator-sdk))
-        echo "Found at $osdk"
-    else
-        case "$(uname -s)" in
-            Linux*)
-                binary="operator-sdk-${wantver}-x86_64-linux-gnu"
-                ;;
-            Darwin*)
-                binary="operator-sdk-${wantver}-x86_64-apple-darwin"
-                ;;
-            *)
-                echo "OS unsupported"
-                exit 1
-                ;;
-        esac
-        # The boilerplate backing image sets up binaries with the full
-        # name in /usr/local/bin, so look for the right one of those
-        if which $binary; then
-            osdk=$(realpath $(which $binary))
-        else
-            echo "Downloading $binary"
-            curl -OJL https://github.com/operator-framework/operator-sdk/releases/download/${wantver}/${binary}
-            chmod +x ${binary}
-            osdk=${binary}
-        fi
-    fi
-    # Create (or overwrite) the symlink to the binary we discovered or
-    # downloaded above.
-    ln -sf $osdk operator-sdk
     ;;
 
 opm)
