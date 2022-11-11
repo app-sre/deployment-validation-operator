@@ -1,4 +1,4 @@
-package main
+package options
 
 import (
 	"flag"
@@ -9,33 +9,33 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-type options struct {
+type Options struct {
 	MetricsPort    int32
 	MetricsPath    string
 	ProbeAddr      string
 	ConfigFile     string
-	watchNamespace *string
+	WatchNamespace *string
 	Zap            zap.Options
 }
 
-func (o *options) MetricsEndpoint() string {
+func (o *Options) MetricsEndpoint() string {
 	return fmt.Sprintf("http://0.0.0.0:%d/%s", o.MetricsPort, o.MetricsPath)
 }
 
-func (o *options) GetWatchNamespace() (string, bool) {
-	if o.watchNamespace == nil {
+func (o *Options) GetWatchNamespace() (string, bool) {
+	if o.WatchNamespace == nil {
 		return "", false
 	}
 
-	return *o.watchNamespace, true
+	return *o.WatchNamespace, true
 }
 
-func (o *options) Process() {
+func (o *Options) Process() {
 	o.processFlags()
 	o.processEnv()
 }
 
-func (o *options) processFlags() {
+func (o *Options) processFlags() {
 	// Add the zap logger flag set to the CLI. The flag set must
 	// be added before calling pflag.Parse().
 	o.Zap.BindFlags(flag.CommandLine)
@@ -67,8 +67,8 @@ func (o *options) processFlags() {
 // An empty value means the operator is running with cluster scope.
 const watchNamespaceEnvVar = "WATCH_NAMESPACE"
 
-func (o *options) processEnv() {
+func (o *Options) processEnv() {
 	if val, ok := os.LookupEnv(watchNamespaceEnvVar); ok {
-		o.watchNamespace = &val
+		o.WatchNamespace = &val
 	}
 }
