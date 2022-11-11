@@ -1,9 +1,9 @@
 package main
 
 import (
-	"os"
 	"testing"
 
+	"github.com/app-sre/deployment-validation-operator/config"
 	"github.com/stretchr/testify/assert"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -17,7 +17,7 @@ func TestGetManagerOptionsFn(t *testing.T) {
 
 	t.Run("Error : WatchNamespace not set", func(t *testing.T) {
 		// When
-		_, err := getManagerOptions(mockScheme, options{})
+		_, err := getManagerOptions(mockScheme, config.Options{})
 
 		// Assert
 		assert.Error(t, err)
@@ -27,8 +27,8 @@ func TestGetManagerOptionsFn(t *testing.T) {
 	t.Run("OK : Scheme and Namespace are set up correctly", func(t *testing.T) {
 		// Given
 		mockNamespace := "test"
-		mockOptions := options{
-			watchNamespace: &mockNamespace,
+		mockOptions := config.Options{
+			WatchNamespace: &mockNamespace,
 		}
 
 		// When
@@ -38,68 +38,5 @@ func TestGetManagerOptionsFn(t *testing.T) {
 		assert.NotErrorIs(t, err, errWatchNamespaceNotSet)
 		assert.Equal(t, options.Namespace, mockNamespace)
 		assert.Equal(t, options.Scheme, mockScheme)
-	})
-}
-
-// TestOptionsStruct runs four tests on options struct methods:
-//   - processEnv
-//   - GetWatchNamespace
-//   - GetWatchNamespace (flawed)
-//   - MetricsEndpoint
-func TestOptionsStruct(t *testing.T) {
-
-	t.Run("processEnv function", func(t *testing.T) {
-		// Given
-		opt := options{}
-		expectedValue := "test"
-		os.Setenv(watchNamespaceEnvVar, expectedValue)
-
-		// When
-		opt.processEnv()
-
-		// Assert
-		assert.Equal(t, expectedValue, *opt.watchNamespace)
-	})
-
-	t.Run("GetWatchNamespace function (no result)", func(t *testing.T) {
-		// Given
-		opt := options{}
-
-		// When
-		_, isSet := opt.GetWatchNamespace()
-
-		// Assert
-		assert.Equal(t, false, isSet)
-	})
-
-	t.Run("GetWatchNamespace function", func(t *testing.T) {
-		// Given
-		expectedValue := "test"
-		opt := options{
-			watchNamespace: &expectedValue,
-		}
-
-		// When
-		namespace, isSet := opt.GetWatchNamespace()
-
-		// Assert
-		assert.Equal(t, true, isSet)
-		assert.Equal(t, expectedValue, namespace)
-	})
-
-	t.Run("MetricsEndpoint", func(t *testing.T) {
-		// Given
-		mockPort := int32(80)
-		mockPath := "path/"
-		opt := options{
-			MetricsPort: mockPort,
-			MetricsPath: mockPath,
-		}
-
-		// When
-		endpoint := opt.MetricsEndpoint()
-
-		// Assert
-		assert.Equal(t, "http://0.0.0.0:80/path/", endpoint)
 	})
 }
