@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/app-sre/deployment-validation-operator/config"
+	"github.com/app-sre/deployment-validation-operator/internal/options"
 	"github.com/stretchr/testify/assert"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -17,7 +17,7 @@ func TestGetManagerOptionsFn(t *testing.T) {
 
 	t.Run("Error : WatchNamespace not set", func(t *testing.T) {
 		// When
-		_, err := getManagerOptions(mockScheme, config.Options{})
+		_, err := getManagerOptions(mockScheme, options.Options{})
 
 		// Assert
 		assert.Error(t, err)
@@ -27,7 +27,7 @@ func TestGetManagerOptionsFn(t *testing.T) {
 	t.Run("OK : Scheme and Namespace are set up correctly", func(t *testing.T) {
 		// Given
 		mockNamespace := "test"
-		mockOptions := config.Options{
+		mockOptions := options.Options{
 			WatchNamespace: &mockNamespace,
 		}
 
