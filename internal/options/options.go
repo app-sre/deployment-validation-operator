@@ -14,7 +14,7 @@ type Options struct {
 	MetricsPath    string
 	ProbeAddr      string
 	ConfigFile     string
-	WatchNamespace *string
+	watchNamespace *string
 	Zap            zap.Options
 }
 
@@ -23,11 +23,11 @@ func (o *Options) MetricsEndpoint() string {
 }
 
 func (o *Options) GetWatchNamespace() (string, bool) {
-	if o.WatchNamespace == nil {
+	if o.watchNamespace == nil {
 		return "", false
 	}
 
-	return *o.WatchNamespace, true
+	return *o.watchNamespace, true
 }
 
 func (o *Options) Process() {
@@ -69,6 +69,6 @@ const watchNamespaceEnvVar = "WATCH_NAMESPACE"
 
 func (o *Options) processEnv() {
 	if val, ok := os.LookupEnv(watchNamespaceEnvVar); ok {
-		o.WatchNamespace = &val
+		o.watchNamespace = &val
 	}
 }

@@ -24,7 +24,7 @@ func TestOptionsStruct(t *testing.T) {
 		opt.processEnv()
 
 		// Assert
-		assert.Equal(t, expectedValue, *opt.WatchNamespace)
+		assert.Equal(t, expectedValue, *opt.watchNamespace)
 	})
 
 	t.Run("GetWatchNamespace function (no result)", func(t *testing.T) {
@@ -42,7 +42,7 @@ func TestOptionsStruct(t *testing.T) {
 		// Given
 		expectedValue := "test"
 		opt := Options{
-			WatchNamespace: &expectedValue,
+			watchNamespace: &expectedValue,
 		}
 
 		// When
