@@ -12,7 +12,8 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
-	dv_config "github.com/app-sre/deployment-validation-operator/config"
+	dvconfig "github.com/app-sre/deployment-validation-operator/config"
+	"github.com/app-sre/deployment-validation-operator/internal/options"
 	"github.com/app-sre/deployment-validation-operator/pkg/apis"
 	"github.com/app-sre/deployment-validation-operator/pkg/controller"
 	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
@@ -39,9 +40,9 @@ const operatorNameEnvVar = "OPERATOR_NAME"
 
 func main() {
 	// Make sure the operator name is what we want
-	os.Setenv(operatorNameEnvVar, dv_config.OperatorName)
+	os.Setenv(operatorNameEnvVar, dvconfig.OperatorName)
 
-	opts := options{
+	opts := options.Options{
 		MetricsPort: 8383,
 		MetricsPath: "metrics",
 		ProbeAddr:   ":8081",
@@ -76,7 +77,7 @@ func main() {
 	}
 }
 
-func setupManager(log logr.Logger, opts options) (manager.Manager, error) {
+func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error) {
 	logVersion(log)
 
 	log.Info("Load KubeConfig")
@@ -185,7 +186,7 @@ func initializeScheme() (*k8sruntime.Scheme, error) {
 
 var errWatchNamespaceNotSet = errors.New("'WatchNamespace' not set")
 
-func getManagerOptions(scheme *k8sruntime.Scheme, opts options) (manager.Options, error) {
+func getManagerOptions(scheme *k8sruntime.Scheme, opts options.Options) (manager.Options, error) {
 	ns, ok := opts.GetWatchNamespace()
 	if !ok {
 		return manager.Options{}, errWatchNamespaceNotSet

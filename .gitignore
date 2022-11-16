@@ -18,8 +18,9 @@ build/_output/*
 .grpcurl/*
 .opm/*
 
-# goland
+# IDE
 .idea
+.vscode
 
 # go
 vendor
