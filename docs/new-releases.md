@@ -19,15 +19,8 @@
 3. Publish new DVO release to Operator-Hub
 
     - OperatorHub Repository for DVO - [DVO OLM](https://github.com/k8s-operatorhub/community-operators/tree/main/operators/deployment-validation-operator)
-    - Edit deployment-validation-operator.package.yaml to reflect the new release
     
-    ```yaml
-    # RELEASE VERSION == 0.2.0, 0.2.1, etc.
-    
-    * channels.currentCSV: deployment-validation-operator.v<RELEASE VERSION>
-    ```
-    
-    - As a shortcut, you may choose to copy+paste the most recent already-existing DVO version directory (ex. 0.2.0, 0.2.1) and change the name of the directory to reflect the new release version
+    - Copy and Paste the pre-existing DVO version directory (ex. 0.2.0, 0.2.1) and change the name of the directory to reflect the new release version
     - Modify the clusterserviceversion file's name within the directory to reflect the new release version
     
     ```yaml
@@ -39,6 +32,7 @@
     * spec.install.spec.deployments.spec.template.spec.containers.image: quay.io/deployment-validation-operator/dv-operator:<RELEASE VERSION>
     * spec.links.url: https://quay.io/deployment-validation-operator/dv-operator:<RELEASE VERSION>
     * spec.version: <RELEASE VERSION>
+    * spec.skipRange: '>=0.0.10 <X.Y.Z' X.Y.Z being the new RELEASE VERSION
 
     # Modify the following line to reflect the previous release version for upgrade purposes 
     # (ex. If going from 0.2.1 -> 0.2.2, then the previous release was 0.2.1)
