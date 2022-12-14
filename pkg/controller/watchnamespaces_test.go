@@ -63,12 +63,12 @@ func TestWatchNamespacesCache(t *testing.T) {
 	t.Run("getFormattedNamespaces returns object data formatted", func(t *testing.T) {
 		// Given
 		expectedName := "mock"
-		expectedUid := "1234"
+		expectedUID := "1234"
 		mockNamespaceList := corev1.NamespaceList{
 			Items: []corev1.Namespace{
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name: expectedName, UID: types.UID(expectedUid),
+						Name: expectedName, UID: types.UID(expectedUID),
 					},
 				},
 			},
@@ -80,7 +80,7 @@ func TestWatchNamespacesCache(t *testing.T) {
 		// Assert
 		assert.Len(t, ns, 1)
 		assert.Equal(t, expectedName, ns[0].name)
-		assert.Equal(t, expectedUid, ns[0].uid)
+		assert.Equal(t, expectedUID, ns[0].uid)
 	})
 
 	t.Run("getFormattedNamespaces ignores namespace with given pattern", func(t *testing.T) {
