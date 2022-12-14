@@ -10,8 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestOptionsStruct runs four tests on options struct methods:
-// -
+// TestGetRouter runs two unit tests with different scenarios:
+// - checks that path is available on the router
+// - checks that an error on collector registry is handled
 func TestGetRouter(t *testing.T) {
 
 	t.Run("router path is available", func(t *testing.T) {
