@@ -10,6 +10,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// TODO : Evaluate changing uid type: string -> types.UID
+// This data is populated with types.UID from corev1/ObjectMeta
+// No access to this property out of the method getNamespaceUID
 type namespace struct {
 	uid, name string
 }
