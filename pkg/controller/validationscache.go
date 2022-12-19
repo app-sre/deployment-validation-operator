@@ -34,7 +34,8 @@ type validationResource struct {
 	outcome validations.ValidationOutcome
 }
 
-// newValidationResource returns a new empty instance of validationResource struct
+// newValidationResource returns a 'validationResource' populated
+// with the given 'resourceVersion', 'uid', and 'ValidationOutcome'.
 func newValidationResource(
 	rscVer resourceVersion,
 	uid string,
