@@ -15,8 +15,8 @@ func newResourceversionVal(str string) resourceVersion {
 	return resourceVersion(str)
 }
 
-// newValidationKey returns an instance of validationKey struct
-// populated with data extrated from the given object
+// newValidationKey returns a unique identifier for the given
+// object suitable for hashing.
 func newValidationKey(obj client.Object) validationKey {
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	return validationKey{
