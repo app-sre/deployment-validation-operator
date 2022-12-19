@@ -79,8 +79,9 @@ func (vc *validationCache) drain() {
 	*vc = validationCache{}
 }
 
-// remove deletes a key, and its value, from the instance
-// it uses given object to search for the validationKey
+// remove uncaches the 'ValidationOutcome' for the
+// given object if it exists and performs a noop
+// if it does not.
 func (vc *validationCache) remove(obj client.Object) {
 	key := newValidationKey(obj)
 	vc.removeKey(key)
