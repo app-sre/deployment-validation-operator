@@ -61,9 +61,9 @@ func (vc *validationCache) has(key validationKey) bool {
 	return exists
 }
 
-// store creates a key-value pair on the current instance
-// it uses given object to create a validationKey and a validationResource structs
-// constraint: if a key already exists, it will overwrite the value
+// store caches a 'ValidationOutcome' for the given 'Object'.
+// constraint: cached outcomes will be updated in-place for a given object and
+// consecutive updates will not preserve previous state.
 func (vc *validationCache) store(obj client.Object, outcome validations.ValidationOutcome) {
 	key := newValidationKey(obj)
 	(*vc)[key] = newValidationResource(
