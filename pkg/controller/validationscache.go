@@ -92,9 +92,9 @@ func (vc *validationCache) removeKey(key validationKey) {
 	delete(*vc, key)
 }
 
-// retrieve returns the value, if exists, within a key
-// it uses given object to search for the validationKey
-// it returns a second parameter to check if the key existed in the instance
+// retrieve returns a tuple of 'validationResource' (if present)
+// and 'ok' which returns 'true' if a 'validationResource' exists
+// for the given 'Object' and 'false' otherwise.
 func (vc *validationCache) retrieve(obj client.Object) (validationResource, bool) {
 	key := newValidationKey(obj)
 	val, exists := (*vc)[key]
