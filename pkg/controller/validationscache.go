@@ -55,7 +55,7 @@ func newValidationCache() *validationCache {
 	return &validationCache{}
 }
 
-// has returns a boolean if the given key exist in the instance
+// has returns 'true' if the given key exist in the instance; 'false' otherwise.
 func (vc *validationCache) has(key validationKey) bool {
 	_, exists := (*vc)[key]
 	return exists
