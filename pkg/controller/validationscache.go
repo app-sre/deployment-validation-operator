@@ -73,8 +73,8 @@ func (vc *validationCache) store(obj client.Object, outcome validations.Validati
 	)
 }
 
-// drain overwrites the current instance with an empty one
-// all keys and values will be lost
+// drain frees the cache of any used resources
+// resulting in all cached 'ValidationOutcome's being lost.
 func (vc *validationCache) drain() {
 	*vc = validationCache{}
 }
