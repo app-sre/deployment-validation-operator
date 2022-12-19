@@ -108,16 +108,15 @@ func (vc *validationCache) retrieve(obj client.Object) (validationResource, bool
 // 'ValidationOutcome' is removed and 'false' is returned. In all other
 // cases 'false' is returned.
 func (vc *validationCache) objectAlreadyValidated(obj client.Object) bool {
-	validationOutcome, exists := vc.retrieve(obj)
-	if exists {
-		storedResourceVersion := string(validationOutcome.version)
-		currentResourceVersion := obj.GetResourceVersion()
-
-		if storedResourceVersion != currentResourceVersion {
-			vc.remove(obj)
-			return false
-		}
+	validationOutcome, ok := vc.retrieve(obj)
+	storedResourceVersion := validationOutcome.version
+	if !ok {
+		return false
 	}
-
-	return exists
+	currentResourceVersion := obj.GetResourceVersion()
+	if string(storedResourceVersion) != currentResourceVersion {
+		vc.remove(obj)
+		return false
+	}
+	return true
 }
