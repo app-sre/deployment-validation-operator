@@ -101,7 +101,12 @@ func (vc *validationCache) retrieve(obj client.Object) (validationResource, bool
 	return val, exists
 }
 
-// objectAlreadyValidated returns if the given object has been validated
+// objectAlreadyValidated returns 'true' if the given 'Object'
+// has a cached 'ValidationOutcome' with the same 'ResourceVersion'
+// (Kubernetes representation of iteration count for a persisted resource).
+// If the 'ResourceVersion' of an existing 'Object' is stale the cached
+// 'ValidationOutcome' is removed and 'false' is returned. In all other
+// cases 'false' is returned.
 func (vc *validationCache) objectAlreadyValidated(obj client.Object) bool {
 	validationOutcome, exists := vc.retrieve(obj)
 	if exists {
