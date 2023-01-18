@@ -15,6 +15,13 @@ import (
 // - checks currentVersion is returned if group version match current version
 func TestGetPriorityVersion(t *testing.T) {
 
+	setSchemeVPErrorCatching := func(s *runtime.Scheme, g string, v string) {
+		err := s.SetVersionPriority([]schema.GroupVersion{{Group: g, Version: v}}...)
+		if err != nil {
+			t.Fail()
+		}
+	}
+
 	t.Run("Empty PrioritizedVersionsAllGroups return", func(t *testing.T) {
 		// Given
 		mock := resourceSet{scheme: runtime.NewScheme()}
@@ -29,9 +36,7 @@ func TestGetPriorityVersion(t *testing.T) {
 	t.Run("No group match", func(t *testing.T) {
 		// Given
 		scheme := runtime.NewScheme()
-		scheme.SetVersionPriority([]schema.GroupVersion{
-			{Group: "group", Version: "version"},
-		}...)
+		setSchemeVPErrorCatching(scheme, "group", "version")
 		mock := resourceSet{scheme: scheme}
 
 		// When
@@ -44,8 +49,8 @@ func TestGetPriorityVersion(t *testing.T) {
 	t.Run("Group match with existing version", func(t *testing.T) {
 		// Given
 		scheme := runtime.NewScheme()
-		scheme.SetVersionPriority([]schema.GroupVersion{{Group: "group", Version: "existingVersion"}}...)
-		scheme.SetVersionPriority([]schema.GroupVersion{{Group: "group2", Version: "currentVersion"}}...)
+		setSchemeVPErrorCatching(scheme, "group", "existingVersion")
+		setSchemeVPErrorCatching(scheme, "group2", "currentVersion")
 		mock := resourceSet{scheme: scheme}
 
 		// When
@@ -58,8 +63,8 @@ func TestGetPriorityVersion(t *testing.T) {
 	t.Run("Group match with current version", func(t *testing.T) {
 		// Given
 		scheme := runtime.NewScheme()
-		scheme.SetVersionPriority([]schema.GroupVersion{{Group: "group", Version: "existingVersion"}}...)
-		scheme.SetVersionPriority([]schema.GroupVersion{{Group: "group2", Version: "currentVersion"}}...)
+		setSchemeVPErrorCatching(scheme, "group", "existingVersion")
+		setSchemeVPErrorCatching(scheme, "group2", "currentVersion")
 		mock := resourceSet{scheme: scheme}
 
 		// When
@@ -72,8 +77,8 @@ func TestGetPriorityVersion(t *testing.T) {
 	t.Run("getPriorityVersion : group match with no match version", func(t *testing.T) {
 		// Given
 		scheme := runtime.NewScheme()
-		scheme.SetVersionPriority([]schema.GroupVersion{{Group: "group", Version: "version"}}...)
-		scheme.SetVersionPriority([]schema.GroupVersion{{Group: "group2", Version: "version2"}}...)
+		setSchemeVPErrorCatching(scheme, "group", "version")
+		setSchemeVPErrorCatching(scheme, "group2", "version2")
 		mock := resourceSet{scheme: scheme}
 
 		// When
