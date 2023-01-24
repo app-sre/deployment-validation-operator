@@ -16,6 +16,9 @@ type resourceSet struct {
 	apiResources map[schema.GroupKind]metav1.APIResource
 }
 
+// newResourceSet returns an empty set of resources related to the given scheme
+// this object will expose methods to allow adding new resources to the set
+// and to return a slice of 'APIResource' entities ("k8s.io/apimachinery/pkg/apis/meta/v1")
 func newResourceSet(scheme *runtime.Scheme) *resourceSet {
 	return &resourceSet{
 		scheme:       scheme,
@@ -23,6 +26,8 @@ func newResourceSet(scheme *runtime.Scheme) *resourceSet {
 	}
 }
 
+// Add will add a new resource to the current instance's set
+// If the resource is not valid it will return an error
 func (s *resourceSet) Add(key schema.GroupKind, val metav1.APIResource) error {
 	if isSubResource(val) {
 		return nil
@@ -48,6 +53,7 @@ func (s *resourceSet) Add(key schema.GroupKind, val metav1.APIResource) error {
 	return nil
 }
 
+// getPriorityVersion returns fixed group version if needed
 func (s *resourceSet) getPriorityVersion(group, existingVer, currentVer string) string {
 	gv := s.scheme.PrioritizedVersionsAllGroups()
 	for _, v := range gv {
@@ -64,6 +70,8 @@ func (s *resourceSet) getPriorityVersion(group, existingVer, currentVer string) 
 	return existingVer
 }
 
+// ToSlice returns resources from the set as a slice
+// of 'APIResource' entities ("k8s.io/apimachinery/pkg/apis/meta/v1")
 func (s *resourceSet) ToSlice() []metav1.APIResource {
 	res := make([]metav1.APIResource, 0, len(s.apiResources))
 

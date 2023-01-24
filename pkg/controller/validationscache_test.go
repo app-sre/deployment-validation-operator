@@ -8,8 +8,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TestValidationCache runs
-func TestValidationCache(t *testing.T) {
+// TestValidationCache runs four tests on validationscache file's functions
+// checks that store adds key-value pair properly
+// checks objectAlreadyValidated different scenarios
+// - key does not exist
+// - resource version does not match
+// - everything runs properly
+func TestValidationsCache(t *testing.T) {
 
 	t.Run("store adds new key and value to current instance", func(t *testing.T) {
 		// Given
