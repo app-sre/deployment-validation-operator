@@ -114,16 +114,9 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 		t.Errorf("Error initializing engine %v", err)
 	}
 
-	request := Request{
-		Kind:         "Deployment",
-		NamespaceUID: "namespace-valid-uid",
-		Namespace:    "bar",
-		Name:         "foo",
-		UID:          "name-valid-uid",
-	}
-
 	replicaCnt := int32(1)
 	deployment, err := createTestDeployment(replicaCnt)
+	request := NewRequestFromObject(deployment)
 	if err != nil {
 		t.Errorf("Error creating deployment from template %v", err)
 	}
@@ -217,17 +210,10 @@ func TestValidateZeroReplicas(t *testing.T) {
 		t.Errorf("Error initializing engine %v", err)
 	}
 
-	request := Request{
-		Kind:         "Deployment",
-		NamespaceUID: "namespace-valid-uid",
-		Namespace:    "bar",
-		Name:         "foo",
-		UID:          "name-valid-uid",
-	}
-
 	// Setup test deployment file with 0 replicas
 	replicaCnt := int32(0)
 	deployment, err := createTestDeployment(replicaCnt)
+	request := NewRequestFromObject(deployment)
 	if err != nil {
 		t.Errorf("Error creating deployment from template %v", err)
 	}

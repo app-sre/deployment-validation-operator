@@ -35,6 +35,7 @@ type GenericReconciler struct {
 	currentObjects        *validationCache
 	client                client.Client
 	discovery             discovery.DiscoveryInterface
+	logger                logr.Logger
 }
 
 // NewGenericReconciler returns a GenericReconciler struct
@@ -51,6 +52,7 @@ func NewGenericReconciler(client client.Client, discovery discovery.DiscoveryInt
 		watchNamespaces:       newWatchNamespacesCache(),
 		objectValidationCache: newValidationCache(),
 		currentObjects:        newValidationCache(),
+		logger:                ctrl.Log.WithName("reconcile"),
 	}, nil
 }
 
@@ -137,17 +139,12 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 
 func (gr *GenericReconciler) processAllResources(ctx context.Context, resources []metav1.APIResource) error {
 	var finalErr error
-
+	namespacedResources := make([]schema.GroupVersionKind, 0)
 	for _, resource := range resources {
 		gvk := gvkFromMetav1APIResource(resource)
 
 		if resource.Namespaced {
-			if err := gr.processNamespacedResource(ctx, gvk); err != nil {
-				multierr.AppendInto(
-					&finalErr,
-					fmt.Errorf("processing namespace scoped resources of type %q: %w", gvk, err),
-				)
-			}
+			namespacedResources = append(namespacedResources, gvk)
 		} else {
 			if err := gr.processClusterscopedResources(ctx, gvk); err != nil {
 				multierr.AppendInto(
@@ -157,11 +154,18 @@ func (gr *GenericReconciler) processAllResources(ctx context.Context, resources 
 			}
 		}
 	}
+	err := gr.processNamespacedResources(ctx, namespacedResources)
+	if err != nil {
+		multierr.AppendInto(
+			&finalErr,
+			fmt.Errorf("processing namespace scoped resources: %w", err),
+		)
+	}
 
 	return finalErr
 }
 
-func (gr *GenericReconciler) processNamespacedResource(ctx context.Context, gvk schema.GroupVersionKind) error {
+func (gr *GenericReconciler) processNamespacedResource(ctx context.Context, gvks []schema.GroupVersionKind) error {
 	var finalErr error
 
 	namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client)
@@ -170,8 +174,49 @@ func (gr *GenericReconciler) processNamespacedResource(ctx context.Context, gvk 
 	}
 
 	for _, ns := range *namespaces {
-		if err := gr.processObjectInstances(ctx, gvk, ns.name); err != nil {
-			multierr.AppendInto(&finalErr, fmt.Errorf("processing resources: %w", err))
+		relatedObjects := make(map[string][]*unstructured.Unstructured)
+		for _, gvk := range gvks {
+			list := unstructured.UnstructuredList{}
+			listOptions := &client.ListOptions{
+				Limit:     gr.listLimit,
+				Namespace: ns.name,
+			}
+			for {
+				list.SetGroupVersionKind(gvk)
+
+				if err := gr.client.List(ctx, &list, listOptions); err != nil {
+					return fmt.Errorf("listing %s: %w", gvk.String(), err)
+				}
+
+				for i := range list.Items {
+					obj := list.Items[i]
+
+					appLabel, found, err := unstructured.NestedString(obj.Object,
+						"spec", "selector", "matchLabels", "app")
+					if !found || err != nil {
+						continue
+					}
+					relatedObjects[appLabel] = append(relatedObjects[appLabel], &obj)
+				}
+
+				listContinue := list.GetContinue()
+				if listContinue == "" {
+					break
+				}
+				listOptions.Continue = listContinue
+			}
+
+		}
+		for label, objects := range relatedObjects {
+			fmt.Printf("================== Reconciling group of %d objects with app label '%s'",
+				len(objects), label)
+			err := gr.reconcileWithObjects(ctx, objects, ns.name)
+			if err != nil {
+				return fmt.Errorf(
+					"reconciling related objects with 'app' label value '%s': %w", label, err,
+				)
+			}
+
 		}
 	}
 
@@ -192,6 +237,28 @@ func (gr *GenericReconciler) processObjectInstances(ctx context.Context,
 
 	if err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, do); err != nil {
 		return fmt.Errorf("processing list: %w", err)
+	}
+
+	return nil
+}
+
+func (gr *GenericReconciler) reconcileWithObjects(ctx context.Context,
+	objs []*unstructured.Unstructured, namespace string) error {
+
+	namespaceUID := gr.watchNamespaces.getNamespaceUID(namespace)
+	// TODO add caching
+	cliObjects := make([]client.Object, 0, len(objs))
+	for _, o := range objs {
+
+		typedClientObject, err := gr.unstructuredToTyped(o)
+		if err != nil {
+			return fmt.Errorf("instantiating typed object: %w", err)
+		}
+		cliObjects = append(cliObjects, typedClientObject)
+	}
+	_, err := validations.RunValidationsForObjects(cliObjects, namespaceUID)
+	if err != nil {
+		return fmt.Errorf("running validations: %w", err)
 	}
 
 	return nil
@@ -247,7 +314,6 @@ func (gr *GenericReconciler) unstructuredToTyped(obj *unstructured.Unstructured)
 
 func (gr *GenericReconciler) lookUpType(obj *unstructured.Unstructured) (runtime.Object, error) {
 	gvk := obj.GetObjectKind().GroupVersionKind()
-
 	typedObj, err := gr.client.Scheme().New(gvk)
 	if err != nil {
 		return nil, fmt.Errorf("creating new object of type %s: %w", gvk, err)
@@ -297,7 +363,6 @@ func (gr *GenericReconciler) paginatedList(
 
 		for i := range list.Items {
 			obj := list.Items[i]
-
 			if err := gr.reconcile(ctx, &obj); err != nil {
 				return fmt.Errorf(
 					"reconciling object '%s/%s': %w", obj.GetNamespace(), obj.GetName(), err,

@@ -21,8 +21,77 @@ type ValidationOutcome string
 var (
 	ObjectNeedsImprovement  ValidationOutcome = "object needs improvement"
 	ObjectValid             ValidationOutcome = "object valid"
+	ObjectsValid            ValidationOutcome = "objects are valid"
 	ObjectValidationIgnored ValidationOutcome = "object validation ignored"
 )
+
+// RunValidationsForObjects runs validation for the group of related objects
+func RunValidationsForObjects(objects []client.Object, namespaceUID string) (ValidationOutcome, error) {
+	lintCtxs := []lintcontext.LintContext{}
+	for _, obj := range objects {
+		lintCtx := &lintContextImpl{}
+		lintCtx.addObjects(lintcontext.Object{K8sObject: obj})
+		lintCtxs = append(lintCtxs, lintCtx)
+	}
+	result, err := run.Run(lintCtxs, engine.CheckRegistry(), engine.EnabledChecks())
+	if err != nil {
+		log.Error(err, "error running validations")
+		return "", fmt.Errorf("error running validations: %v", err)
+	}
+
+	// TODO clear metrics ????
+	return processResult(result, namespaceUID)
+}
+
+// isControllersWithNoReplicas checks if the provided object has no replicas
+func isControllersWithNoReplicas(obj client.Object, promLabels prometheus.Labels) bool {
+	objValue := reflect.Indirect(reflect.ValueOf(obj))
+	spec := objValue.FieldByName("Spec")
+	if spec.IsValid() {
+		replicas := spec.FieldByName("Replicas")
+		if replicas.IsValid() {
+			numReplicas, ok := replicas.Interface().(*int32)
+
+			// clear labels if we fail to get a value for numReplicas, or if value is <= 0
+			if !ok || numReplicas == nil || *numReplicas <= 0 {
+				engine.DeleteMetrics(promLabels)
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func processResult(result run.Result, namespaceUID string) (ValidationOutcome, error) {
+	outcome := ObjectValid
+	for _, report := range result.Reports {
+		check, err := engine.GetCheckByName(report.Check)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Failed to get check '%s' by name", report.Check))
+			return "", fmt.Errorf("error running validations: %v", err)
+		}
+		logger := log.WithValues(
+			"request.namespace", report.Object.K8sObject.GetNamespace(),
+			"request.name", report.Object.K8sObject.GetName(),
+			"kind", report.Object.K8sObject.GetObjectKind(),
+			"validation", report.Check,
+			"check_description", check.Description,
+			"check_remediation", report.Remediation,
+			"check_failure_reason", report.Diagnostic.Message,
+		)
+		metric := engine.GetMetric(report.Check)
+		if metric == nil {
+			log.Error(nil, "no metric found for validation", report.Check)
+		} else {
+			req := NewRequestFromObject(report.Object.K8sObject)
+			req.NamespaceUID = namespaceUID
+			metric.With(req.ToPromLabels()).Set(1)
+			logger.Info(report.Remediation)
+			outcome = ObjectNeedsImprovement
+		}
+	}
+	return outcome, nil
+}
 
 // RunValidations will run all the registered validations
 func RunValidations(request Request, obj client.Object) (ValidationOutcome, error) {
@@ -38,20 +107,8 @@ func RunValidations(request Request, obj client.Object) (ValidationOutcome, erro
 
 	// If controller has no replicas clear existing metrics and
 	// do not run any validations
-
-	objValue := reflect.Indirect(reflect.ValueOf(obj))
-	spec := objValue.FieldByName("Spec")
-	if spec.IsValid() {
-		replicas := spec.FieldByName("Replicas")
-		if replicas.IsValid() {
-			numReplicas, ok := replicas.Interface().(*int32)
-
-			// clear labels if we fail to get a value for numReplicas, or if value is <= 0
-			if !ok || numReplicas == nil || *numReplicas <= 0 {
-				engine.DeleteMetrics(promLabels)
-				return ObjectValidationIgnored, nil
-			}
-		}
+	if isControllersWithNoReplicas(obj, promLabels) {
+		return ObjectValidationIgnored, nil
 	}
 
 	lintCtxs := []lintcontext.LintContext{}
@@ -68,32 +125,7 @@ func RunValidations(request Request, obj client.Object) (ValidationOutcome, erro
 	// are reflected in the metrics
 	engine.ClearMetrics(result.Reports, promLabels)
 
-	outcome := ObjectValid
-	for _, report := range result.Reports {
-		check, err := engine.GetCheckByName(report.Check)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("Failed to get check '%s' by name", report.Check))
-			return "", fmt.Errorf("error running validations: %v", err)
-		}
-		logger := log.WithValues(
-			"request.namespace", request.Namespace,
-			"request.name", request.Name,
-			"kind", request.Kind,
-			"validation", report.Check,
-			"check_description", check.Description,
-			"check_remediation", report.Remediation,
-			"check_failure_reason", report.Diagnostic.Message,
-		)
-		metric := engine.GetMetric(report.Check)
-		if metric == nil {
-			log.Error(nil, "no metric found for validation", report.Check)
-		} else {
-			metric.With(promLabels).Set(1)
-			logger.Info(report.Remediation)
-			outcome = ObjectNeedsImprovement
-		}
-	}
-	return outcome, nil
+	return processResult(result, request.NamespaceUID)
 }
 
 // NewRequestFromObject converts a client.Object into
@@ -101,6 +133,7 @@ func RunValidations(request Request, obj client.Object) (ValidationOutcome, erro
 // request cannot be derived from the object and should
 // be optionally be set after instantiation.
 func NewRequestFromObject(obj client.Object) Request {
+
 	return Request{
 		Kind:      obj.GetObjectKind().GroupVersionKind().Kind,
 		Name:      obj.GetName(),
