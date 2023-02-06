@@ -1,11 +1,11 @@
-FROM quay.io/app-sre/boilerplate:image-v2.3.2 AS builder
+FROM quay.io/app-sre/boilerplate:image-v3.0.2 AS builder
 
 RUN mkdir -p /workdir
 COPY . /workdir
 WORKDIR /workdir
 RUN make
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.7-1049
 
 ENV OPERATOR=/usr/local/bin/deployment-validation-operator \
     USER_UID=1001 \

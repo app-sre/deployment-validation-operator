@@ -3,7 +3,7 @@ package testutils
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"path"
 	"reflect"
 	"runtime"
@@ -72,7 +72,7 @@ func createYamlManifest(objectType string, args *TemplateArgs) ([]byte, error) {
 		return nil, err
 	}
 
-	manifest, err := ioutil.ReadAll(templateContent)
+	manifest, err := io.ReadAll(templateContent)
 	if err != nil {
 		return nil, err
 	}
