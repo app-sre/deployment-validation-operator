@@ -239,20 +239,31 @@ func (gr *GenericReconciler) processObjectInstances(ctx context.Context,
 func (gr *GenericReconciler) reconcileWithObjects(ctx context.Context,
 	objs []*unstructured.Unstructured, namespace string) error {
 
-	namespaceUID := gr.watchNamespaces.getNamespaceUID(namespace)
-	// TODO add caching
-	cliObjects := make([]client.Object, 0, len(objs))
+	nonValidatedObj := []*unstructured.Unstructured{}
 	for _, o := range objs {
+		gr.currentObjects.store(o, "")
+		if gr.objectValidationCache.objectAlreadyValidated(o) {
+			continue
+		}
+		nonValidatedObj = append(nonValidatedObj, o)
+	}
 
+	namespaceUID := gr.watchNamespaces.getNamespaceUID(namespace)
+	cliObjects := make([]client.Object, 0, len(nonValidatedObj))
+	for _, o := range nonValidatedObj {
 		typedClientObject, err := gr.unstructuredToTyped(o)
 		if err != nil {
 			return fmt.Errorf("instantiating typed object: %w", err)
 		}
 		cliObjects = append(cliObjects, typedClientObject)
 	}
-	_, err := validations.RunValidationsForObjects(cliObjects, namespaceUID)
+
+	outcome, err := validations.RunValidationsForObjects(cliObjects, namespaceUID)
 	if err != nil {
 		return fmt.Errorf("running validations: %w", err)
+	}
+	for _, o := range nonValidatedObj {
+		gr.objectValidationCache.store(o, outcome)
 	}
 
 	return nil
