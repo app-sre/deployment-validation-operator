@@ -17,9 +17,10 @@ import (
 	"k8s.io/client-go/util/retry"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
+	"github.com/go-logr/logr"
 
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -93,8 +94,6 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 
 // Start validating the given object kind every interval.
 func (gr *GenericReconciler) Start(ctx context.Context) error {
-	var log = logf.Log.WithName("controller")
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -107,23 +106,22 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 				// client-go version in the operator code does not create issues like
 				// `batch/v1 CronJobs` failing in while `lookUpType()
 				// nikthoma: oct 11, 2022
-				log.Error(err, "error fetching and validating resource types")
+				gr.logger.Error(err, "error fetching and validating resource types")
 			}
 		}
 	}
 }
 
 func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
-	var log = logf.Log.WithName("reconcileEverything")
 	apiResources, err := reconcileResourceList(gr.discovery, gr.client.Scheme())
 	if err != nil {
 		return fmt.Errorf("retrieving resources to reconcile: %w", err)
 	}
 
 	for i, resource := range apiResources {
-		log.Info("apiResource", "no:", i+1, "Group:", resource.Group,
-			"Version:", resource.Version,
-			"Kind:", resource.Kind)
+		gr.logger.Info("apiResource", "no", i+1, "Group", resource.Group,
+			"Version", resource.Version,
+			"Kind", resource.Kind)
 	}
 
 	gr.watchNamespaces.resetCache()
@@ -165,9 +163,7 @@ func (gr *GenericReconciler) processAllResources(ctx context.Context, resources 
 	return finalErr
 }
 
-func (gr *GenericReconciler) processNamespacedResource(ctx context.Context, gvks []schema.GroupVersionKind) error {
-	var finalErr error
-
+func (gr *GenericReconciler) processNamespacedResources(ctx context.Context, gvks []schema.GroupVersionKind) error {
 	namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client)
 	if err != nil {
 		return fmt.Errorf("getting watched namespaces: %w", err)
@@ -208,19 +204,17 @@ func (gr *GenericReconciler) processNamespacedResource(ctx context.Context, gvks
 
 		}
 		for label, objects := range relatedObjects {
-			fmt.Printf("================== Reconciling group of %d objects with app label '%s'",
-				len(objects), label)
+			gr.logger.Info("reconcileNamespaceResources",
+				"Reconciling group of", len(objects), "objects with app label", label)
 			err := gr.reconcileWithObjects(ctx, objects, ns.name)
 			if err != nil {
 				return fmt.Errorf(
 					"reconciling related objects with 'app' label value '%s': %w", label, err,
 				)
 			}
-
 		}
 	}
-
-	return finalErr
+	return nil
 }
 
 func (gr *GenericReconciler) processClusterscopedResources(ctx context.Context, gvk schema.GroupVersionKind) error {
@@ -270,19 +264,16 @@ func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Un
 		return nil
 	}
 
-	var log = logf.Log.WithName(fmt.Sprintf("%s Validation", obj.GetObjectKind().GroupVersionKind()))
-
 	request := validations.NewRequestFromObject(obj)
 	if len(request.Namespace) > 0 {
 		namespaceUID := gr.watchNamespaces.getNamespaceUID(request.Namespace)
 		if len(namespaceUID) == 0 {
-			log.V(2).Info("Namespace UID not found", request.Namespace)
+			gr.logger.V(2).Info("Namespace UID not found", request.Namespace)
 		}
 		request.NamespaceUID = namespaceUID
 	}
 
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.V(2).Info("Reconcile", "Kind", obj.GetObjectKind().GroupVersionKind())
+	gr.logger.V(2).Info("Reconcile", "Kind", obj.GetObjectKind().GroupVersionKind())
 
 	typedClientObject, err := gr.unstructuredToTyped(obj)
 	if err != nil {
