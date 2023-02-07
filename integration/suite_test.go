@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	apis "github.com/app-sre/deployment-validation-operator/api"
 	internaltesting "github.com/app-sre/deployment-validation-operator/internal/testing"
-	"github.com/app-sre/deployment-validation-operator/pkg/apis"
 	osappsv1 "github.com/openshift/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -86,7 +86,7 @@ var _ = BeforeSuite(func() {
 	By("Building manager binary")
 
 	_binPath, err = gexec.BuildWithEnvironment(
-		filepath.Join(root, "cmd", "manager"),
+		filepath.Join(root, "."),
 		[]string{"CGO_ENABLED=0"},
 	)
 	Expect(err).ToNot(HaveOccurred())

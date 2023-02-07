@@ -26,6 +26,12 @@ CONTAINER_ENGINE_CONFIG_DIR = .docker
 # also accepts REGISTRY_AUTH_FILE from the env. See
 # https://www.mankier.com/1/podman-login#Options---authfile=path
 export REGISTRY_AUTH_FILE = ${CONTAINER_ENGINE_CONFIG_DIR}/config.json
+# If this configuration file doesn't exist, podman will error out. So
+# we'll create it if it doesn't exist.
+ifeq (,$(wildcard $(REGISTRY_AUTH_FILE)))
+$(shell mkdir -p $(CONTAINER_ENGINE_CONFIG_DIR))
+$(shell echo '{}' > $(REGISTRY_AUTH_FILE))
+endif
 # ==> Docker uses --config=PATH *before* (any) subcommand; so we'll glue
 # that to the CONTAINER_ENGINE variable itself. (NOTE: I tried half a
 # dozen other ways to do this. This was the least ugly one that actually
@@ -46,9 +52,6 @@ OPERATOR_IMAGE_URI=${IMG}
 OPERATOR_IMAGE_URI_LATEST=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):latest
 OPERATOR_DOCKERFILE ?=build/Dockerfile
 REGISTRY_IMAGE=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME)-registry
-#The api dir that latest osdk generated
-NEW_API_DIR=./api
-USE_OLD_SDK=$(shell if [[ -d "$(NEW_API_DIR)" ]];then echo FALSE;else echo TRUE;fi)
 
 # Consumer can optionally define ADDITIONAL_IMAGE_SPECS like:
 #     define ADDITIONAL_IMAGE_SPECS
@@ -69,14 +72,6 @@ OLM_CHANNEL ?= alpha
 REGISTRY_USER ?=
 REGISTRY_TOKEN ?=
 
-BINFILE=build/_output/bin/$(OPERATOR_NAME)
-MAINPACKAGE = ./
-API_DIR = $(NEW_API_DIR)
-ifeq ($(USE_OLD_SDK), TRUE)
-MAINPACKAGE = ./cmd/manager
-API_DIR = ./pkg/apis
-endif
-
 GOOS?=$(shell go env GOOS)
 GOARCH?=$(shell go env GOARCH)
 GOBIN?=$(shell go env GOBIN)
@@ -93,14 +88,15 @@ export HOME=/tmp/home
 endif
 PWD=$(shell pwd)
 
+GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 GOFLAGS="${GOFLAGS_MOD}"
+GOBUILDFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
+
 ifeq (${FIPS_ENABLED}, true)
 GOFLAGS_MOD+=-tags=fips_enabled
 GOFLAGS_MOD:=$(strip ${GOFLAGS_MOD})
+GOENV+=GOEXPERIMENT=boringcrypto
+GOENV:=$(strip ${GOENV})
 endif
-
-GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 GOFLAGS="${GOFLAGS_MOD}"
-
-GOBUILDFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
 
 # GOLANGCI_LINT_CACHE needs to be set to a directory which is writeable
 # Relevant issue - https://github.com/golangci/golangci-lint/issues/734
@@ -109,7 +105,7 @@ GOLANGCI_LINT_CACHE ?= /tmp/golangci-cache
 GOLANGCI_OPTIONAL_CONFIG ?=
 
 ifeq ($(origin TESTTARGETS), undefined)
-TESTTARGETS := $(shell ${GOENV} go list -e ./... | egrep -v "/(vendor)/")
+TESTTARGETS := $(shell ${GOENV} go list -e ./... | egrep -v "/(vendor)/" | egrep -v "/(osde2e)/")
 endif
 # ex, -v
 TESTOPTS :=
@@ -122,7 +118,7 @@ BOILERPLATE_CONTAINER_MAKE := boilerplate/_lib/container-make
 
 # Set the default goal in a way that works for older & newer versions of `make`:
 # Older versions (<=3.8.0) will pay attention to the `default` target.
-# Newer versions pay attention to .DEFAULT_GOAL, where uunsetting it makes the next defined target the default:
+# Newer versions pay attention to .DEFAULT_GOAL, where unsetting it makes the next defined target the default:
 # https://www.gnu.org/software/make/manual/make.html#index-_002eDEFAULT_005fGOAL-_0028define-default-goal_0029
 .DEFAULT_GOAL :=
 .PHONY: default
@@ -134,7 +130,7 @@ clean:
 
 .PHONY: isclean
 isclean:
-	@(test "$(ALLOW_DIRTY_CHECKOUT)" != "false" || test 0 -eq $$(git status --porcelain | wc -l)) || (echo "Local git checkout is not clean, commit changes and try again." >&2 && git --no-pager diff && exit 1)
+	@(test "$(ALLOW_DIRTY_CHECKOUT)" != "false" || test 0 -eq $$(git status --porcelain | wc -l)) || (echo "Local git checkout is not clean, commit changes and try again or use ALLOW_DIRTY_CHECKOUT=true to override." >&2 && git --no-pager diff && exit 1)
 
 # TODO: figure out how to docker-login only once across multiple `make` calls
 .PHONY: docker-build-push-one
@@ -191,35 +187,18 @@ rm -rf $$TMP_DIR ;\
 }
 endef
 
-# Deciding on the binary versions
-CONTROLLER_GEN_VERSION = v0.8.0
-CONTROLLER_GEN = controller-gen-$(CONTROLLER_GEN_VERSION)
-
-OPENAPI_GEN_VERSION = v0.23.0
-OPENAPI_GEN = openapi-gen-$(OPENAPI_GEN_VERSION)
-
-ifeq ($(USE_OLD_SDK), TRUE)
-#If we are using the old osdk, we use the default controller-gen and openapi-gen versions.
-# Default version is 0.3.0 for now.
 CONTROLLER_GEN = controller-gen
-# Default version is 0.19.4 for now.
 OPENAPI_GEN = openapi-gen
-endif
 
 .PHONY: op-generate
 ## CRD v1beta1 is no longer supported.
 op-generate:
-	cd $(API_DIR); $(CONTROLLER_GEN) crd:crdVersions=v1 paths=./... output:dir=$(PWD)/deploy/crds
-	cd $(API_DIR); $(CONTROLLER_GEN) object paths=./...
-
-API_DIR_MIN_DEPTH = 1
-ifeq ($(USE_OLD_SDK), TRUE)
-API_DIR_MIN_DEPTH = 2
-endif
+	cd ./api; $(CONTROLLER_GEN) crd:crdVersions=v1 paths=./... output:dir=$(PWD)/deploy/crds
+	cd ./api; $(CONTROLLER_GEN) object paths=./...
 
 .PHONY: openapi-generate
 openapi-generate:
-	find $(API_DIR) -maxdepth 2 -mindepth $(API_DIR_MIN_DEPTH) -type d | xargs -t -I% \
+	find ./api -maxdepth 2 -mindepth 1 -type d | xargs -t -I% \
 		$(OPENAPI_GEN) --logtostderr=true \
 			-i % \
 			-o "" \
@@ -227,7 +206,7 @@ openapi-generate:
 			-p % \
 			-h /dev/null \
 			-r "-"
-	
+
 .PHONY: generate
 generate: op-generate go-generate openapi-generate
 
@@ -239,7 +218,7 @@ endif
 go-build: ## Build binary
 	# Force GOOS=linux as we may want to build containers in other *nix-like systems (ie darwin).
 	# This is temporary until a better container build method is developed
-	${GOENV} GOOS=linux go build ${GOBUILDFLAGS} -o ${BINFILE} ${MAINPACKAGE}
+	${GOENV} GOOS=linux go build ${GOBUILDFLAGS} -o build/_output/bin/$(OPERATOR_NAME) .
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.23
@@ -248,7 +227,7 @@ SETUP_ENVTEST = setup-envtest
 .PHONY: setup-envtest
 setup-envtest:
 	$(eval KUBEBUILDER_ASSETS := "$(shell $(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir /tmp/envtest/bin)")
-	
+
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
