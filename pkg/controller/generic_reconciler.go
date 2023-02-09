@@ -164,7 +164,7 @@ func (gr *GenericReconciler) processAllResources(ctx context.Context, resources 
 }
 
 // getAppLabel tries to read "app" label from the provided unstructured object
-func getAppLabel(object unstructured.Unstructured) (string, error) {
+func getAppLabel(object *unstructured.Unstructured) (string, error) {
 	appLabel, found, err := unstructured.NestedString(object.Object, "metadata", "labels", "app")
 	// if not found try another path - e.g for PDB resource
 	if !found {
@@ -174,8 +174,8 @@ func getAppLabel(object unstructured.Unstructured) (string, error) {
 			return "", err
 		}
 		if !found {
-			return "", fmt.Errorf("can't find any 'app' label for %s %s",
-				object.GetKind(), object.GetName())
+			return "", fmt.Errorf("can't find any 'app' label for %s resource from %s namespace",
+				object.GetName(), object.GetNamespace())
 		}
 	}
 	if err != nil {
@@ -203,13 +203,13 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 			}
 
 			for i := range list.Items {
-				obj := list.Items[i]
+				obj := &list.Items[i]
 				appLabel, err := getAppLabel(obj)
 				if err != nil {
 					// swallow the error here. it will be too noisy to log
 					continue
 				}
-				relatedObjects[appLabel] = append(relatedObjects[appLabel], &obj)
+				relatedObjects[appLabel] = append(relatedObjects[appLabel], obj)
 			}
 
 			listContinue := list.GetContinue()
