@@ -163,6 +163,66 @@ func (gr *GenericReconciler) processAllResources(ctx context.Context, resources 
 	return finalErr
 }
 
+// getAppLabel tries to read "app" label from the provided unstructured object
+func getAppLabel(object unstructured.Unstructured) (string, error) {
+	appLabel, found, err := unstructured.NestedString(object.Object, "metadata", "labels", "app")
+	// if not found try another path - e.g for PDB resource
+	if !found {
+		appLabel, found, err = unstructured.NestedString(object.Object,
+			"spec", "selector", "matchLabels", "app")
+		if err != nil {
+			return "", err
+		}
+		if !found {
+			return "", fmt.Errorf("can't find any 'app' label for %s %s",
+				object.GetKind(), object.GetName())
+		}
+	}
+	if err != nil {
+		return "", err
+	}
+	return appLabel, nil
+}
+
+// groupAppObjects iterates over provided GroupVersionKind in given namespace
+// and returns map of objects grouped by their "app" label
+func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
+	namespace string, gvks []schema.GroupVersionKind) (map[string][]*unstructured.Unstructured, error) {
+	relatedObjects := make(map[string][]*unstructured.Unstructured)
+	for _, gvk := range gvks {
+		list := unstructured.UnstructuredList{}
+		listOptions := &client.ListOptions{
+			Limit:     gr.listLimit,
+			Namespace: namespace,
+		}
+		for {
+			list.SetGroupVersionKind(gvk)
+
+			if err := gr.client.List(ctx, &list, listOptions); err != nil {
+				return nil, fmt.Errorf("listing %s: %w", gvk.String(), err)
+			}
+
+			for i := range list.Items {
+				obj := list.Items[i]
+				appLabel, err := getAppLabel(obj)
+				if err != nil {
+					// swallow the error here. it will be too noisy to log
+					continue
+				}
+				relatedObjects[appLabel] = append(relatedObjects[appLabel], &obj)
+			}
+
+			listContinue := list.GetContinue()
+			if listContinue == "" {
+				break
+			}
+			listOptions.Continue = listContinue
+		}
+
+	}
+	return relatedObjects, nil
+}
+
 func (gr *GenericReconciler) processNamespacedResources(ctx context.Context, gvks []schema.GroupVersionKind) error {
 	namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client)
 	if err != nil {
@@ -170,43 +230,14 @@ func (gr *GenericReconciler) processNamespacedResources(ctx context.Context, gvk
 	}
 
 	for _, ns := range *namespaces {
-		relatedObjects := make(map[string][]*unstructured.Unstructured)
-		for _, gvk := range gvks {
-			list := unstructured.UnstructuredList{}
-			listOptions := &client.ListOptions{
-				Limit:     gr.listLimit,
-				Namespace: ns.name,
-			}
-			for {
-				list.SetGroupVersionKind(gvk)
-
-				if err := gr.client.List(ctx, &list, listOptions); err != nil {
-					return fmt.Errorf("listing %s: %w", gvk.String(), err)
-				}
-
-				for i := range list.Items {
-					obj := list.Items[i]
-
-					appLabel, found, err := unstructured.NestedString(obj.Object,
-						"spec", "selector", "matchLabels", "app")
-					if !found || err != nil {
-						continue
-					}
-					relatedObjects[appLabel] = append(relatedObjects[appLabel], &obj)
-				}
-
-				listContinue := list.GetContinue()
-				if listContinue == "" {
-					break
-				}
-				listOptions.Continue = listContinue
-			}
-
+		relatedObjects, err := gr.groupAppObjects(ctx, ns.name, gvks)
+		if err != nil {
+			return err
 		}
 		for label, objects := range relatedObjects {
 			gr.logger.Info("reconcileNamespaceResources",
 				"Reconciling group of", len(objects), "objects with app label", label)
-			err := gr.reconcileWithObjects(ctx, objects, ns.name)
+			err := gr.reconcileGroupOfObjects(ctx, objects, ns.name)
 			if err != nil {
 				return fmt.Errorf(
 					"reconciling related objects with 'app' label value '%s': %w", label, err,
@@ -236,7 +267,7 @@ func (gr *GenericReconciler) processObjectInstances(ctx context.Context,
 	return nil
 }
 
-func (gr *GenericReconciler) reconcileWithObjects(ctx context.Context,
+func (gr *GenericReconciler) reconcileGroupOfObjects(ctx context.Context,
 	objs []*unstructured.Unstructured, namespace string) error {
 
 	nonValidatedObj := []*unstructured.Unstructured{}

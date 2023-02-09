@@ -141,7 +141,6 @@ func RunValidations(request Request, obj client.Object) (ValidationOutcome, erro
 // request cannot be derived from the object and should
 // be optionally be set after instantiation.
 func NewRequestFromObject(obj client.Object) Request {
-
 	return Request{
 		Kind:      obj.GetObjectKind().GroupVersionKind().Kind,
 		Name:      obj.GetName(),
