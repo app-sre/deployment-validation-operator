@@ -46,7 +46,12 @@ func RunValidationsForObjects(objects []client.Object, namespaceUID string) (Val
 		return "", fmt.Errorf("error running validations: %v", err)
 	}
 
-	// TODO clear metrics ????
+	// Clear labels from past run to ensure only results from this run
+	// are reflected in the metrics
+	for _, o := range objects {
+		req := NewRequestFromObject(o)
+		engine.ClearMetrics(result.Reports, req.ToPromLabels())
+	}
 	return processResult(result, namespaceUID)
 }
 
