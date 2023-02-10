@@ -50,6 +50,7 @@ func RunValidationsForObjects(objects []client.Object, namespaceUID string) (Val
 	// are reflected in the metrics
 	for _, o := range objects {
 		req := NewRequestFromObject(o)
+		req.NamespaceUID = namespaceUID
 		engine.ClearMetrics(result.Reports, req.ToPromLabels())
 	}
 	return processResult(result, namespaceUID)
