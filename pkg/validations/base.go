@@ -27,16 +27,14 @@ var (
 
 // RunValidationsForObjects runs validation for the group of related objects
 func RunValidationsForObjects(objects []client.Object, namespaceUID string) (ValidationOutcome, error) {
-	lintCtxs := []lintcontext.LintContext{}
+	lintCtx := &lintContextImpl{}
 	for _, obj := range objects {
 		if isControllersWithNoReplicas(obj) {
 			continue
 		}
-		lintCtx := &lintContextImpl{}
 		lintCtx.addObjects(lintcontext.Object{K8sObject: obj})
-		lintCtxs = append(lintCtxs, lintCtx)
 	}
-
+	lintCtxs := []lintcontext.LintContext{lintCtx}
 	if len(lintCtxs) == 0 {
 		return ObjectValidationIgnored, nil
 	}
