@@ -114,16 +114,9 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 		t.Errorf("Error initializing engine %v", err)
 	}
 
-	request := Request{
-		Kind:         "Deployment",
-		NamespaceUID: "namespace-valid-uid",
-		Namespace:    "bar",
-		Name:         "foo",
-		UID:          "name-valid-uid",
-	}
-
 	replicaCnt := int32(1)
 	deployment, err := createTestDeployment(replicaCnt)
+	request := NewRequestFromObject(deployment)
 	if err != nil {
 		t.Errorf("Error creating deployment from template %v", err)
 	}
@@ -175,6 +168,54 @@ func TestRunValidationsIssueCorrection(t *testing.T) {
 	}
 }
 
+func TestRunValidationsForObjectsIssueCorrection(t *testing.T) {
+	customCheck := newCustomCheck()
+	// Initialize engine
+	err := initializeEngine(customCheck)
+	assert.NoError(t, err, "Error initializing engine")
+
+	replicaCnt := int32(1)
+	deployment, err := createTestDeployment(replicaCnt)
+	assert.NoError(t, err, "Error creating deployment from template")
+	request := NewRequestFromObject(deployment)
+	request.NamespaceUID = "1234-6789-1011-testUID"
+
+	// run validations with "broken" (replica=1) deployment object
+	_, err = RunValidationsForObjects([]client.Object{deployment}, request.NamespaceUID)
+	assert.NoError(t, err, "Error running validations")
+
+	labels := request.ToPromLabels()
+	metric, err := engine.GetMetric(customCheck.Name).GetMetricWith(labels)
+	assert.NoError(t, err, "Error getting prometheus metric")
+
+	expectedConstLabelSubString := fmt.Sprintf(""+
+		"constLabels: {check_description=\"%s\",check_remediation=\"%s\"}",
+		customCheck.Description,
+		customCheck.Remediation,
+	)
+	assert.Contains(t, metric.Desc().String(), expectedConstLabelSubString,
+		"Metric is missing expected constant labels! Expected:\n%s\nGot:\n%s",
+		expectedConstLabelSubString,
+		metric.Desc().String())
+	metricValue := int(prom_tu.ToFloat64(metric))
+	assert.Equal(t, 1, metricValue, "Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 1)
+
+	// Problem resolved
+	replicaCnt = int32(3)
+	deployment.Spec.Replicas = &replicaCnt
+	_, err = RunValidationsForObjects([]client.Object{deployment}, request.NamespaceUID)
+	assert.NoError(t, err, "Error running validations")
+	// Metric with label combination should be successfully cleared because problem was resolved.
+	// The 'GetMetricWith()' function will create a new metric with provided labels if it
+	// does not exist. The default value of a metric is 0. Therefore, a value of 0 implies we
+	// successfully cleared the metric label combination.
+	metric, err = engine.GetMetric(customCheck.Name).GetMetricWith(labels)
+	assert.NoError(t, err, "Error getting prometheus metric")
+
+	metricValue = int(prom_tu.ToFloat64(metric))
+	assert.Equal(t, 0, metricValue, "Deployment test failed %#v: got %d want %d", customCheck.Name, metricValue, 0)
+}
+
 func TestIncompatibleChecksAreDisabled(t *testing.T) {
 
 	// Initialize engine
@@ -217,17 +258,10 @@ func TestValidateZeroReplicas(t *testing.T) {
 		t.Errorf("Error initializing engine %v", err)
 	}
 
-	request := Request{
-		Kind:         "Deployment",
-		NamespaceUID: "namespace-valid-uid",
-		Namespace:    "bar",
-		Name:         "foo",
-		UID:          "name-valid-uid",
-	}
-
 	// Setup test deployment file with 0 replicas
 	replicaCnt := int32(0)
 	deployment, err := createTestDeployment(replicaCnt)
+	request := NewRequestFromObject(deployment)
 	if err != nil {
 		t.Errorf("Error creating deployment from template %v", err)
 	}
