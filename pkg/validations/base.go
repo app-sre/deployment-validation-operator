@@ -29,6 +29,12 @@ var (
 func RunValidationsForObjects(objects []client.Object, namespaceUID string) (ValidationOutcome, error) {
 	lintCtx := &lintContextImpl{}
 	for _, obj := range objects {
+		// Only run checks against an object with no owners.  This should be
+		// the object that controls the configuration
+		if !utils.IsOwner(obj) {
+			continue
+		}
+		// If controller has no replicas clear do not run any validations
 		if isControllersWithNoReplicas(obj) {
 			continue
 		}
