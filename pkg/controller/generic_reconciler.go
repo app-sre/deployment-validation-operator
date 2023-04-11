@@ -12,9 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/util/retry"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/go-logr/logr"
@@ -139,19 +137,12 @@ func (gr *GenericReconciler) processAllResources(ctx context.Context, resources 
 	var finalErr error
 	namespacedResources := make([]schema.GroupVersionKind, 0)
 	for _, resource := range resources {
-		gvk := gvkFromMetav1APIResource(resource)
-
 		if resource.Namespaced {
+			gvk := gvkFromMetav1APIResource(resource)
 			namespacedResources = append(namespacedResources, gvk)
-		} else {
-			if err := gr.processClusterscopedResources(ctx, gvk); err != nil {
-				multierr.AppendInto(
-					&finalErr,
-					fmt.Errorf("processing cluster scoped resources of type %q: %w", gvk, err),
-				)
-			}
 		}
 	}
+
 	err := gr.processNamespacedResources(ctx, namespacedResources)
 	if err != nil {
 		multierr.AppendInto(
@@ -245,25 +236,6 @@ func (gr *GenericReconciler) processNamespacedResources(ctx context.Context, gvk
 			}
 		}
 	}
-	return nil
-}
-
-func (gr *GenericReconciler) processClusterscopedResources(ctx context.Context, gvk schema.GroupVersionKind) error {
-	return gr.processObjectInstances(ctx, gvk, "")
-}
-
-func (gr *GenericReconciler) processObjectInstances(ctx context.Context,
-	gvk schema.GroupVersionKind, namespace string) error {
-	gvk.Kind = gvk.Kind + "List"
-
-	do := func() (done bool, err error) {
-		return true, gr.paginatedList(ctx, gvk, namespace)
-	}
-
-	if err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, do); err != nil {
-		return fmt.Errorf("processing list: %w", err)
-	}
-
 	return nil
 }
 
@@ -386,38 +358,4 @@ func (gr *GenericReconciler) handleResourceDeletions() {
 
 	}
 	gr.currentObjects.drain()
-}
-
-func (gr *GenericReconciler) paginatedList(
-	ctx context.Context,
-	gvk schema.GroupVersionKind,
-	namespace string,
-) error {
-	list := unstructured.UnstructuredList{}
-	listOptions := &client.ListOptions{
-		Limit:     gr.listLimit,
-		Namespace: namespace,
-	}
-	for {
-		list.SetGroupVersionKind(gvk)
-
-		if err := gr.client.List(ctx, &list, listOptions); err != nil {
-			return fmt.Errorf("listing %s: %w", gvk.String(), err)
-		}
-
-		for i := range list.Items {
-			obj := list.Items[i]
-			if err := gr.reconcile(ctx, &obj); err != nil {
-				return fmt.Errorf(
-					"reconciling object '%s/%s': %w", obj.GetNamespace(), obj.GetName(), err,
-				)
-			}
-		}
-		listContinue := list.GetContinue()
-		if listContinue == "" {
-			break
-		}
-		listOptions.Continue = listContinue
-	}
-	return nil
 }
