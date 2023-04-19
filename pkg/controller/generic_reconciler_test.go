@@ -396,3 +396,41 @@ func unstructuredToNames(objs []*unstructured.Unstructured) []string {
 	}
 	return names
 }
+
+func Test_getNamespacedResourcesGVK(t *testing.T) {
+	unitTests := []struct {
+		name   string
+		arg    []metav1.APIResource
+		result []schema.GroupVersionKind
+	}{
+		{
+			name: "Received resource is on a namespace and it's returned as GVK",
+			arg: []metav1.APIResource{{
+				Group: "test", Version: "v1", Kind: "Ingress", Namespaced: true,
+			}},
+			result: []schema.GroupVersionKind{{
+				Group: "test", Version: "v1", Kind: "Ingress",
+			}},
+		},
+		{
+			name: "Received resource is not on a namespace and it's not returned as GVK",
+			arg: []metav1.APIResource{{
+				Group: "test", Version: "v1", Kind: "Ingress", Namespaced: false,
+			}},
+			result: []schema.GroupVersionKind{},
+		},
+	}
+
+	for _, ut := range unitTests {
+		t.Run(ut.name, func(t *testing.T) {
+			// Given
+			gr := GenericReconciler{}
+
+			// When
+			test := gr.getNamespacedResourcesGVK(ut.arg)
+
+			// Assert
+			assert.Equal(t, ut.result, test)
+		})
+	}
+}
