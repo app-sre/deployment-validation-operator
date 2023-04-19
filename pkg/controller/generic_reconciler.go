@@ -270,18 +270,14 @@ func (gr *GenericReconciler) processObjectInstances(ctx context.Context,
 func (gr *GenericReconciler) reconcileGroupOfObjects(ctx context.Context,
 	objs []*unstructured.Unstructured, namespace string) error {
 
-	nonValidatedObj := []*unstructured.Unstructured{}
-	for _, o := range objs {
-		gr.currentObjects.store(o, "")
-		if gr.objectValidationCache.objectAlreadyValidated(o) {
-			continue
-		}
-		nonValidatedObj = append(nonValidatedObj, o)
+	if gr.allObjectsValidated(objs) {
+		gr.logger.Info("reconcileGroupOfObjects", "All objects are validated", "Nothing to do")
+		return nil
 	}
 
 	namespaceUID := gr.watchNamespaces.getNamespaceUID(namespace)
-	cliObjects := make([]client.Object, 0, len(nonValidatedObj))
-	for _, o := range nonValidatedObj {
+	cliObjects := make([]client.Object, 0, len(objs))
+	for _, o := range objs {
 		typedClientObject, err := gr.unstructuredToTyped(o)
 		if err != nil {
 			return fmt.Errorf("instantiating typed object: %w", err)
@@ -293,11 +289,26 @@ func (gr *GenericReconciler) reconcileGroupOfObjects(ctx context.Context,
 	if err != nil {
 		return fmt.Errorf("running validations: %w", err)
 	}
-	for _, o := range nonValidatedObj {
+	for _, o := range objs {
 		gr.objectValidationCache.store(o, outcome)
 	}
 
 	return nil
+}
+
+// allObjectsValidated checks whether all unstructured objects passed as argument are validated
+// and thus present in the cache
+func (gr *GenericReconciler) allObjectsValidated(objs []*unstructured.Unstructured) bool {
+	allObjectsValidated := true
+	// we must be sure that all objects in the given group are cached (validated)
+	// see DVO-103
+	for _, o := range objs {
+		gr.currentObjects.store(o, "")
+		if !gr.objectValidationCache.objectAlreadyValidated(o) {
+			allObjectsValidated = false
+		}
+	}
+	return allObjectsValidated
 }
 
 func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Unstructured) error {
