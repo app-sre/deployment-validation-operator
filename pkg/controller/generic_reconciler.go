@@ -198,7 +198,9 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 	return relatedObjects, nil
 }
 
-func (gr *GenericReconciler) processNamespacedResources(ctx context.Context, gvks []schema.GroupVersionKind, namespaces *[]namespace) error {
+func (gr *GenericReconciler) processNamespacedResources(
+	ctx context.Context, gvks []schema.GroupVersionKind, namespaces *[]namespace) error {
+
 	for _, ns := range *namespaces {
 		relatedObjects, err := gr.groupAppObjects(ctx, ns.name, gvks)
 		if err != nil {
