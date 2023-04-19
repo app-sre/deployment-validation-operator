@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 
+	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/go-logr/logr"
 
@@ -138,27 +139,6 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 	return nil
 }
 
-// getAppLabel tries to read "app" label from the provided unstructured object
-func getAppLabel(object *unstructured.Unstructured) (string, error) {
-	appLabel, found, err := unstructured.NestedString(object.Object, "metadata", "labels", "app")
-	// if not found try another path - e.g for PDB resource
-	if !found {
-		appLabel, found, err = unstructured.NestedString(object.Object,
-			"spec", "selector", "matchLabels", "app")
-		if err != nil {
-			return "", err
-		}
-		if !found {
-			return "", fmt.Errorf("can't find any 'app' label for %s resource from %s namespace",
-				object.GetName(), object.GetNamespace())
-		}
-	}
-	if err != nil {
-		return "", err
-	}
-	return appLabel, nil
-}
-
 // groupAppObjects iterates over provided GroupVersionKind in given namespace
 // and returns map of objects grouped by their "app" label
 func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
@@ -170,6 +150,7 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 			Limit:     gr.listLimit,
 			Namespace: namespace,
 		}
+		postProcessAppSelectors := make(map[*unstructured.Unstructured][]utils.AppSelector)
 		for {
 			list.SetGroupVersionKind(gvk)
 
@@ -179,12 +160,25 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 
 			for i := range list.Items {
 				obj := &list.Items[i]
-				appLabel, err := getAppLabel(obj)
+				appSelectors, err := utils.GetAppSelectors(obj)
 				if err != nil {
 					// swallow the error here. it will be too noisy to log
 					continue
 				}
-				relatedObjects[appLabel] = append(relatedObjects[appLabel], obj)
+				// we must create a map of related objects based on the known
+				// app label values first. This means only label selectors with "In" operator.
+				// Once this is done, then we can "post process" the remaining operators as
+				// "NotIn" and "Exists".
+				for _, as := range appSelectors {
+					// collect all the selectors != "In" for "post processing"
+					if as.Operator != metav1.LabelSelectorOpIn {
+						postProcessAppSelectors[obj] = append(postProcessAppSelectors[obj], as)
+						continue
+					}
+					for v := range as.Values {
+						relatedObjects[v] = append(relatedObjects[v], obj)
+					}
+				}
 			}
 
 			listContinue := list.GetContinue()
@@ -193,9 +187,36 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 			}
 			listOptions.Continue = listContinue
 		}
-
+		relatedObjects = processOtherAppSelectors(relatedObjects, postProcessAppSelectors)
 	}
 	return relatedObjects, nil
+}
+
+// processOtherAppSelectors iterates over provided map of "app" label selectors and
+// it adds the corresponding object to the "relatedObjects" map based on the selector
+// operator value.
+func processOtherAppSelectors(
+	relatedObjects map[string][]*unstructured.Unstructured,
+	appSelectors map[*unstructured.Unstructured][]utils.AppSelector) map[string][]*unstructured.Unstructured {
+	for obj, appSelectors := range appSelectors {
+		for k := range relatedObjects {
+			for _, as := range appSelectors {
+				// if the selector operator is "Exists" then add it to every object
+				if as.Operator == metav1.LabelSelectorOpExists {
+					relatedObjects[k] = append(relatedObjects[k], obj)
+				}
+				// if the selector operator is "NotIn", then add it to every object
+				// except those that have a corresponding "app" label value.
+				if as.Operator == metav1.LabelSelectorOpNotIn {
+					if as.Values.Has(k) {
+						continue
+					}
+					relatedObjects[k] = append(relatedObjects[k], obj)
+				}
+			}
+		}
+	}
+	return relatedObjects
 }
 
 func (gr *GenericReconciler) processNamespacedResources(

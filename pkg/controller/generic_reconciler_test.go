@@ -84,88 +84,6 @@ func TestHelperFunctions(t *testing.T) {
 	})
 }
 
-func TestGetAppLabel(t *testing.T) {
-	tests := []struct {
-		testName      string
-		object        runtime.Object
-		expectedLabel string
-		expectedError error
-	}{
-		{
-			testName: "Pod with defined label",
-			object: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "app-A",
-					Labels: map[string]string{
-						"app": "app-A",
-					},
-				},
-			},
-			expectedLabel: "app-A",
-			expectedError: nil,
-		},
-		{
-			testName: "Pod with undefined label",
-			object: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "empty-app",
-					Namespace: "test",
-				},
-			},
-			expectedLabel: "",
-			expectedError: fmt.
-				Errorf("can't find any 'app' label for empty-app resource from test namespace"),
-		},
-		{
-			testName: "PDB with defined selector label",
-			object: &policyv1.PodDisruptionBudget{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "pdb-A",
-					Namespace: "test",
-				},
-				Spec: policyv1.PodDisruptionBudgetSpec{
-					Selector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"app": "app-with-pdb",
-						},
-					},
-				},
-			},
-			expectedLabel: "app-with-pdb",
-			expectedError: nil,
-		},
-		{
-			testName: "PDB with empty selector",
-			object: &policyv1.PodDisruptionBudget{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "empty-app",
-					Namespace: "test",
-				},
-			},
-			expectedLabel: "",
-			expectedError: fmt.
-				Errorf("can't find any 'app' label for empty-app resource from test namespace"),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.testName, func(t *testing.T) {
-			o, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt.object)
-			assert.NoError(t, err)
-			u := &unstructured.Unstructured{
-				Object: o,
-			}
-			label, err := getAppLabel(u)
-			if tt.expectedError != nil {
-				assert.Error(t, err, tt.expectedError)
-			} else {
-				assert.NoError(t, err)
-			}
-			assert.Equal(t, tt.expectedLabel, label)
-		})
-	}
-}
-
 func TestGroupAppObjects(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -288,6 +206,88 @@ func TestGroupAppObjects(t *testing.T) {
 				"B": {"test-B-pod", "test-B-deployment"},
 			},
 		},
+		{
+			name:      "One deployment with multiple matching PDBs",
+			namespace: "test",
+			objs: []client.Object{
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-deployment",
+						Namespace: "test",
+						Labels: map[string]string{
+							"app": "A",
+						},
+					},
+				},
+				&policyv1.PodDisruptionBudget{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-pdb-in-all",
+						Namespace: "test",
+					},
+					Spec: policyv1.PodDisruptionBudgetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "app",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"A", "B", "C"},
+								},
+							},
+						},
+					},
+				},
+				&policyv1.PodDisruptionBudget{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-pdb-not-in-C",
+						Namespace: "test",
+					},
+					Spec: policyv1.PodDisruptionBudgetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "app",
+									Operator: metav1.LabelSelectorOpNotIn,
+									Values:   []string{"C"},
+								},
+							},
+						},
+					},
+				},
+				&policyv1.PodDisruptionBudget{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-pdb-exists",
+						Namespace: "test",
+					},
+					Spec: policyv1.PodDisruptionBudgetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "app",
+									Operator: metav1.LabelSelectorOpExists,
+								},
+							},
+						},
+					},
+				},
+			},
+			gvks: []schema.GroupVersionKind{
+				{
+					Group:   "policy",
+					Kind:    "PodDisruptionBudget",
+					Version: "v1",
+				},
+				{
+					Group:   "apps",
+					Kind:    "Deployment",
+					Version: "v1",
+				},
+			},
+			expectedNames: map[string][]string{
+				"A": {"test-pdb-in-all", "test-pdb-not-in-C", "test-pdb-exists", "test-deployment"},
+				"B": {"test-pdb-in-all", "test-pdb-not-in-C", "test-pdb-exists"},
+				"C": {"test-pdb-in-all", "test-pdb-exists"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -301,8 +301,8 @@ func TestGroupAppObjects(t *testing.T) {
 				objects, ok := groupMap[expectedLabel]
 				assert.True(t, ok, "can't find label %s", expectedLabel)
 				actualNames := unstructuredToNames(objects)
-				for _, exoectedName := range expectedNames {
-					assert.Contains(t, actualNames, exoectedName)
+				for _, expectedName := range expectedNames {
+					assert.Contains(t, actualNames, expectedName)
 				}
 			}
 		})
