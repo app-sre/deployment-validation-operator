@@ -7,7 +7,6 @@ import (
 	"os"
 	"strconv"
 
-	"go.uber.org/multierr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -123,35 +122,20 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 	}
 
 	gr.watchNamespaces.resetCache()
+	namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client)
+	if err != nil {
+		return fmt.Errorf("getting watched namespaces: %w", err)
+	}
 
-	if err := gr.processAllResources(ctx, apiResources); err != nil {
-		return fmt.Errorf("processing all resources: %w", err)
+	gvkResources := gr.getNamespacedResourcesGVK(apiResources)
+	errNR := gr.processNamespacedResources(ctx, gvkResources, namespaces)
+	if errNR != nil {
+		return fmt.Errorf("processing namespace scoped resources: %w", errNR)
 	}
 
 	gr.handleResourceDeletions()
 
 	return nil
-}
-
-func (gr *GenericReconciler) processAllResources(ctx context.Context, resources []metav1.APIResource) error {
-	var finalErr error
-	namespacedResources := make([]schema.GroupVersionKind, 0)
-	for _, resource := range resources {
-		if resource.Namespaced {
-			gvk := gvkFromMetav1APIResource(resource)
-			namespacedResources = append(namespacedResources, gvk)
-		}
-	}
-
-	err := gr.processNamespacedResources(ctx, namespacedResources)
-	if err != nil {
-		multierr.AppendInto(
-			&finalErr,
-			fmt.Errorf("processing namespace scoped resources: %w", err),
-		)
-	}
-
-	return finalErr
 }
 
 // getAppLabel tries to read "app" label from the provided unstructured object
@@ -214,12 +198,7 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 	return relatedObjects, nil
 }
 
-func (gr *GenericReconciler) processNamespacedResources(ctx context.Context, gvks []schema.GroupVersionKind) error {
-	namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client)
-	if err != nil {
-		return fmt.Errorf("getting watched namespaces: %w", err)
-	}
-
+func (gr *GenericReconciler) processNamespacedResources(ctx context.Context, gvks []schema.GroupVersionKind, namespaces *[]namespace) error {
 	for _, ns := range *namespaces {
 		relatedObjects, err := gr.groupAppObjects(ctx, ns.name, gvks)
 		if err != nil {
@@ -236,6 +215,7 @@ func (gr *GenericReconciler) processNamespacedResources(ctx context.Context, gvk
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -358,4 +338,17 @@ func (gr *GenericReconciler) handleResourceDeletions() {
 
 	}
 	gr.currentObjects.drain()
+}
+
+// getNamespacedResourcesGVK filters APIResources and returns the ones within a namespace
+func (gr GenericReconciler) getNamespacedResourcesGVK(resources []metav1.APIResource) []schema.GroupVersionKind {
+	namespacedResources := make([]schema.GroupVersionKind, 0)
+	for _, resource := range resources {
+		if resource.Namespaced {
+			gvk := gvkFromMetav1APIResource(resource)
+			namespacedResources = append(namespacedResources, gvk)
+		}
+	}
+
+	return namespacedResources
 }
