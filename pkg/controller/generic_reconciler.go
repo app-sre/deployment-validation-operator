@@ -265,38 +265,6 @@ func (gr *GenericReconciler) allObjectsValidated(objs []*unstructured.Unstructur
 	return allObjectsValidated
 }
 
-func (gr *GenericReconciler) reconcile(ctx context.Context, obj *unstructured.Unstructured) error {
-	gr.currentObjects.store(obj, "")
-	if gr.objectValidationCache.objectAlreadyValidated(obj) {
-		return nil
-	}
-
-	request := validations.NewRequestFromObject(obj)
-	if len(request.Namespace) > 0 {
-		namespaceUID := gr.watchNamespaces.getNamespaceUID(request.Namespace)
-		if len(namespaceUID) == 0 {
-			gr.logger.V(2).Info("Namespace UID not found", request.Namespace)
-		}
-		request.NamespaceUID = namespaceUID
-	}
-
-	gr.logger.V(2).Info("Reconcile", "Kind", obj.GetObjectKind().GroupVersionKind())
-
-	typedClientObject, err := gr.unstructuredToTyped(obj)
-	if err != nil {
-		return fmt.Errorf("instantiating typed object: %w", err)
-	}
-
-	outcome, err := validations.RunValidations(request, typedClientObject)
-	if err != nil {
-		return fmt.Errorf("running validations: %w", err)
-	}
-
-	gr.objectValidationCache.store(obj, outcome)
-
-	return nil
-}
-
 func (gr *GenericReconciler) unstructuredToTyped(obj *unstructured.Unstructured) (client.Object, error) {
 	typedResource, err := gr.lookUpType(obj)
 	if err != nil {
