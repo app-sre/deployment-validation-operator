@@ -3,7 +3,9 @@ package controller
 import (
 	"testing"
 
+	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -80,5 +82,34 @@ func TestValidationsCache(t *testing.T) {
 
 		// Assert
 		assert.True(t, test)
+	})
+
+	t.Run("storing two different objects with the same name and namespace", func(t *testing.T) {
+		// Given
+		testCache := newValidationCache()
+		dep1 := appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-deployment",
+				Namespace: "test-app",
+				UID:       "foo123",
+			},
+		}
+		dep2 := appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-deployment",
+				Namespace: "test-app",
+				UID:       "bar345",
+			},
+		}
+		testCache.store(&dep1, validations.ObjectNeedsImprovement)
+		testCache.store(&dep2, validations.ObjectValid)
+
+		resource1, exists := testCache.retrieve(&dep1)
+		assert.True(t, exists)
+		assert.Equal(t, validations.ObjectNeedsImprovement, resource1.outcome)
+
+		resource2, exists := testCache.retrieve(&dep2)
+		assert.True(t, exists)
+		assert.Equal(t, validations.ObjectValid, resource2.outcome)
 	})
 }
