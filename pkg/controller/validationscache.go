@@ -2,11 +2,13 @@ package controller
 
 import (
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type validationKey struct {
 	group, version, kind, namespace, name string
+	uid                                   types.UID
 }
 
 type resourceVersion string
@@ -25,6 +27,7 @@ func newValidationKey(obj client.Object) validationKey {
 		kind:      gvk.Kind,
 		namespace: obj.GetNamespace(),
 		name:      obj.GetName(),
+		uid:       obj.GetUID(),
 	}
 }
 
