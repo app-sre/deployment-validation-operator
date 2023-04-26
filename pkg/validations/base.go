@@ -88,10 +88,11 @@ func processResult(result run.Result, namespaceUID string) (ValidationOutcome, e
 			log.Error(err, fmt.Sprintf("Failed to get check '%s' by name", report.Check))
 			return "", fmt.Errorf("error running validations: %v", err)
 		}
+		obj := report.Object.K8sObject
 		logger := log.WithValues(
-			"request.namespace", report.Object.K8sObject.GetNamespace(),
-			"request.name", report.Object.K8sObject.GetName(),
-			"kind", report.Object.K8sObject.GetObjectKind(),
+			"request.namespace", obj.GetNamespace(),
+			"request.name", obj.GetName(),
+			"kind", obj.GetObjectKind().GroupVersionKind().Kind,
 			"validation", report.Check,
 			"check_description", check.Description,
 			"check_remediation", report.Remediation,
@@ -101,7 +102,7 @@ func processResult(result run.Result, namespaceUID string) (ValidationOutcome, e
 		if metric == nil {
 			log.Error(nil, "no metric found for validation", report.Check)
 		} else {
-			req := NewRequestFromObject(report.Object.K8sObject)
+			req := NewRequestFromObject(obj)
 			req.NamespaceUID = namespaceUID
 			metric.With(req.ToPromLabels()).Set(1)
 			logger.Info(report.Remediation)
