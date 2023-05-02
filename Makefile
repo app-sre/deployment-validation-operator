@@ -17,6 +17,10 @@ docker-test:
 	${CONTAINER_ENGINE} build . -f $(OPERATOR_DOCKERFILE).test -t $(OPERATOR_IMAGE_URI_TEST)
 	${CONTAINER_ENGINE} run -t $(OPERATOR_IMAGE_URI_TEST)
 
+.PHONY: e2e-test
+e2e-test:
+	ginkgo run --tags e2e test/e2e/
+
 # We are early adopters of the OPM build/push process. Remove this
 # override once boilerplate uses that path by default.
 build-push: opm-build-push ;

@@ -131,6 +131,12 @@ You can run the unit tests via
 make test
 ```
 
+The end-to-end tests depend on [`ginkgo`](https://onsi.github.io/ginkgo/#installing-ginkgo). After exporting a `KUBECONFIG` variable, it can be ran via
+
+```
+make e2e-test
+```
+
 We use [openshift boilerplate](https://github.com/openshift/boilerplate) to manage our make targets. See this [doc](https://github.com/openshift/boilerplate/blob/master/boilerplate/openshift/golang-osd-operator/README.md) for further information.
 
 
