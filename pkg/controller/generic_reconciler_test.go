@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -83,7 +84,7 @@ func TestHelperFunctions(t *testing.T) {
 	})
 }
 
-func Test_getAppLabel(t *testing.T) {
+func TestGetAppLabel(t *testing.T) {
 	tests := []struct {
 		testName      string
 		object        runtime.Object
@@ -165,7 +166,7 @@ func Test_getAppLabel(t *testing.T) {
 	}
 }
 
-func Test_groupAppObjects(t *testing.T) {
+func TestGroupAppObjects(t *testing.T) {
 	tests := []struct {
 		name          string
 		namespace     string
@@ -292,10 +293,8 @@ func Test_groupAppObjects(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// create testing reconciler
-			gr := &GenericReconciler{
-				client:    clifake.NewClientBuilder().WithObjects(tt.objs...).Build(),
-				discovery: kubefake.NewSimpleClientset().Discovery(),
-			}
+			gr, err := createTestReconciler(nil, tt.objs)
+			assert.NoError(t, err)
 			groupMap, err := gr.groupAppObjects(context.Background(), tt.namespace, tt.gvks)
 			assert.NoError(t, err)
 			for expectedLabel, expectedNames := range tt.expectedNames {
@@ -310,7 +309,7 @@ func Test_groupAppObjects(t *testing.T) {
 	}
 }
 
-func Test_unstructuredToTyped(t *testing.T) {
+func TestUnstructuredToTyped(t *testing.T) {
 	tests := []struct {
 		name          string
 		scheme        *runtime.Scheme
@@ -368,13 +367,8 @@ func Test_unstructuredToTyped(t *testing.T) {
 			err := v1.AddToScheme(tt.scheme)
 			assert.NoError(t, err)
 
-			gr := &GenericReconciler{
-				client: clifake.NewClientBuilder().
-					WithScheme(tt.scheme).
-					Build(),
-				discovery: kubefake.NewSimpleClientset().Discovery(),
-			}
-
+			gr, err := createTestReconciler(tt.scheme, nil)
+			assert.NoError(t, err)
 			o, err := gr.unstructuredToTyped(tt.u)
 			if tt.expectedError == nil {
 				assert.NoError(t, err)
@@ -397,7 +391,7 @@ func unstructuredToNames(objs []*unstructured.Unstructured) []string {
 	return names
 }
 
-func Test_getNamespacedResourcesGVK(t *testing.T) {
+func TestGetNamespacedResourcesGVK(t *testing.T) {
 	unitTests := []struct {
 		name   string
 		arg    []metav1.APIResource
@@ -433,4 +427,289 @@ func Test_getNamespacedResourcesGVK(t *testing.T) {
 			assert.Equal(t, ut.result, test)
 		})
 	}
+}
+
+func TestProcessNamespacedResources(t *testing.T) {
+	tests := []struct {
+		name       string
+		objects    []client.Object
+		gvks       []schema.GroupVersionKind
+		namespaces *[]namespace
+	}{
+		{
+			name: "basic test with objects from two namespaces",
+			objects: []client.Object{
+
+				&appsv1.Deployment{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-A-deployment",
+						Namespace: "test-A",
+						UID:       "depA",
+						Labels: map[string]string{
+							"app": "A",
+						},
+					},
+				},
+				&policyv1.PodDisruptionBudget{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "PodDisruptionBudget",
+						APIVersion: "policy/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-A-pdb",
+						UID:       "pdbA",
+						Namespace: "test-A",
+					},
+					Spec: policyv1.PodDisruptionBudgetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app": "A",
+							},
+						},
+					},
+				},
+				&appsv1.Deployment{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-B-deployment",
+						UID:       "depB",
+						Namespace: "test-B",
+						Labels: map[string]string{
+							"app": "B",
+						},
+					},
+				},
+				&v1.Pod{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Pod",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-B-pod",
+						UID:       "podB",
+						Namespace: "test-B",
+						Labels: map[string]string{
+							"app": "B",
+						},
+					},
+				},
+			},
+			gvks: []schema.GroupVersionKind{
+				{
+					Group:   "apps",
+					Version: "v1",
+					Kind:    "Deployment",
+				},
+				{
+					Group:   "",
+					Kind:    "Pod",
+					Version: "v1",
+				},
+				{
+					Group:   "policy",
+					Kind:    "PodDisruptionBudget",
+					Version: "v1",
+				},
+			},
+			namespaces: &[]namespace{
+				{
+					uid:  "A",
+					name: "test-A",
+				},
+				{
+					uid:  "B",
+					name: "test-B",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// register all the required schemes
+			sch := runtime.NewScheme()
+			err := appsv1.AddToScheme(sch)
+			assert.NoError(t, err)
+			err = v1.AddToScheme(sch)
+			assert.NoError(t, err)
+			err = policyv1.AddToScheme(sch)
+			assert.NoError(t, err)
+
+			testReconciler, err := createTestReconciler(sch, tt.objects)
+			assert.NoError(t, err)
+
+			// set some namespaces to be watched
+			testReconciler.watchNamespaces.setCache(tt.namespaces)
+			err = testReconciler.processNamespacedResources(context.Background(), tt.gvks, tt.namespaces)
+			assert.NoError(t, err)
+			for _, o := range tt.objects {
+				vr, ok := testReconciler.objectValidationCache.retrieve(o)
+				assert.True(t, ok, "can't find object %v in the validation cache", o)
+				assert.Equal(t, string(o.GetUID()), vr.uid)
+
+				co, ok := testReconciler.currentObjects.retrieve(o)
+				assert.True(t, ok, "can't find object %v in the current objects", o)
+				assert.Equal(t, string(o.GetUID()), co.uid)
+			}
+		})
+	}
+}
+
+func TestHandleResourceDeletions(t *testing.T) {
+	tests := []struct {
+		name                     string
+		testNamespaces           []namespace
+		testCurrentObjects       []client.Object
+		testValidatedObjects     []client.Object
+		expectedValidatedObjects []client.Object
+	}{
+		{
+			name: "Same objects in 'currentObjects' cache and 'objectValidationCache' cache",
+			testNamespaces: []namespace{
+				{
+					uid:  "A",
+					name: "test-A",
+				},
+			},
+			testCurrentObjects: []client.Object{
+				&appsv1.Deployment{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dep-A",
+						Namespace: "test-A",
+						UID:       "uidA",
+					},
+				},
+			},
+			testValidatedObjects: []client.Object{
+				&appsv1.Deployment{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dep-A",
+						Namespace: "test-A",
+						UID:       "uidA",
+					},
+				},
+			},
+			expectedValidatedObjects: []client.Object{
+				&appsv1.Deployment{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dep-A",
+						Namespace: "test-A",
+						UID:       "uidA",
+					},
+				},
+			},
+		},
+		{
+			name: "All objects that are not in 'currentObjects' cache are removed from the 'objectValidationCache'", //nolint:lll
+			testNamespaces: []namespace{
+				{
+					uid:  "A",
+					name: "test-A",
+				},
+				{
+					uid:  "B",
+					name: "test-B",
+				},
+			},
+			testCurrentObjects: []client.Object{},
+			testValidatedObjects: []client.Object{
+				&appsv1.Deployment{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dep-A",
+						Namespace: "test-A",
+						UID:       "uidA",
+					},
+				},
+				&appsv1.Deployment{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dep-B",
+						Namespace: "test-B",
+						UID:       "uidB",
+					},
+				},
+			},
+			expectedValidatedObjects: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testReconciler, err := createTestReconciler(nil, nil)
+			assert.NoError(t, err)
+			testReconciler.watchNamespaces.setCache(&tt.testNamespaces)
+
+			// store the test objects in the caches
+			for _, co := range tt.testCurrentObjects {
+				testReconciler.currentObjects.store(co, validations.ObjectNeedsImprovement)
+			}
+			for _, co := range tt.testValidatedObjects {
+				testReconciler.objectValidationCache.store(co, validations.ObjectNeedsImprovement)
+			}
+			testReconciler.handleResourceDeletions()
+			// currentObjects should be always empty after calling handleResourceDeletions
+			for _, co := range tt.testCurrentObjects {
+				_, ok := testReconciler.currentObjects.retrieve(co)
+				assert.False(t, ok)
+			}
+
+			if tt.expectedValidatedObjects == nil {
+				for _, vo := range tt.testValidatedObjects {
+					_, ok := testReconciler.objectValidationCache.retrieve(vo)
+					assert.False(t, ok)
+				}
+			} else {
+				for _, vo := range tt.expectedValidatedObjects {
+					_, ok := testReconciler.objectValidationCache.retrieve(vo)
+					assert.True(t, ok)
+				}
+			}
+		})
+	}
+}
+
+func TestListLimit(t *testing.T) {
+	os.Setenv(EnvResorucesPerListQuery, "2")
+	testReconciler, err := createTestReconciler(runtime.NewScheme(), nil)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(2), testReconciler.listLimit)
+}
+
+func createTestReconciler(scheme *runtime.Scheme, objects []client.Object) (*GenericReconciler, error) {
+	cliBuilder := clifake.NewClientBuilder()
+	if scheme != nil {
+		cliBuilder.WithScheme(scheme)
+	}
+	if objects != nil {
+		cliBuilder.WithObjects(objects...)
+	}
+	client := cliBuilder.Build()
+	cli := kubefake.NewSimpleClientset()
+	return NewGenericReconciler(client, cli.Discovery())
 }
