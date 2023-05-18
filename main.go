@@ -26,7 +26,6 @@ import (
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/discovery"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -206,14 +205,13 @@ func getManagerOptions(scheme *k8sruntime.Scheme, opts options.Options) (manager
 	// Also note that you may face performance issues when using this with a high number of namespaces.
 	// More: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/cache#MultiNamespacedCacheBuilder
 	if strings.Contains(ns, ",") {
-		mgrOpts.Namespace = ""
-		mgrOpts.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(ns, ","))
+		mgrOpts.Cache.Namespaces = strings.Split(ns, ",")
 	}
 
 	return mgrOpts, nil
 }
 
-func newClient(_ cache.Cache, cfg *rest.Config, opts client.Options, _ ...client.Object) (client.Client, error) {
+func newClient(cfg *rest.Config, opts client.Options) (client.Client, error) {
 	qps, err := kubeClientQPS()
 	if err != nil {
 		return nil, err
