@@ -19,12 +19,17 @@ import (
 type configMapWatcher struct {
 	client         client.Client
 	cache          managerCache.Cache
-	disabledChecks []string
+	disabledChecks []string      // TODO - TBD disable checks
+	ch             chan struct{} // TODO - TBD configmap struct
 }
 
-// Basic logic (getting info from ConfigMap before the manager runs)
-// This should be later overriden by controller logic
-// TODO - document properly
+var configMapName = "deployment-validation-operator-config"
+var configMapNamespace = "deployment-validation-operator"
+
+// NewBasicConfigMapWatcher provides a basic way to retrieve an existing configuration ConfigMap
+// This way of initiating the watcher provides the configuration with pull functionality
+// through the GetDisabledChecks method.
+// To Be Deprecated
 func NewBasicConfigMapWatcher(cfg *rest.Config) (configMapWatcher, error) {
 	var cmw configMapWatcher
 
@@ -41,10 +46,10 @@ func NewBasicConfigMapWatcher(cfg *rest.Config) (configMapWatcher, error) {
 	return cmw, nil
 }
 
+// only used with basic functionality
 func (cmw *configMapWatcher) withoutInformer(client corev1.CoreV1Interface) error {
 
-	cm, err := client.ConfigMaps("deployment-validation-operator").
-		Get(context.Background(), "deployment-validation-operator-config", v1.GetOptions{})
+	cm, err := client.ConfigMaps(configMapNamespace).Get(context.Background(), configMapName, v1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("gathering starting configmap: %w", err)
 	}
@@ -54,40 +59,46 @@ func (cmw *configMapWatcher) withoutInformer(client corev1.CoreV1Interface) erro
 	return nil
 }
 
+// GetDisabledChecks returns disable checks from an existing ConfigMap only if the watcher was initiated
+// with the NewBasicConfigMapWatcher method
 func (cmw configMapWatcher) GetDisabledChecks() []string {
 	return cmw.disabledChecks
 }
 
-// Controller logic (setting up a informer to watch over updates of the configmap)
-// This should be the behaviour once validation engine cares about configuration updates
-// TODO - document properly
+// NewConfigMapWatcher provides a watcher that runs in a manager
+// and sends push notifications to the ConfigChanged method when the configuration is updated.
+// constraint - The current validation engine cannot handle these notifications.
 func NewConfigMapWatcher(cc client.Client, mc managerCache.Cache) configMapWatcher {
+	ch := make(chan struct{})
 	return configMapWatcher{
 		client: cc,
 		cache:  mc,
+		ch:     ch,
 	}
 }
 
-func (c configMapWatcher) Start(ctx context.Context) error {
+// Start method is used by a Manager
+func (cmw configMapWatcher) Start(ctx context.Context) error {
 	var configMap apicorev1.ConfigMap
 	var cmKey = client.ObjectKey{
-		Name:      "deployment-validation-operator-config",
-		Namespace: "deployment-validation-operator",
+		Name:      configMapName,
+		Namespace: configMapNamespace,
 	}
 
-	err := c.client.Get(ctx, cmKey, &configMap)
+	err := cmw.client.Get(ctx, cmKey, &configMap)
 	if err != nil {
 		return err
 	}
 
-	inf, err := c.cache.GetInformer(ctx, &configMap)
+	inf, err := cmw.cache.GetInformer(ctx, &configMap)
 	if err != nil {
 		return err
 	}
 
 	inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			fmt.Println("warning // new configmap detected")
+			// TODO - Validate new configmap
+			fmt.Println("new configmap detected")
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			obj, err := meta.Accessor(newObj)
@@ -95,11 +106,17 @@ func (c configMapWatcher) Start(ctx context.Context) error {
 				fmt.Println("error // retrieving updated configmap", err)
 			}
 
-			if obj.GetName() == "deployment-validation-operator-config" {
-				fmt.Println("debug // OLD ", oldObj)
-				fmt.Println("debug // NEW ", newObj)
+			if obj.GetName() == configMapName {
+				// TODO - Validate new configmap
+				fmt.Println("configmap has been updated")
+				cmw.ch <- struct{}{}
 			}
 		},
 	})
 	return nil
+}
+
+// ConfigChanged receives push notifications when the configuration is updated
+func (cmw *configMapWatcher) ConfigChanged() <-chan struct{} {
+	return cmw.ch
 }

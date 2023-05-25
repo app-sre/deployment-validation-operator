@@ -10,15 +10,12 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
-func TestConfigMapWatcher(t *testing.T) {
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "testestest"},
-		Data: map[string]string{
-			"disabled-checks": "blablabla",
-		},
-	}
-
+func TestBasicConfigMapWatcher(t *testing.T) {
 	// Given
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: configMapNamespace, Name: configMapName},
+		Data:       map[string]string{"disabled-checks": "check,check2"},
+	}
 	client := kubefake.NewSimpleClientset([]runtime.Object{cm}...).CoreV1()
 	mock := configMapWatcher{}
 
@@ -27,5 +24,5 @@ func TestConfigMapWatcher(t *testing.T) {
 
 	// Assert
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"blablabla"}, mock.GetDisabledChecks())
+	assert.Equal(t, []string{"check", "check2"}, mock.GetDisabledChecks())
 }
