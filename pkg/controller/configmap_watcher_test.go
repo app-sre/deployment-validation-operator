@@ -17,7 +17,7 @@ func TestBasicConfigMapWatcher(t *testing.T) {
 		Data:       map[string]string{"disabled-checks": "check,check2"},
 	}
 	client := kubefake.NewSimpleClientset([]runtime.Object{cm}...).CoreV1()
-	mock := configMapWatcher{}
+	mock := ConfigMapWatcher{}
 
 	// When
 	err := mock.withoutInformer(client)

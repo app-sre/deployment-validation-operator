@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type configMapWatcher struct {
+type ConfigMapWatcher struct {
 	client         client.Client
 	cache          managerCache.Cache
 	disabledChecks []string      // TODO - TBD disable checks
@@ -30,24 +30,24 @@ var configMapNamespace = "deployment-validation-operator"
 // This way of initiating the watcher provides the configuration with pull functionality
 // through the GetDisabledChecks method.
 // To Be Deprecated
-func NewBasicConfigMapWatcher(cfg *rest.Config) (configMapWatcher, error) {
-	var cmw configMapWatcher
+func NewBasicConfigMapWatcher(cfg *rest.Config) (ConfigMapWatcher, error) {
+	var cmw ConfigMapWatcher
 
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return configMapWatcher{}, fmt.Errorf("initializing clientset: %w", err)
+		return ConfigMapWatcher{}, fmt.Errorf("initializing clientset: %w", err)
 	}
 
 	err = cmw.withoutInformer(clientset.CoreV1())
 	if err != nil {
-		return configMapWatcher{}, fmt.Errorf("gathering starting configmap: %w", err)
+		return ConfigMapWatcher{}, fmt.Errorf("gathering starting configmap: %w", err)
 	}
 
 	return cmw, nil
 }
 
 // only used with basic functionality
-func (cmw *configMapWatcher) withoutInformer(client corev1.CoreV1Interface) error {
+func (cmw *ConfigMapWatcher) withoutInformer(client corev1.CoreV1Interface) error {
 
 	cm, err := client.ConfigMaps(configMapNamespace).Get(context.Background(), configMapName, v1.GetOptions{})
 	if err != nil {
@@ -61,16 +61,16 @@ func (cmw *configMapWatcher) withoutInformer(client corev1.CoreV1Interface) erro
 
 // GetDisabledChecks returns disable checks from an existing ConfigMap only if the watcher was initiated
 // with the NewBasicConfigMapWatcher method
-func (cmw configMapWatcher) GetDisabledChecks() []string {
+func (cmw ConfigMapWatcher) GetDisabledChecks() []string {
 	return cmw.disabledChecks
 }
 
 // NewConfigMapWatcher provides a watcher that runs in a manager
 // and sends push notifications to the ConfigChanged method when the configuration is updated.
 // constraint - The current validation engine cannot handle these notifications.
-func NewConfigMapWatcher(cc client.Client, mc managerCache.Cache) configMapWatcher {
+func NewConfigMapWatcher(cc client.Client, mc managerCache.Cache) ConfigMapWatcher {
 	ch := make(chan struct{})
-	return configMapWatcher{
+	return ConfigMapWatcher{
 		client: cc,
 		cache:  mc,
 		ch:     ch,
@@ -78,7 +78,7 @@ func NewConfigMapWatcher(cc client.Client, mc managerCache.Cache) configMapWatch
 }
 
 // Start method is used by a Manager
-func (cmw configMapWatcher) Start(ctx context.Context) error {
+func (cmw ConfigMapWatcher) Start(ctx context.Context) error {
 	var configMap apicorev1.ConfigMap
 	var cmKey = client.ObjectKey{
 		Name:      configMapName,
@@ -95,7 +95,7 @@ func (cmw configMapWatcher) Start(ctx context.Context) error {
 		return err
 	}
 
-	inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	inf.AddEventHandler(cache.ResourceEventHandlerFuncs{ //nolint:errcheck
 		AddFunc: func(obj interface{}) {
 			// TODO - Validate new configmap
 			fmt.Println("new configmap detected")
@@ -117,6 +117,6 @@ func (cmw configMapWatcher) Start(ctx context.Context) error {
 }
 
 // ConfigChanged receives push notifications when the configuration is updated
-func (cmw *configMapWatcher) ConfigChanged() <-chan struct{} {
+func (cmw *ConfigMapWatcher) ConfigChanged() <-chan struct{} {
 	return cmw.ch
 }
