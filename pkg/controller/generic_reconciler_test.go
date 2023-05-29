@@ -327,8 +327,8 @@ func TestGroupAppObjects(t *testing.T) {
 				},
 			},
 			expectedNames: map[string][]string{
-				"A": {"test-pdb-A-B-C", "test-pdb-not-in-C", "test-pdb-exists", "test-deployment-A", "test-pdb-not-in-D"},
-				"B": {"test-pdb-A-B-C", "test-pdb-not-in-C", "test-pdb-exists", "test-deployment-B", "test-pdb-not-in-D"},
+				"A": {"test-pdb-A-B-C", "test-pdb-not-in-C", "test-pdb-exists", "test-deployment-A", "test-pdb-not-in-D"}, //nolint:lll
+				"B": {"test-pdb-A-B-C", "test-pdb-not-in-C", "test-pdb-exists", "test-deployment-B", "test-pdb-not-in-D"}, //nolint:lll
 				"C": {"test-pdb-A-B-C", "test-pdb-exists", "test-deployment-C", "test-pdb-not-in-D"},
 				"D": {"test-deployment-D", "test-pdb-exists", "test-pdb-not-in-C"},
 			},
@@ -421,7 +421,8 @@ func TestGroupAppObjects(t *testing.T) {
 				assert.True(t, ok, "can't find label %s", expectedLabel)
 				actualNames := unstructuredToNames(objects)
 				for _, expectedName := range expectedNames {
-					assert.Contains(t, actualNames, expectedName, "can't find %s for label value %s", expectedName, expectedLabel)
+					assert.Contains(t, actualNames, expectedName,
+						"can't find %s for label value %s", expectedName, expectedLabel)
 				}
 			}
 		})

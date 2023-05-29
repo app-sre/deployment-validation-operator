@@ -185,7 +185,8 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 
 // processObjectLabelSelectors gets 'app' label selectors from the respective object and parses them and stores
 // them in the 'relatedObjects' map.
-func processObjectLabelSelectors(obj *unstructured.Unstructured, relatedObjects map[string][]*unstructured.Unstructured) {
+func processObjectLabelSelectors(obj *unstructured.Unstructured,
+	relatedObjects map[string][]*unstructured.Unstructured) {
 	appSelectors, err := utils.GetAppSelectors(obj)
 	if err != nil {
 		// swallow the error here. it will be too noisy to log
