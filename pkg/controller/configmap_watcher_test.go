@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,19 +11,21 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
-func TestBasicConfigMapWatcher(t *testing.T) {
+func TestStaticConfigMapWatcher(t *testing.T) {
 	// Given
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Namespace: configMapNamespace, Name: configMapName},
 		Data:       map[string]string{"disabled-checks": "check,check2"},
 	}
-	client := kubefake.NewSimpleClientset([]runtime.Object{cm}...).CoreV1()
-	mock := ConfigMapWatcher{}
+	client := kubefake.NewSimpleClientset([]runtime.Object{cm}...)
+	mock := ConfigMapWatcher{
+		clientset: client,
+	}
 
 	// When
-	err := mock.withoutInformer(client)
+	test, err := mock.GetStaticDisabledChecks(context.Background())
 
 	// Assert
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"check", "check2"}, mock.GetDisabledChecks())
+	assert.Equal(t, []string{"check", "check2"}, test)
 }
