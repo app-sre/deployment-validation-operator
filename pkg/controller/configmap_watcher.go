@@ -44,7 +44,8 @@ func (cmw *ConfigMapWatcher) GetStaticDisabledChecks(ctx context.Context) ([]str
 		return []string{}, fmt.Errorf("gathering starting configmap: %w", err)
 	}
 
-	return strings.Split(cm.Data["disabled-checks"], ","), nil // TODO - Fix dummy return based on data being check1,check2,check3...
+	// TODO - Fix dummy return based on data being check1,check2,check3...
+	return strings.Split(cm.Data["disabled-checks"], ","), nil
 }
 
 // StartInformer will update the channel structure with new configuration data from ConfigMap update event
@@ -54,7 +55,7 @@ func (cmw *ConfigMapWatcher) StartInformer(ctx context.Context) error {
 	)
 	informer := factory.Core().V1().ConfigMaps().Informer()
 
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{ // nolint:errcheck
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			oldCm := oldObj.(*apicorev1.ConfigMap)
 			newCm := newObj.(*apicorev1.ConfigMap)
