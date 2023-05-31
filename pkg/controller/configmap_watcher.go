@@ -69,13 +69,6 @@ func (cmw *ConfigMapWatcher) StartInformer(ctx context.Context) error {
 	})
 
 	factory.Start(ctx.Done())
-	synced := factory.WaitForCacheSync(ctx.Done())
-
-	for v, ok := range synced {
-		if !ok {
-			return fmt.Errorf("informer factory failed to sun: %v", v)
-		}
-	}
 
 	return nil
 }
