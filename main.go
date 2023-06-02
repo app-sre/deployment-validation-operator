@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -9,9 +10,6 @@ import (
 	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/rest"
-
 	apis "github.com/app-sre/deployment-validation-operator/api"
 	dvconfig "github.com/app-sre/deployment-validation-operator/config"
 	"github.com/app-sre/deployment-validation-operator/internal/options"
@@ -19,13 +17,15 @@ import (
 	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/go-logr/logr"
 	osappsv1 "github.com/openshift/api/apps/v1"
+	"github.com/prometheus/client_golang/prometheus"
+	kubelinterCfg "golang.stackrox.io/kube-linter/pkg/config"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/discovery"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -146,7 +146,16 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 
 	log.Info("Initializing Validation Engine")
 
-	if err := validations.InitializeValidationEngine(opts.ConfigFile, reg); err != nil {
+	// Try to retrieve custom configuration from existing ConfigMap
+	if kbcfg, err := getCustomConfig(cfg); err != nil {
+		log.Info("Gather Kube-Linter configuration from ConfigMap")
+
+		if err := validations.InitializeValidationEngineFromConfig(*kbcfg, reg); err != nil {
+			return nil, fmt.Errorf("initializing validation engine: %w", err)
+		}
+
+		// or Initialize VE from default
+	} else if err := validations.InitializeValidationEngine(opts.ConfigFile, reg); err != nil {
 		return nil, fmt.Errorf("initializing validation engine: %w", err)
 	}
 
@@ -234,4 +243,20 @@ func kubeClientQPS() (float32, error) {
 	}
 	qps = float32(val)
 	return qps, err
+}
+
+// getCustomConfig returns a custom Kube-Linter configuration
+// it retrieves data from a ConfigMap if there is any valid
+func getCustomConfig(cfg *rest.Config) (*kubelinterCfg.Config, error) {
+	cmw, err := controller.NewConfigMapWatcher(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("getting kube-linter checks configuration from configmap: %w", err)
+	}
+
+	klCfg, err := cmw.GetStaticKubelinterConfig(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("getting custom configuration (configmap): %w", err)
+	}
+
+	return &klCfg, nil
 }

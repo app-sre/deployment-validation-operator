@@ -178,6 +178,20 @@ func InitializeValidationEngine(configPath string, reg PrometheusRegistry) error
 	return err
 }
 
+// TODO -> Doc
+func InitializeValidationEngineFromConfig(cfg config.Config, reg PrometheusRegistry) error {
+	ve := validationEngine{
+		config: cfg,
+	}
+
+	err := ve.InitRegistry(reg)
+	if err == nil {
+		engine = ve
+	}
+
+	return err
+}
+
 func (ve *validationEngine) GetCheckByName(name string) (config.Check, error) {
 	check, ok := ve.registeredChecks[name]
 	if !ok {
