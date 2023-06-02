@@ -3,8 +3,10 @@ package controller
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
+
+	"golang.stackrox.io/kube-linter/pkg/config"
+	"gopkg.in/yaml.v3"
 
 	apicorev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,13 +16,28 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+// this structure mirrors Kube-Linter configuration structure
+// it is used to unmarshall ConfigMap data
+// doc: https://pkg.go.dev/golang.stackrox.io/kube-linter/pkg/config#Config
+type KubeLinterChecks struct {
+	Checks struct {
+		AddAllBuiltIn        bool     `yaml:"addAllBuiltIn,omitempty"`
+		DoNotAutoAddDefaults bool     `yaml:"doNotAutoAddDefaults,omitempty"`
+		Exclude              []string `yaml:"exclude,omitempty"`
+		Include              []string `yaml:"include,omitempty"`
+		IgnorePaths          []string `yaml:"ignorePaths,omitempty"`
+	} `yaml:"checks"`
+}
+
 type ConfigMapWatcher struct {
 	clientset kubernetes.Interface
-	ch        chan struct{} // TODO - TBD configmap struct
+	checks    KubeLinterChecks
+	ch        chan config.Config
 }
 
 var configMapName = "deployment-validation-operator-config"
 var configMapNamespace = "deployment-validation-operator"
+var configMapDataAccess = "deployment-validation-operator-config.yaml"
 
 // NewConfigMapWatcher returns a watcher that can be used both:
 // basic: with GetStaticDisabledChecks method, it returns an existent ConfigMap data's disabled check
@@ -36,16 +53,24 @@ func NewConfigMapWatcher(cfg *rest.Config) (ConfigMapWatcher, error) {
 	}, nil
 }
 
-// GetStaticDisabledChecks returns an existent ConfigMap data's disabled checks, if they exist
-func (cmw *ConfigMapWatcher) GetStaticDisabledChecks(ctx context.Context) ([]string, error) {
+// GetStaticKubelinterConfig returns the ConfigMap's checks configuration
+func (cmw *ConfigMapWatcher) GetStaticKubelinterConfig(ctx context.Context) (config.Config, error) {
+	var cfg config.Config
+
 	cm, err := cmw.clientset.CoreV1().
 		ConfigMaps(configMapNamespace).Get(ctx, configMapName, v1.GetOptions{})
 	if err != nil {
-		return []string{}, fmt.Errorf("gathering starting configmap: %w", err)
+		return cfg, fmt.Errorf("gathering starting configmap: %w", err)
 	}
 
-	// TODO - Fix dummy return based on data being check1,check2,check3...
-	return strings.Split(cm.Data["disabled-checks"], ","), nil
+	errYaml := yaml.Unmarshal([]byte(cm.Data[configMapDataAccess]), &cmw.checks)
+	if errYaml != nil {
+		return cfg, fmt.Errorf("unmarshalling configmap data: %w", err)
+	}
+
+	cfg.Checks = config.ChecksConfig(cmw.checks.Checks)
+
+	return cfg, nil
 }
 
 // StartInformer will update the channel structure with new configuration data from ConfigMap update event
@@ -63,8 +88,17 @@ func (cmw *ConfigMapWatcher) StartInformer(ctx context.Context) error {
 			fmt.Printf("oldCm: %v\n", oldCm)
 			fmt.Printf("ConfigMap updated: %s/%s\n", newCm.Namespace, newCm.Name)
 
-			// TODO - Validate new configmap
-			cmw.ch <- struct{}{}
+			var cfg config.Config
+
+			err := yaml.Unmarshal([]byte(newCm.Data[configMapDataAccess]), &cmw.checks)
+			if err != nil {
+				fmt.Printf("Error: unmarshalling configmap data: %s", err.Error())
+				return
+			}
+
+			cfg.Checks = config.ChecksConfig(cmw.checks.Checks)
+
+			cmw.ch <- cfg
 		},
 	})
 
@@ -74,6 +108,6 @@ func (cmw *ConfigMapWatcher) StartInformer(ctx context.Context) error {
 }
 
 // ConfigChanged receives push notifications when the configuration is updated
-func (cmw *ConfigMapWatcher) ConfigChanged() <-chan struct{} {
+func (cmw *ConfigMapWatcher) ConfigChanged() <-chan config.Config {
 	return cmw.ch
 }
