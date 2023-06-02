@@ -23,7 +23,7 @@ func TestStaticConfigMapWatcher(t *testing.T) {
 	}
 
 	// When
-	test, err := mock.GetStaticDisabledChecks(context.Background())
+	test, err := mock.GetStaticKubelinterConfig(context.Background())
 
 	// Assert
 	assert.NoError(t, err)
