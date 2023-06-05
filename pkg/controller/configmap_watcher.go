@@ -63,14 +63,7 @@ func (cmw *ConfigMapWatcher) GetStaticKubelinterConfig(ctx context.Context) (con
 		return cfg, fmt.Errorf("gathering starting configmap: %w", err)
 	}
 
-	errYaml := yaml.Unmarshal([]byte(cm.Data[configMapDataAccess]), &cmw.checks)
-	if errYaml != nil {
-		return cfg, fmt.Errorf("unmarshalling configmap data: %w", err)
-	}
-
-	cfg.Checks = config.ChecksConfig(cmw.checks.Checks)
-
-	return cfg, nil
+	return cmw.getKubeLinterConfig(cm.Data[configMapDataAccess])
 }
 
 // StartInformer will update the channel structure with new configuration data from ConfigMap update event
@@ -82,21 +75,15 @@ func (cmw *ConfigMapWatcher) StartInformer(ctx context.Context) error {
 
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{ // nolint:errcheck
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			oldCm := oldObj.(*apicorev1.ConfigMap)
 			newCm := newObj.(*apicorev1.ConfigMap)
 
-			fmt.Printf("oldCm: %v\n", oldCm)
 			fmt.Printf("ConfigMap updated: %s/%s\n", newCm.Namespace, newCm.Name)
 
-			var cfg config.Config
-
-			err := yaml.Unmarshal([]byte(newCm.Data[configMapDataAccess]), &cmw.checks)
+			cfg, err := cmw.getKubeLinterConfig(newCm.Data[configMapDataAccess])
 			if err != nil {
 				fmt.Printf("Error: unmarshalling configmap data: %s", err.Error())
 				return
 			}
-
-			cfg.Checks = config.ChecksConfig(cmw.checks.Checks)
 
 			cmw.ch <- cfg
 		},
@@ -110,4 +97,18 @@ func (cmw *ConfigMapWatcher) StartInformer(ctx context.Context) error {
 // ConfigChanged receives push notifications when the configuration is updated
 func (cmw *ConfigMapWatcher) ConfigChanged() <-chan config.Config {
 	return cmw.ch
+}
+
+// TODO -> doc
+func (cmw *ConfigMapWatcher) getKubeLinterConfig(data string) (config.Config, error) {
+	var cfg config.Config
+
+	err := yaml.Unmarshal([]byte(data), &cmw.checks)
+	if err != nil {
+		return cfg, fmt.Errorf("unmarshalling configmap data: %w", err)
+	}
+
+	cfg.Checks = config.ChecksConfig(cmw.checks.Checks)
+
+	return cfg, nil
 }
