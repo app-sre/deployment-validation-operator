@@ -76,7 +76,7 @@ type PrometheusRegistry interface {
 
 func (ve *validationEngine) InitRegistry(promReg PrometheusRegistry) error {
 	disableIncompatibleChecks(&ve.config)
-	disableChecks(&ve.config)
+	//disableChecks(&ve.config)
 
 	registry := checkregistry.New()
 	if err := builtinchecks.LoadInto(registry); err != nil {
@@ -219,56 +219,5 @@ func getIncompatibleChecks() []string {
 		"dangling-service",
 		"non-existent-service-account",
 		"non-isolated-pod",
-	}
-}
-
-// disableChecks will forcibly update a kube-linter config
-// to disable checks that do not have supporting openshift documentation
-func disableChecks(c *config.Config) {
-	c.Checks.Exclude = append(c.Checks.Exclude, getDisabledChecks()...)
-}
-
-// getDisabledChecks returns an array of kube-linter check names that are disabled for DVO
-// These checks are disabled as they do not have supporting Openshift documentation
-// 38 checks... 47 checks according to kube-linter website
-func getDisabledChecks() []string {
-	return []string{
-		"access-to-create-pods",
-		"access-to-secrets",
-		"cluster-admin-role-binding",
-		"default-service-account",
-		"deprecated-service-account-field",
-		"docker-sock",
-		"drop-net-raw-capability",
-		"env-var-secret",
-		"exposed-services",
-		// "host-ipc",
-		// "host-network",
-		// "host-pid",
-		"latest-tag",
-		// "minimum-three-replicas",
-		"mismatching-selector",
-		// "no-anti-affinity",
-		"no-extensions-v1beta",
-		"no-liveness-probe",
-		"no-read-only-root-fs",
-		"no-readiness-probe",
-		"no-rolling-update-strategy",
-		// "privilege-escalation-container",
-		// "privileged-container",
-		"privileged-ports",
-		"read-secret-from-env-var",
-		"required-annotation-email",
-		"required-label-owner",
-		// "run-as-non-root",
-		"sensitive-host-mounts",
-		"ssh-port",
-		"unsafe-proc-mount",
-		// "unsafe-sysctls",
-		// "unset-cpu-requirements",
-		// "unset-memory-requirements",
-		"use-namespace",
-		"wildcard-in-rules",
-		"writable-host-mount",
 	}
 }
