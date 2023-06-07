@@ -6,3 +6,11 @@ checks:
   # explicitly opt-out of checks that are not relevant using Exclude.
   # Takes precedence over doNotAutoAddDefaults, if both are set.
   addAllBuiltIn: true
+
+  # exclude will remove a set of checks from the validations.
+  # It is used when addAllBuiltIn is set to true.
+  exclude: ["check1", "check2"]
+
+  # include will add a set of checks to the validations.
+  # It is used when addAllBuiltIn is set to false.
+  include: ["check1", "check2"]
