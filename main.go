@@ -147,7 +147,7 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 	log.Info("Initializing Validation Engine")
 
 	// Try to retrieve custom configuration from existing ConfigMap
-	if kbcfg, err := getCustomConfig(cfg); err != nil {
+	if kbcfg, err := getCustomConfig(cfg); err == nil {
 		log.Info("Gather Kube-Linter configuration from ConfigMap")
 
 		if err := validations.InitializeValidationEngineFromConfig(*kbcfg, reg); err != nil {
