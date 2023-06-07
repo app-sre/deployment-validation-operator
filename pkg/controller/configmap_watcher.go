@@ -17,7 +17,7 @@ import (
 )
 
 // this structure mirrors Kube-Linter configuration structure
-// it is used to unmarshall ConfigMap data
+// it is used as a bridge to unmarshall ConfigMap data
 // doc: https://pkg.go.dev/golang.stackrox.io/kube-linter/pkg/config#Config
 type KubeLinterChecks struct {
 	Checks struct {
@@ -35,7 +35,7 @@ type ConfigMapWatcher struct {
 	ch        chan config.Config
 }
 
-var configMapName = "deployment-validation-operator-config"
+var configMapName = "deployment-validation-operator-custom-config"
 var configMapNamespace = "deployment-validation-operator"
 var configMapDataAccess = "deployment-validation-operator-config.yaml"
 
@@ -99,7 +99,8 @@ func (cmw *ConfigMapWatcher) ConfigChanged() <-chan config.Config {
 	return cmw.ch
 }
 
-// TODO -> doc
+// getKubeLinterConfig returns a valid Kube-linter Config structure
+// based on the checks received by the string
 func (cmw *ConfigMapWatcher) getKubeLinterConfig(data string) (config.Config, error) {
 	var cfg config.Config
 

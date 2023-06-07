@@ -178,7 +178,8 @@ func InitializeValidationEngine(configPath string, reg PrometheusRegistry) error
 	return err
 }
 
-// TODO -> Doc
+// InitializeValidationEngineFromConfig initialize the validation engine with a custom Config.
+// It keeps compatibility with the current default initialization
 func InitializeValidationEngineFromConfig(cfg config.Config, reg PrometheusRegistry) error {
 	ve := validationEngine{
 		config: cfg,
