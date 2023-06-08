@@ -24,3 +24,6 @@ build/_output/*
 
 # go
 vendor
+
+# local dev default configmap
+config/deployment-validation-operator-config.yaml

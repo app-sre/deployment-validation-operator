@@ -76,7 +76,6 @@ type PrometheusRegistry interface {
 
 func (ve *validationEngine) InitRegistry(promReg PrometheusRegistry) error {
 	disableIncompatibleChecks(&ve.config)
-	//disableChecks(&ve.config)
 
 	registry := checkregistry.New()
 	if err := builtinchecks.LoadInto(registry); err != nil {
