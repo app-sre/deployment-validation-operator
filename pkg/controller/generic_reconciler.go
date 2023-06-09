@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 
+	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/go-logr/logr"
 
@@ -138,32 +140,21 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 	return nil
 }
 
-// getAppLabel tries to read "app" label from the provided unstructured object
-func getAppLabel(object *unstructured.Unstructured) (string, error) {
-	appLabel, found, err := unstructured.NestedString(object.Object, "metadata", "labels", "app")
-	// if not found try another path - e.g for PDB resource
-	if !found {
-		appLabel, found, err = unstructured.NestedString(object.Object,
-			"spec", "selector", "matchLabels", "app")
-		if err != nil {
-			return "", err
-		}
-		if !found {
-			return "", fmt.Errorf("can't find any 'app' label for %s resource from %s namespace",
-				object.GetName(), object.GetNamespace())
-		}
-	}
-	if err != nil {
-		return "", err
-	}
-	return appLabel, nil
-}
-
 // groupAppObjects iterates over provided GroupVersionKind in given namespace
 // and returns map of objects grouped by their "app" label
 func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 	namespace string, gvks []schema.GroupVersionKind) (map[string][]*unstructured.Unstructured, error) {
 	relatedObjects := make(map[string][]*unstructured.Unstructured)
+
+	// sorting GVKs is very important for getting the consistent results
+	// when trying to match the 'app' label values. We must be sure that
+	// resources from the group apps/v1 are processed between first.
+	sort.Slice(gvks, func(i, j int) bool {
+		f := gvks[i]
+		s := gvks[j]
+		return f.Group < s.Group
+	})
+
 	for _, gvk := range gvks {
 		list := unstructured.UnstructuredList{}
 		listOptions := &client.ListOptions{
@@ -179,12 +170,7 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 
 			for i := range list.Items {
 				obj := &list.Items[i]
-				appLabel, err := getAppLabel(obj)
-				if err != nil {
-					// swallow the error here. it will be too noisy to log
-					continue
-				}
-				relatedObjects[appLabel] = append(relatedObjects[appLabel], obj)
+				processObjectLabelSelectors(obj, relatedObjects)
 			}
 
 			listContinue := list.GetContinue()
@@ -193,9 +179,39 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 			}
 			listOptions.Continue = listContinue
 		}
-
 	}
 	return relatedObjects, nil
+}
+
+// processObjectLabelSelectors gets 'app' label selectors from the respective object and parses them and stores
+// them in the 'relatedObjects' map.
+func processObjectLabelSelectors(obj *unstructured.Unstructured,
+	relatedObjects map[string][]*unstructured.Unstructured) {
+	appSelectors, err := utils.GetAppSelectors(obj)
+	if err != nil {
+		// swallow the error here. it will be too noisy to log
+		return
+	}
+	for _, as := range appSelectors {
+		switch as.Operator {
+		case metav1.LabelSelectorOpExists:
+			for k := range relatedObjects {
+				relatedObjects[k] = append(relatedObjects[k], obj)
+			}
+		case metav1.LabelSelectorOpIn:
+			for v := range as.Values {
+				relatedObjects[v] = append(relatedObjects[v], obj)
+			}
+		case metav1.LabelSelectorOpNotIn:
+			for selectorVal := range as.Values {
+				for appLabelVal := range relatedObjects {
+					if appLabelVal != selectorVal {
+						relatedObjects[appLabelVal] = append(relatedObjects[appLabelVal], obj)
+					}
+				}
+			}
+		}
+	}
 }
 
 func (gr *GenericReconciler) processNamespacedResources(
@@ -319,6 +335,5 @@ func (gr GenericReconciler) getNamespacedResourcesGVK(resources []metav1.APIReso
 			namespacedResources = append(namespacedResources, gvk)
 		}
 	}
-
 	return namespacedResources
 }
