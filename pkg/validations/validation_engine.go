@@ -165,16 +165,19 @@ func InitializeValidationEngine(configPath string, reg PrometheusRegistry) error
 	ve := validationEngine{}
 
 	err := ve.LoadConfig(configPath)
-	if err == nil {
-		err = ve.InitRegistry(reg)
+	if err != nil {
+		return err
+	}
+
+	err = ve.InitRegistry(reg)
+	if err != nil {
+		return err
 	}
 
 	// Only replace the exisiting engine if no errors occurred
-	if err == nil {
-		engine = ve
-	}
+	engine = ve
 
-	return err
+	return nil
 }
 
 // InitializeValidationEngineFromConfig initialize the validation engine with a custom Config.
@@ -185,11 +188,13 @@ func InitializeValidationEngineFromConfig(cfg config.Config, reg PrometheusRegis
 	}
 
 	err := ve.InitRegistry(reg)
-	if err == nil {
-		engine = ve
+	if err != nil {
+		return err
 	}
 
-	return err
+	engine = ve
+
+	return nil
 }
 
 func (ve *validationEngine) GetCheckByName(name string) (config.Check, error) {
