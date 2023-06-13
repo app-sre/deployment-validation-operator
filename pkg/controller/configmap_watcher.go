@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // this structure mirrors Kube-Linter configuration structure
@@ -35,7 +36,7 @@ type ConfigMapWatcher struct {
 	ch        chan config.Config
 }
 
-var configMapName = "deployment-validation-operator-custom-config"
+var configMapName = "deployment-validation-operator-config"
 var configMapNamespace = "deployment-validation-operator"
 var configMapDataAccess = "deployment-validation-operator-config.yaml"
 
@@ -55,12 +56,10 @@ func NewConfigMapWatcher(cfg *rest.Config) (ConfigMapWatcher, error) {
 
 // GetStaticKubelinterConfig returns the ConfigMap's checks configuration
 func (cmw *ConfigMapWatcher) GetStaticKubelinterConfig(ctx context.Context) (config.Config, error) {
-	var cfg config.Config
-
 	cm, err := cmw.clientset.CoreV1().
 		ConfigMaps(configMapNamespace).Get(ctx, configMapName, v1.GetOptions{})
 	if err != nil {
-		return cfg, fmt.Errorf("gathering starting configmap: %w", err)
+		return config.Config{}, fmt.Errorf("getting initial configuration: %w", err)
 	}
 
 	return cmw.getKubeLinterConfig(cm.Data[configMapDataAccess])
@@ -77,11 +76,12 @@ func (cmw *ConfigMapWatcher) StartInformer(ctx context.Context) error {
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			newCm := newObj.(*apicorev1.ConfigMap)
 
-			fmt.Printf("ConfigMap updated: %s/%s\n", newCm.Namespace, newCm.Name)
+			logger := log.Log.WithName("ConfigMapWatcher")
+			logger.Info("ConfigMap has been updated")
 
 			cfg, err := cmw.getKubeLinterConfig(newCm.Data[configMapDataAccess])
 			if err != nil {
-				fmt.Printf("Error: unmarshalling configmap data: %s", err.Error())
+				logger.Error(err, "ConfigMap data format")
 				return
 			}
 
