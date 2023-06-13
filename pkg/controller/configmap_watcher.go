@@ -8,6 +8,7 @@ import (
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"gopkg.in/yaml.v3"
 
+	"github.com/go-logr/logr"
 	apicorev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
@@ -34,6 +35,7 @@ type ConfigMapWatcher struct {
 	clientset kubernetes.Interface
 	checks    KubeLinterChecks
 	ch        chan config.Config
+	logger    logr.Logger
 }
 
 var configMapName = "deployment-validation-operator-config"
@@ -51,6 +53,7 @@ func NewConfigMapWatcher(cfg *rest.Config) (ConfigMapWatcher, error) {
 
 	return ConfigMapWatcher{
 		clientset: clientset,
+		logger:    log.Log.WithName("ConfigMapWatcher"),
 	}, nil
 }
 
@@ -76,12 +79,11 @@ func (cmw *ConfigMapWatcher) StartInformer(ctx context.Context) error {
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			newCm := newObj.(*apicorev1.ConfigMap)
 
-			logger := log.Log.WithName("ConfigMapWatcher")
-			logger.Info("ConfigMap has been updated")
+			cmw.logger.Info("ConfigMap has been updated")
 
 			cfg, err := cmw.getKubeLinterConfig(newCm.Data[configMapDataAccess])
 			if err != nil {
-				logger.Error(err, "ConfigMap data format")
+				cmw.logger.Error(err, "ConfigMap data format")
 				return
 			}
 
