@@ -110,12 +110,15 @@ To configure DVO with a different set of checks, create a ConfigMap in the clust
 ### Enabling checks
 
 To enable all checks, set the `addAllBuiltIn` property to `true`. If you only want to enable individual checks, include them as a collection in the `include` property and leave `addAllBuiltIn` with a value of `false`.
+
 The `include` property can work together with `doNotAutoAddDefaults` set to `true` in a whitelisting way. Only the checks collection passed in `include` will be executed.
 
 ### Disabling checks
 
 To disable all checks, set the `doNotAutoAddDefaults` property to `true`. If you only want to disable individual checks, include them as a collection in the `exclude` property and leave `doNotAutoAddDefaults` with a value of `false`
+
 The `exclude` property takes precedence over the `include` property. If a particular check is in both collections, it will be excluded by default.
+
 The `exclude` property can work in conjunction with `addAllBuiltIn` set to `true` in a blacklisting fashion. All checks will be triggered and only the checks passed in `exclude` will be ignored.
 
 ## Tests
