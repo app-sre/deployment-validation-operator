@@ -24,6 +24,9 @@ optional.add_argument( '-h', '--help', action='help', default=argparse.SUPPRESS,
 optional.add_argument('-r', '--replaces', help='Replaces version', type=str)
 optional.add_argument('-s','--skip', action='append',
         help='Skips version (can be specified multiple times)')
+optional.add_argument('--no-nodeAffinity', '--no-nodeAffinity',
+                      help='Removes node affinity. Used for CSV generation for OCP clusters',
+                      action='store_true')
 
 args = parser.parse_args()
 
@@ -60,6 +63,8 @@ with open(manifest_dir / 'operator.yaml', 'r') as stream:
         operator_components.append(doc)
     # There is only one yaml document in the operator deployment
     operator_deployment = operator_components[0]
+    if args.no_nodeAffinity:
+        operator_deployment['spec']['template']['spec']['affinity'].pop("nodeAffinity")
     csv['spec']['install']['spec']['deployments'][0]['spec'] = \
         operator_deployment['spec']
 
@@ -82,5 +87,6 @@ csv['metadata']['annotations']['createdAt'] = \
 
 csv_filename = pathlib.Path(args.output_dir) / \
     f'{args.name}.v{args.current_version}.clusterserviceversion.yaml'
+os.makedirs(os.path.dirname(csv_filename), exist_ok=True)
 with open(csv_filename, 'w') as output_file:
     yaml.dump(csv, output_file, default_flow_style=False)
