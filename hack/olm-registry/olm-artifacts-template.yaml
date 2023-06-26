@@ -62,6 +62,8 @@ objects:
             namespace: openshift-deployment-validation-operator
           spec:
             sourceType: grpc
+            grpcPodConfig:
+              securityContextConfig: restricted
             image: ${REGISTRY_IMG}@${IMAGE_DIGEST}
             displayName: Deployment Validation Operator
             publisher: Red Hat

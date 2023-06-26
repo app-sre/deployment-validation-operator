@@ -10,6 +10,8 @@ objects:
     name: ${SOURCE}
   spec:
     sourceType: grpc
+    grpcPodConfig:
+      securityContextConfig: restricted
     image: ${IMAGE}:${IMAGE_TAG}
     displayName: Deployment Validation Operator
     publisher: ${CATALOG_PUBLISHER}
