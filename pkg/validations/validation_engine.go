@@ -52,12 +52,16 @@ func fileExists(filename string) bool {
 }
 
 func (ve *validationEngine) LoadConfig(path string) error {
-	v := viper.New()
-
 	if !fileExists(path) {
 		log.Info(fmt.Sprintf("config file %s does not exist. Use default configuration", path))
-		path = ""
+		// legacy disabled checks
+		ve.config.Checks.Exclude = getDisabledChecks()
+		ve.config.Checks.AddAllBuiltIn = true
+
+		return nil
 	}
+
+	v := viper.New()
 
 	// Load Configuration
 	config, err := config.Load(v, path)
@@ -76,7 +80,6 @@ type PrometheusRegistry interface {
 
 func (ve *validationEngine) InitRegistry(promReg PrometheusRegistry) error {
 	disableIncompatibleChecks(&ve.config)
-	disableChecks(&ve.config)
 
 	registry := checkregistry.New()
 	if err := builtinchecks.LoadInto(registry); err != nil {
@@ -166,16 +169,19 @@ func InitializeValidationEngine(configPath string, reg PrometheusRegistry) error
 	ve := validationEngine{}
 
 	err := ve.LoadConfig(configPath)
-	if err == nil {
-		err = ve.InitRegistry(reg)
+	if err != nil {
+		return err
+	}
+
+	err = ve.InitRegistry(reg)
+	if err != nil {
+		return err
 	}
 
 	// Only replace the exisiting engine if no errors occurred
-	if err == nil {
-		engine = ve
-	}
+	engine = ve
 
-	return err
+	return nil
 }
 
 func (ve *validationEngine) GetCheckByName(name string) (config.Check, error) {
@@ -207,12 +213,6 @@ func getIncompatibleChecks() []string {
 	}
 }
 
-// disableChecks will forcibly update a kube-linter config
-// to disable checks that do not have supporting openshift documentation
-func disableChecks(c *config.Config) {
-	c.Checks.Exclude = append(c.Checks.Exclude, getDisabledChecks()...)
-}
-
 // getDisabledChecks returns an array of kube-linter check names that are disabled for DVO
 // These checks are disabled as they do not have supporting Openshift documentation
 // 38 checks... 47 checks according to kube-linter website
@@ -227,31 +227,20 @@ func getDisabledChecks() []string {
 		"drop-net-raw-capability",
 		"env-var-secret",
 		"exposed-services",
-		// "host-ipc",
-		// "host-network",
-		// "host-pid",
 		"latest-tag",
-		// "minimum-three-replicas",
 		"mismatching-selector",
-		// "no-anti-affinity",
 		"no-extensions-v1beta",
 		"no-liveness-probe",
 		"no-read-only-root-fs",
 		"no-readiness-probe",
 		"no-rolling-update-strategy",
-		// "privilege-escalation-container",
-		// "privileged-container",
 		"privileged-ports",
 		"read-secret-from-env-var",
 		"required-annotation-email",
 		"required-label-owner",
-		// "run-as-non-root",
 		"sensitive-host-mounts",
 		"ssh-port",
 		"unsafe-proc-mount",
-		// "unsafe-sysctls",
-		// "unset-cpu-requirements",
-		// "unset-memory-requirements",
 		"use-namespace",
 		"wildcard-in-rules",
 		"writable-host-mount",

@@ -225,12 +225,11 @@ func TestIncompatibleChecksAreDisabled(t *testing.T) {
 	}
 
 	badChecks := getIncompatibleChecks()
-	disabledChecks := getDisabledChecks()
 	allKubeLinterChecks, err := getAllBuiltInKubeLinterChecks()
 	if err != nil {
 		t.Fatalf("Got unexpected error while getting all checks built-into kube-linter: %v", err)
 	}
-	expectedNumChecks := (len(allKubeLinterChecks) - len(badChecks)) - len(disabledChecks)
+	expectedNumChecks := (len(allKubeLinterChecks) - len(badChecks))
 
 	enabledChecks := engine.EnabledChecks()
 	if len(enabledChecks) != expectedNumChecks {
