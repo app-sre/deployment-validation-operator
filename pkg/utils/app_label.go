@@ -1,8 +1,6 @@
 package utils
 
 import (
-	"fmt"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -16,47 +14,50 @@ type AppSelector struct {
 	Values   sets.Set[string]
 }
 
+type manifestPath []string
+
+var (
+	metadataLabels         manifestPath = []string{"metadata", "labels", "app"}
+	selectorMatchLabels    manifestPath = []string{"spec", "selector", "matchLabels", "app"}
+	podSelectorMatchLabels manifestPath = []string{"spec", "podSelector", "matchLabels", "app"}
+
+	matchLabelPaths []manifestPath = []manifestPath{metadataLabels, selectorMatchLabels, podSelectorMatchLabels}
+
+	selectorMatchExpressions    manifestPath = []string{"spec", "selector", "matchExpressions"}
+	podSelectorMatchExpressions manifestPath = []string{"spec", "podSelector", "matchExpressions"}
+
+	matchExpressionsPaths []manifestPath = []manifestPath{selectorMatchExpressions, podSelectorMatchExpressions}
+)
+
 // GetAppSelectors tries to get values (there can be more) of the "app" label.
-// First it tries to read "metadata.labels.app" path (e.g for Deployments) if not found,
-// then it tries to read "spec.selector.matchLabels.app" path (e.g for PodDisruptionBudget) if not found,
-// then it tries to read "spec.selector.matchExpressions" path.
+// It iterates over all predefined resource paths and if found then add the value
+// to the slice of AppSelectors
 func GetAppSelectors(object *unstructured.Unstructured) ([]AppSelector, error) {
-	appLabel, found, err := unstructured.NestedString(object.Object, "metadata", "labels", "app")
-	if err != nil {
-		return nil, err
-	}
-	if found {
-		return []AppSelector{
-			{
+	appSelectors := []AppSelector{}
+	// iterate over all predefined resource paths
+	for _, matchLabelPath := range matchLabelPaths {
+		appLabel, found, err := unstructured.NestedString(object.Object, matchLabelPath...)
+		if err != nil {
+			continue
+		}
+		if found {
+			appSelector := AppSelector{
 				Operator: metav1.LabelSelectorOpIn,
 				Values:   sets.New(appLabel),
-			},
-		}, nil
+			}
+			appSelectors = append(appSelectors, appSelector)
+		}
 	}
-	// if not found try spec.selector.matchLabels path - e.g for PDB resource
-	appLabel, found, err = unstructured.NestedString(object.Object,
-		"spec", "selector", "matchLabels", "app")
-	if err != nil {
-		return nil, err
+	for _, matchExpressionPath := range matchExpressionsPaths {
+		expressions, found, err := unstructured.NestedSlice(object.Object, matchExpressionPath...)
+		if err != nil {
+			continue
+		}
+		if !found {
+			continue
+		}
+		appSelectors = append(appSelectors, parseMatchExpressions(expressions)...)
 	}
-	if found {
-		return []AppSelector{
-			{
-				Operator: metav1.LabelSelectorOpIn,
-				Values:   sets.New(appLabel),
-			},
-		}, nil
-	}
-	// if not found try spec.selector.matchExpressions path
-	expressions, found, err := unstructured.NestedSlice(object.Object, "spec", "selector", "matchExpressions")
-	if err != nil {
-		return nil, err
-	}
-	if !found {
-		return nil, fmt.Errorf("can't find any 'app' label for %s resource from %s namespace",
-			object.GetName(), object.GetNamespace())
-	}
-	appSelectors := parseMatchExpressions(expressions)
 	return appSelectors, nil
 }
 

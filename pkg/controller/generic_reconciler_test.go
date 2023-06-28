@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -405,6 +406,53 @@ func TestGroupAppObjects(t *testing.T) {
 			expectedNames: map[string][]string{
 				"A": {"statefulset-A", "pdb-not-in-B"},
 				"B": {"statefulset-B", "pdb-not-in-A"},
+			},
+		},
+		{
+			name:      "Deployment with matching NetworkPolicy",
+			namespace: "test",
+			objs: []client.Object{
+				&networkingv1.NetworkPolicy{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "np-A",
+						Namespace: "test",
+					},
+					Spec: networkingv1.NetworkPolicySpec{
+						PodSelector: metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "app",
+									Operator: metav1.LabelSelectorOpNotIn,
+									Values:   []string{"B"},
+								},
+							},
+						},
+					},
+				},
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "deployment-A",
+						Namespace: "test",
+						Labels: map[string]string{
+							"app": "A",
+						},
+					},
+				},
+			},
+			gvks: []schema.GroupVersionKind{
+				{
+					Group:   "apps",
+					Kind:    "Deployment",
+					Version: "v1",
+				},
+				{
+					Group:   "networking.k8s.io",
+					Kind:    "NetworkPolicy",
+					Version: "v1",
+				},
+			},
+			expectedNames: map[string][]string{
+				"A": {"deployment-A", "np-A"},
 			},
 		},
 	}

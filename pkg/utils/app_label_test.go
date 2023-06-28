@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,9 +45,8 @@ func TestGetAppSelectors(t *testing.T) {
 					Namespace: "test",
 				},
 			},
-			expectedLabelSelectors: nil,
-			expectedError: fmt.
-				Errorf("can't find any 'app' label for empty-app resource from test namespace"),
+			expectedLabelSelectors: []AppSelector{},
+			expectedError:          nil,
 		},
 		{
 			testName: "PDB with defined selector label",
@@ -81,9 +79,8 @@ func TestGetAppSelectors(t *testing.T) {
 					Namespace: "test",
 				},
 			},
-			expectedLabelSelectors: nil,
-			expectedError: fmt.
-				Errorf("can't find any 'app' label for empty-app resource from test namespace"),
+			expectedLabelSelectors: []AppSelector{},
+			expectedError:          nil,
 		},
 	}
 
