@@ -10,6 +10,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
@@ -170,7 +171,8 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 
 			for i := range list.Items {
 				obj := &list.Items[i]
-				processObjectLabelSelectors(obj, relatedObjects)
+				processResourceLabels(obj, relatedObjects)
+				gr.processResourceSelectors(obj, relatedObjects)
 			}
 
 			listContinue := list.GetContinue()
@@ -183,41 +185,40 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 	return relatedObjects, nil
 }
 
-// processObjectLabelSelectors gets 'app' label selectors from the respective object and parses them and stores
-// them in the 'relatedObjects' map.
-func processObjectLabelSelectors(obj *unstructured.Unstructured,
+// processResourceLabels reads resource labels and if the labels
+// are not empty then format them into string and put the string value
+// as key and the object as a value into "relatedObjects" map
+func processResourceLabels(obj *unstructured.Unstructured,
 	relatedObjects map[string][]*unstructured.Unstructured) {
 
-	// if the object has an empty non-null selector the add it to every known group
-	if utils.HasEmptySelector(obj) {
-		for k := range relatedObjects {
-			relatedObjects[k] = append(relatedObjects[k], obj)
-		}
+	objLabels := utils.GetLabels(obj)
+	if len(objLabels) == 0 {
 		return
 	}
-	appSelectors, err := utils.GetAppSelectors(obj)
+	labelsString := labels.FormatLabels(objLabels)
+	relatedObjects[labelsString] = append(relatedObjects[labelsString], obj)
+}
+
+// processResourceSelectors reads resource selector and then tries to match
+// the selector to known labels (keys in the relatedObjects map). If a match is found then
+// the object is added to the corresponding group (values in the relatedObjects map).
+func (gr *GenericReconciler) processResourceSelectors(obj *unstructured.Unstructured,
+	relatedObjects map[string][]*unstructured.Unstructured) {
+	labelSelector := utils.GetLabelSelector(obj)
+	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
 	if err != nil {
-		// swallow the error here. it will be too noisy to log
+		gr.logger.Error(err, "cannot convert label selector for object", obj.GetKind(), obj.GetName())
 		return
 	}
-	for _, as := range appSelectors {
-		switch as.Operator {
-		case metav1.LabelSelectorOpExists:
-			for k := range relatedObjects {
-				relatedObjects[k] = append(relatedObjects[k], obj)
-			}
-		case metav1.LabelSelectorOpIn:
-			for v := range as.Values {
-				relatedObjects[v] = append(relatedObjects[v], obj)
-			}
-		case metav1.LabelSelectorOpNotIn:
-			for selectorVal := range as.Values {
-				for appLabelVal := range relatedObjects {
-					if appLabelVal != selectorVal {
-						relatedObjects[appLabelVal] = append(relatedObjects[appLabelVal], obj)
-					}
-				}
-			}
+
+	for k := range relatedObjects {
+		labelsSet, err := labels.ConvertSelectorToLabelsMap(k)
+		if err != nil {
+			gr.logger.Error(err, "cannot convert selector to labels map for", obj.GetKind(), obj.GetName())
+			continue
+		}
+		if selector.Matches(labelsSet) {
+			relatedObjects[k] = append(relatedObjects[k], obj)
 		}
 	}
 }

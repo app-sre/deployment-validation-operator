@@ -209,7 +209,7 @@ func getIncompatibleChecks() []string {
 	return []string{
 		"dangling-service",
 		"non-existent-service-account",
-		"non-isolated-pod",
+		//"non-isolated-pod",
 	}
 }
 
