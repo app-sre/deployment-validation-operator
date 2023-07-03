@@ -145,12 +145,6 @@ objects:
           data:
             deployment-validation-operator-config.yaml: |-
               checks:
-                # if doNotAutoAddDefaults is true, default checks are not automatically added.
-                doNotAutoAddDefaults: false
-
-                # addAllBuiltIn, if set, adds all built-in checks. This allows users to
-                # explicitly opt-out of checks that are not relevant using Exclude.
-                # Takes precedence over doNotAutoAddDefaults, if both are set.
-                addAllBuiltIn: true
-
-                exclude: ["access-to-create-pods", "access-to-secrets", "cluster-admin-role-binding", "default-service-account", "deprecated-service-account-field", "docker-sock", "drop-net-raw-capability", "env-var-secret", "exposed-services", "latest-tag", "mismatching-selector", "no-extensions-v1beta", "no-liveness-probe", "no-read-only-root-fs", "no-readiness-probe", "no-rolling-update-strategy", "privileged-ports", "read-secret-from-env-var", "required-annotation-email", "required-label-owner", "sensitive-host-mounts", "ssh-port", "unsafe-proc-mount", "use-namespace", "wildcard-in-rules", "writable-host-mount"]
+                doNotAutoAddDefaults: true
+                addAllBuiltIn: false
+                include: ["pdb-max-unavailable", "pdb-min-available", "non-isolated-pod", "unset-cpu-requirements", "unset-memory-requirements"]
