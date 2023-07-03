@@ -16,6 +16,19 @@ type AppSelector struct {
 	Values   sets.Set[string]
 }
 
+// HasEmptySelector checks whether of the "spec.selector" and "spec.podSelector" is defined, but empty.
+func HasEmptySelector(object *unstructured.Unstructured) bool {
+	selector, found, _ := unstructured.NestedMap(object.Object, "spec", "selector")
+	if found && len(selector) == 0 {
+		return true
+	}
+	podSelector, found, _ := unstructured.NestedMap(object.Object, "spec", "podSelector")
+	if found && len(podSelector) == 0 {
+		return true
+	}
+	return false
+}
+
 // GetAppSelectors tries to get values (there can be more) of the "app" label.
 // First it tries to read "metadata.labels.app" path (e.g for Deployments) if not found,
 // then it tries to read "spec.selector.matchLabels.app" path (e.g for PodDisruptionBudget) if not found,

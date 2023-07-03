@@ -187,6 +187,14 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 // them in the 'relatedObjects' map.
 func processObjectLabelSelectors(obj *unstructured.Unstructured,
 	relatedObjects map[string][]*unstructured.Unstructured) {
+
+	// if the object has an empty non-null selector the add it to every known group
+	if utils.HasEmptySelector(obj) {
+		for k := range relatedObjects {
+			relatedObjects[k] = append(relatedObjects[k], obj)
+		}
+		return
+	}
 	appSelectors, err := utils.GetAppSelectors(obj)
 	if err != nil {
 		// swallow the error here. it will be too noisy to log

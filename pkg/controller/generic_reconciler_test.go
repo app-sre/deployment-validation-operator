@@ -407,6 +407,55 @@ func TestGroupAppObjects(t *testing.T) {
 				"B": {"statefulset-B", "pdb-not-in-A"},
 			},
 		},
+		{
+			name:      "Two Deployments and a PDB with empty selector matching both deployments",
+			namespace: "test",
+			objs: []client.Object{
+				&policyv1.PodDisruptionBudget{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-pdb",
+						Namespace: "test",
+					},
+					Spec: policyv1.PodDisruptionBudgetSpec{
+						Selector: &metav1.LabelSelector{},
+					},
+				},
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "app-A",
+						Namespace: "test",
+						Labels: map[string]string{
+							"app": "A",
+						},
+					},
+				},
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "app-B",
+						Namespace: "test",
+						Labels: map[string]string{
+							"app": "B",
+						},
+					},
+				},
+			},
+			gvks: []schema.GroupVersionKind{
+				{
+					Group:   "apps",
+					Kind:    "Deployment",
+					Version: "v1",
+				},
+				{
+					Group:   "policy",
+					Kind:    "PodDisruptionBudget",
+					Version: "v1",
+				},
+			},
+			expectedNames: map[string][]string{
+				"A": {"app-A", "test-pdb"},
+				"B": {"app-B", "test-pdb"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
