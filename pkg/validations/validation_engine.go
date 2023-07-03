@@ -54,9 +54,15 @@ func fileExists(filename string) bool {
 func (ve *validationEngine) LoadConfig(path string) error {
 	if !fileExists(path) {
 		log.Info(fmt.Sprintf("config file %s does not exist. Use default configuration", path))
-		// legacy disabled checks
-		ve.config.Checks.Exclude = getDisabledChecks()
-		ve.config.Checks.AddAllBuiltIn = true
+		// TODO - This hardcode will be removed when a ConfigMap is set by default in regular installation
+		ve.config.Checks.DoNotAutoAddDefaults = true
+		ve.config.Checks.Include = []string{
+			"pdb-max-unavailable",
+			"pdb-min-available",
+			"non-isolated-pod",
+			"unset-cpu-requirements",
+			"unset-memory-requirements",
+		}
 
 		return nil
 	}
@@ -210,39 +216,5 @@ func getIncompatibleChecks() []string {
 		"dangling-service",
 		"non-existent-service-account",
 		"non-isolated-pod",
-	}
-}
-
-// getDisabledChecks returns an array of kube-linter check names that are disabled for DVO
-// These checks are disabled as they do not have supporting Openshift documentation
-// 38 checks... 47 checks according to kube-linter website
-func getDisabledChecks() []string {
-	return []string{
-		"access-to-create-pods",
-		"access-to-secrets",
-		"cluster-admin-role-binding",
-		"default-service-account",
-		"deprecated-service-account-field",
-		"docker-sock",
-		"drop-net-raw-capability",
-		"env-var-secret",
-		"exposed-services",
-		"latest-tag",
-		"mismatching-selector",
-		"no-extensions-v1beta",
-		"no-liveness-probe",
-		"no-read-only-root-fs",
-		"no-readiness-probe",
-		"no-rolling-update-strategy",
-		"privileged-ports",
-		"read-secret-from-env-var",
-		"required-annotation-email",
-		"required-label-owner",
-		"sensitive-host-mounts",
-		"ssh-port",
-		"unsafe-proc-mount",
-		"use-namespace",
-		"wildcard-in-rules",
-		"writable-host-mount",
 	}
 }
