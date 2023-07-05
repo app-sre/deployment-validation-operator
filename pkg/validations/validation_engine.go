@@ -57,9 +57,16 @@ func (ve *validationEngine) LoadConfig(path string) error {
 		// TODO - This hardcode will be removed when a ConfigMap is set by default in regular installation
 		ve.config.Checks.DoNotAutoAddDefaults = true
 		ve.config.Checks.Include = []string{
+			"host-ipc",
+			"host-network",
+			"host-pid",
+			"non-isolated-pod",
 			"pdb-max-unavailable",
 			"pdb-min-available",
-			"non-isolated-pod",
+			"privilege-escalation-container",
+			"privileged-container",
+			"run-as-non-root",
+			"unsafe-sysctls",
 			"unset-cpu-requirements",
 			"unset-memory-requirements",
 		}
