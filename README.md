@@ -105,7 +105,7 @@ DVO performs validation checks using kube-linter. The checks configuration is mi
 
 To configure DVO with a different set of checks, create a ConfigMap in the cluster with the new checks configuration. An example of a configuration ConfigMap can be found [here](./deploy/openshift/configmap.yaml).
 
-If no custom configuration is found (the ConfigMap does not exist or does not contain a check declaration), the project sets the checks to the following list by default:
+If no custom configuration is found (the ConfigMap does not exist or does not contain a check declaration), the operator enables the following checks by default:
 * "host-ipc"
 * "host-network"
 * "host-pid"
