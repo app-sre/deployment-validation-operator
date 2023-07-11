@@ -56,29 +56,31 @@ func readMatchExpressions(object *unstructured.Unstructured) []metav1.LabelSelec
 	matchExpressionsRequirements := []metav1.LabelSelectorRequirement{}
 	for _, path := range []manifestPath{selectorMatchExpressions, podSelectorMatchExpressions} {
 		pathExists := pathExistsAsSlice(object, path)
-		if pathExists {
-			matchExpressions, _, _ := unstructured.NestedSlice(object.Object, path...)
-			for _, matchExpression := range matchExpressions {
-				meMap := matchExpression.(map[string]interface{})
-				labelSelectorReq := metav1.LabelSelectorRequirement{}
-				for k, v := range meMap {
-					switch {
-					case k == "key":
-						labelSelectorReq.Key = v.(string)
-					case k == "operator":
-						labelSelectorReq.Operator = metav1.LabelSelectorOperator(v.(string))
-					case k == "values":
-						stringValues := []string{}
-						for _, value := range v.([]interface{}) {
-							stringValues = append(stringValues, value.(string))
-						}
-						labelSelectorReq.Values = stringValues
+		if !pathExists {
+			continue
+		}
+		matchExpressions, _, _ := unstructured.NestedSlice(object.Object, path...)
+		for _, matchExpression := range matchExpressions {
+			meMap := matchExpression.(map[string]interface{})
+			labelSelectorReq := metav1.LabelSelectorRequirement{}
+			for k, v := range meMap {
+				switch {
+				case k == "key":
+					labelSelectorReq.Key = v.(string)
+				case k == "operator":
+					labelSelectorReq.Operator = metav1.LabelSelectorOperator(v.(string))
+				case k == "values":
+					stringValues := []string{}
+					for _, value := range v.([]interface{}) {
+						stringValues = append(stringValues, value.(string))
 					}
+					labelSelectorReq.Values = stringValues
 				}
-				matchExpressionsRequirements = append(matchExpressionsRequirements, labelSelectorReq)
 			}
+			matchExpressionsRequirements = append(matchExpressionsRequirements, labelSelectorReq)
 		}
 	}
+
 	if len(matchExpressionsRequirements) == 0 {
 		return nil
 	}
