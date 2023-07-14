@@ -120,15 +120,6 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 		return nil, fmt.Errorf("initializing discovery client: %w", err)
 	}
 
-	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient)
-	if err != nil {
-		return nil, fmt.Errorf("initializing generic reconciler: %w", err)
-	}
-
-	if err = gr.AddToManager(mgr); err != nil {
-		return nil, fmt.Errorf("adding generic reconciler to manager: %w", err)
-	}
-
 	log.Info("Initializing Prometheus Registry")
 
 	reg := prometheus.NewRegistry()
@@ -145,10 +136,34 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 	}
 
 	log.Info("Initializing Validation Engine")
-
-	if err := validations.InitializeValidationEngine(opts.ConfigFile, reg); err != nil {
+	validationEngine, err := validations.NewEngine(opts.ConfigFile, reg)
+	if err != nil {
 		return nil, fmt.Errorf("initializing validation engine: %w", err)
 	}
+
+	cmWatcher, err := controller.NewConfigMapWatcher(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("initializing configmap watcher: %w", err)
+	}
+
+	if err := mgr.Add(cmWatcher); err != nil {
+		return nil, fmt.Errorf("adding configmap watcher to manager: %w", err)
+	}
+
+	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient, validationEngine, &cmWatcher)
+	if err != nil {
+		return nil, fmt.Errorf("initializing generic reconciler: %w", err)
+	}
+
+	if err = gr.AddToManager(mgr); err != nil {
+		return nil, fmt.Errorf("adding generic reconciler to manager: %w", err)
+	}
+
+	// log.Info("Initializing Validation Engine")
+	//
+	// if err := validations.InitializeValidationEngine(opts.ConfigFile, reg); err != nil {
+	// 	return nil, fmt.Errorf("initializing validation engine: %w", err)
+	// }
 
 	return mgr, nil
 }
