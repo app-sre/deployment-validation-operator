@@ -8,13 +8,17 @@ import (
 	"strings"
 
 	// Import checks from DVO
+	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"golang.stackrox.io/kube-linter/pkg/builtinchecks"
 	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"golang.stackrox.io/kube-linter/pkg/configresolver"
 	"golang.stackrox.io/kube-linter/pkg/diagnostic"
+	"golang.stackrox.io/kube-linter/pkg/lintcontext"
+	"golang.stackrox.io/kube-linter/pkg/run"
 
 	// Import and initialize all check templates from kube-linter
 	_ "golang.stackrox.io/kube-linter/pkg/templates/all"
@@ -34,12 +38,62 @@ type validationEngine struct {
 	metrics          map[string]*prometheus.GaugeVec
 }
 
+func NewEngine(configPath string, reg PrometheusRegistry) (*validationEngine, error) {
+	ve := &validationEngine{}
+
+	err := ve.LoadConfig(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	err = ve.InitRegistry(reg)
+	if err != nil {
+		return nil, err
+	}
+
+	return ve, nil
+}
+
 func (ve *validationEngine) CheckRegistry() checkregistry.CheckRegistry {
 	return ve.registry
 }
 
 func (ve *validationEngine) EnabledChecks() []string {
 	return ve.enabledChecks
+}
+
+func (ve *validationEngine) RunForObjects(objects []client.Object, namespaceUID string) (ValidationOutcome, error) {
+	lintCtx := &lintContextImpl{}
+	for _, obj := range objects {
+		// Only run checks against an object with no owners.  This should be
+		// the object that controls the configuration
+		if !utils.IsOwner(obj) {
+			continue
+		}
+		// If controller has no replicas clear do not run any validations
+		if isControllersWithNoReplicas(obj) {
+			continue
+		}
+		lintCtx.addObjects(lintcontext.Object{K8sObject: obj})
+	}
+	lintCtxs := []lintcontext.LintContext{lintCtx}
+	if len(lintCtxs) == 0 {
+		return ObjectValidationIgnored, nil
+	}
+	result, err := run.Run(lintCtxs, ve.CheckRegistry(), ve.EnabledChecks())
+	if err != nil {
+		log.Error(err, "error running validations")
+		return "", fmt.Errorf("error running validations: %v", err)
+	}
+
+	// Clear labels from past run to ensure only results from this run
+	// are reflected in the metrics
+	for _, o := range objects {
+		req := NewRequestFromObject(o)
+		req.NamespaceUID = namespaceUID
+		ve.ClearMetrics(result.Reports, req.ToPromLabels())
+	}
+	return processResult(result, namespaceUID)
 }
 
 // Get info on config file if it exists
