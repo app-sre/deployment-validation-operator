@@ -68,8 +68,8 @@ func (cmw *ConfigMapWatcher) GetStaticKubelinterConfig(ctx context.Context) (con
 	return cmw.getKubeLinterConfig(cm.Data[configMapDataAccess])
 }
 
-// StartInformer will update the channel structure with new configuration data from ConfigMap update event
-func (cmw *ConfigMapWatcher) StartInformer(ctx context.Context) error {
+// Start will update the channel structure with new configuration data from ConfigMap update event
+func (cmw ConfigMapWatcher) Start(ctx context.Context) error {
 	factory := informers.NewSharedInformerFactoryWithOptions(
 		cmw.clientset, time.Second*30, informers.WithNamespace(configMapNamespace),
 	)
@@ -78,6 +78,10 @@ func (cmw *ConfigMapWatcher) StartInformer(ctx context.Context) error {
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{ // nolint:errcheck
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			newCm := newObj.(*apicorev1.ConfigMap)
+
+			if configMapName != newCm.ObjectMeta.Name {
+				return
+			}
 
 			cmw.logger.Info("ConfigMap has been updated")
 
