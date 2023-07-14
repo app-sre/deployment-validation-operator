@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 
+	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -28,6 +29,11 @@ var (
 	_ manager.Runnable = &GenericReconciler{}
 )
 
+type ValidationEngine interface {
+	CheckRegistry() checkregistry.CheckRegistry
+	RunForObjects(objects []client.Object, namespaceUID string) (validations.ValidationOutcome, error)
+}
+
 // GenericReconciler watches a defined object
 type GenericReconciler struct {
 	listLimit             int64
@@ -37,10 +43,13 @@ type GenericReconciler struct {
 	client                client.Client
 	discovery             discovery.DiscoveryInterface
 	logger                logr.Logger
+	validationEngine      ValidationEngine
+	configWatcher         *ConfigMapWatcher
 }
 
 // NewGenericReconciler returns a GenericReconciler struct
-func NewGenericReconciler(client client.Client, discovery discovery.DiscoveryInterface) (*GenericReconciler, error) {
+// func NewGenericReconciler(client client.Client, discovery discovery.DiscoveryInterface) (*GenericReconciler, error) {
+func NewGenericReconciler(client client.Client, discovery discovery.DiscoveryInterface, ve ValidationEngine, cmw *ConfigMapWatcher) (*GenericReconciler, error) {
 	listLimit, err := getListLimit()
 	if err != nil {
 		return nil, err
@@ -54,6 +63,8 @@ func NewGenericReconciler(client client.Client, discovery discovery.DiscoveryInt
 		objectValidationCache: newValidationCache(),
 		currentObjects:        newValidationCache(),
 		logger:                ctrl.Log.WithName("reconcile"),
+		validationEngine:      ve,
+		configWatcher:         cmw,
 	}, nil
 }
 
@@ -94,6 +105,8 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 
 // Start validating the given object kind every interval.
 func (gr *GenericReconciler) Start(ctx context.Context) error {
+	go gr.ConfigChanged(ctx)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -264,7 +277,8 @@ func (gr *GenericReconciler) reconcileGroupOfObjects(ctx context.Context,
 		cliObjects = append(cliObjects, typedClientObject)
 	}
 
-	outcome, err := validations.RunValidationsForObjects(cliObjects, namespaceUID)
+	// outcome, err := validations.RunValidationsForObjects(cliObjects, namespaceUID)
+	outcome, err := gr.validationEngine.RunForObjects(cliObjects, namespaceUID)
 	if err != nil {
 		return fmt.Errorf("running validations: %w", err)
 	}
@@ -345,4 +359,15 @@ func (gr GenericReconciler) getNamespacedResourcesGVK(resources []metav1.APIReso
 		}
 	}
 	return namespacedResources
+}
+
+func (gr *GenericReconciler) ConfigChanged(ctx context.Context) {
+	for {
+		select {
+		case cfg := <-gr.configWatcher.ConfigChanged():
+			fmt.Println("//// GOT CFG ", cfg)
+		case <-ctx.Done():
+			return
+		}
+	}
 }
