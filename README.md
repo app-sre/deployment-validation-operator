@@ -105,6 +105,20 @@ DVO performs validation checks using kube-linter. The checks configuration is mi
 
 To configure DVO with a different set of checks, create a ConfigMap in the cluster with the new checks configuration. An example of a configuration ConfigMap can be found [here](./deploy/openshift/configmap.yaml).
 
+If no custom configuration is found (the ConfigMap does not exist or does not contain a check declaration), the operator enables the following checks by default:
+* "host-ipc"
+* "host-network"
+* "host-pid"
+* "non-isolated-pod"
+* "pdb-max-unavailable"
+* "pdb-min-available"
+* "privilege-escalation-container"
+* "privileged-container"
+* "run-as-non-root"
+* "unsafe-sysctls"
+* "unset-cpu-requirements"
+* "unset-memory-requirements"
+
 **constraint**: Currently, the configuration isn't continuously monitored and is only checked at startup. If a new set of checks is configured in a ConfigMap, the pod running DVO will need to be rebooted.
 
 ### Enabling checks
