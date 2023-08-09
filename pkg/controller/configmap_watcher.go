@@ -54,6 +54,7 @@ func NewConfigMapWatcher(cfg *rest.Config) (ConfigMapWatcher, error) {
 	return ConfigMapWatcher{
 		clientset: clientset,
 		logger:    log.Log.WithName("ConfigMapWatcher"),
+		ch:        make(chan config.Config),
 	}, nil
 }
 
