@@ -19,7 +19,6 @@ import (
 	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/go-logr/logr"
 	osappsv1 "github.com/openshift/api/apps/v1"
@@ -122,7 +121,10 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 
 	log.Info("Initializing Prometheus Registry")
 
-	reg := prometheus.NewRegistry()
+	reg, err := dvo_prom.GetRegistry()
+	if err != nil {
+		return nil, fmt.Errorf("initializing Prometheus server: %w", err)
+	}
 
 	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %q", opts.MetricsEndpoint()))
 
@@ -158,12 +160,6 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 	if err = gr.AddToManager(mgr); err != nil {
 		return nil, fmt.Errorf("adding generic reconciler to manager: %w", err)
 	}
-
-	// log.Info("Initializing Validation Engine")
-	//
-	// if err := validations.InitializeValidationEngine(opts.ConfigFile, reg); err != nil {
-	// 	return nil, fmt.Errorf("initializing validation engine: %w", err)
-	// }
 
 	return mgr, nil
 }

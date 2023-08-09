@@ -7,10 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
+	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 )
 
 type Registry interface {
@@ -78,6 +80,52 @@ func getRouter(registry Registry, path string) (*http.ServeMux, error) {
 	mux.Handle(path, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 
 	return mux, nil
+}
+
+// GetRegistry returns a fully configured Prometheus registry with metrics based on Kube Linter validations
+func GetRegistry() (*prometheus.Registry, error) {
+	prom := prometheus.NewRegistry()
+
+	reg, err := validations.GetKubeLinterRegistry()
+	if err != nil {
+		return nil, err
+	}
+
+	checks, err := validations.GetAllNamesFromRegistry(reg)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, checkName := range checks {
+		metric, err := setupMetric(reg, checkName)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create metric for check %s", checkName)
+		}
+
+		if err := prom.Register(metric); err != nil {
+			return nil, fmt.Errorf("registering metric for check %q: %w", checkName, err)
+		}
+	}
+
+	return prom, nil
+}
+
+// setupMetric uses registered validations to return the correct metric for a Prometheus registry
+func setupMetric(reg checkregistry.CheckRegistry, name string) (*prometheus.GaugeVec, error) {
+	check := reg.Load(name)
+	if check == nil {
+		return nil, fmt.Errorf("unable to create metric for check %s", name)
+	}
+
+	return prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: strings.ReplaceAll(check.Spec.Name, "-", "_"),
+			Help: fmt.Sprintf("Description: %s ; Remediation: %s", check.Spec.Description, check.Spec.Remediation),
+			ConstLabels: prometheus.Labels{
+				"check_description": check.Spec.Description,
+				"check_remediation": check.Spec.Remediation,
+			},
+		}, []string{"namespace_uid", "namespace", "uid", "name", "kind"}), nil
 }
 
 type Server struct {
