@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strconv"
 
-	"golang.stackrox.io/kube-linter/pkg/checkregistry"
+	"golang.stackrox.io/kube-linter/pkg/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -30,7 +30,7 @@ var (
 )
 
 type ValidationEngine interface {
-	CheckRegistry() checkregistry.CheckRegistry
+	UpdateRegistry(newconfig config.Config) error
 	RunForObjects(objects []client.Object, namespaceUID string) (validations.ValidationOutcome, error)
 }
 
@@ -365,7 +365,12 @@ func (gr *GenericReconciler) ConfigChanged(ctx context.Context) {
 	for {
 		select {
 		case cfg := <-gr.configWatcher.ConfigChanged():
-			fmt.Println("//// GOT CFG ", cfg)
+			err := gr.validationEngine.UpdateRegistry(cfg)
+			if err != nil {
+				fmt.Printf("error updating configuration from ConfigMap: %v\n", cfg)
+				return
+			}
+
 		case <-ctx.Done():
 			return
 		}

@@ -46,10 +46,15 @@ func NewEngine(configPath string, reg PrometheusRegistry) (*validationEngine, er
 		return nil, err
 	}
 
+	// TODO - Remove Prometheus registry
 	err = ve.InitRegistry(reg)
 	if err != nil {
 		return nil, err
 	}
+
+	// keeping the validation engine glogal scoped for compatibility
+	// it would be a good idea to remove the global variable use in the long run
+	engine = *ve
 
 	return ve, nil
 }
@@ -184,9 +189,55 @@ func (ve *validationEngine) InitRegistry(promReg PrometheusRegistry) error {
 			},
 		)
 
-		if err := promReg.Register(metric); err != nil {
-			return fmt.Errorf("registering metric for check %q: %w", check.Spec.Name, err)
+		validationMetrics[checkName] = metric
+	}
+
+	ve.registry = registry
+	ve.enabledChecks = enabledChecks
+	ve.metrics = validationMetrics
+	ve.registeredChecks = registeredChecks
+
+	return nil
+}
+
+func (ve *validationEngine) UpdateRegistry(newconfig config.Config) error {
+	ve.config = newconfig
+
+	registry := checkregistry.New()
+	if err := builtinchecks.LoadInto(registry); err != nil {
+		log.Error(err, "failed to load built-in validations")
+		return err
+	}
+
+	if err := configresolver.LoadCustomChecksInto(&ve.config, registry); err != nil {
+		log.Error(err, "failed to load custom checks")
+		return err
+	}
+
+	enabledChecks, err := configresolver.GetEnabledChecksAndValidate(&ve.config, registry)
+	if err != nil {
+		log.Error(err, "error finding enabled validations")
+		return err
+	}
+
+	validationMetrics := map[string]*prometheus.GaugeVec{}
+	registeredChecks := map[string]config.Check{}
+	for _, checkName := range enabledChecks {
+		check := registry.Load(checkName)
+		if check == nil {
+			return fmt.Errorf("unable to create metric for check %s", checkName)
 		}
+		registeredChecks[check.Spec.Name] = check.Spec
+		metric := newGaugeVecMetric(
+			strings.ReplaceAll(check.Spec.Name, "-", "_"),
+			fmt.Sprintf("Description: %s ; Remediation: %s",
+				check.Spec.Description, check.Spec.Remediation),
+			[]string{"namespace_uid", "namespace", "uid", "name", "kind"},
+			prometheus.Labels{
+				"check_description": check.Spec.Description,
+				"check_remediation": check.Spec.Remediation,
+			},
+		)
 
 		validationMetrics[checkName] = metric
 	}
@@ -195,6 +246,10 @@ func (ve *validationEngine) InitRegistry(promReg PrometheusRegistry) error {
 	ve.enabledChecks = enabledChecks
 	ve.metrics = validationMetrics
 	ve.registeredChecks = registeredChecks
+
+	// keeping the validation engine glogal scoped for compatibility
+	// it would be a good idea to remove the global variable use in the long run
+	engine = *ve
 
 	return nil
 }
