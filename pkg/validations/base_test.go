@@ -32,7 +32,7 @@ func newEngine(c config.Config) (validationEngine, error) {
 	ve := validationEngine{
 		config: c,
 	}
-	loadErr := ve.InitRegistry(prometheus.NewRegistry())
+	loadErr := ve.InitRegistry()
 	if loadErr != nil {
 		return validationEngine{}, loadErr
 	}
