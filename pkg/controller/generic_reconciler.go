@@ -30,7 +30,8 @@ var (
 )
 
 type ValidationEngine interface {
-	UpdateRegistry(newconfig config.Config) error
+	InitRegistry() error
+	UpdateConfig(newconfig config.Config)
 	RunForObjects(objects []client.Object, namespaceUID string) (validations.ValidationOutcome, error)
 }
 
@@ -365,7 +366,8 @@ func (gr *GenericReconciler) ConfigChanged(ctx context.Context) {
 	for {
 		select {
 		case cfg := <-gr.configWatcher.ConfigChanged():
-			err := gr.validationEngine.UpdateRegistry(cfg)
+			gr.validationEngine.UpdateConfig(cfg)
+			err := gr.validationEngine.InitRegistry()
 			if err != nil {
 				fmt.Printf("error updating configuration from ConfigMap: %v\n", cfg)
 				return
