@@ -121,7 +121,7 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 
 	log.Info("Initializing Prometheus Registry")
 
-	reg, err := dvo_prom.GetRegistry()
+	reg, err := dvo_prom.SetupRegistry()
 	if err != nil {
 		return nil, fmt.Errorf("initializing Prometheus server: %w", err)
 	}
@@ -138,7 +138,7 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 	}
 
 	log.Info("Initializing Validation Engine")
-	validationEngine, err := validations.NewEngine(opts.ConfigFile, reg)
+	validationEngine, err := validations.NewEngine(opts.ConfigFile)
 	if err != nil {
 		return nil, fmt.Errorf("initializing validation engine: %w", err)
 	}

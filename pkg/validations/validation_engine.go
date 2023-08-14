@@ -37,7 +37,7 @@ type validationEngine struct {
 	metrics          map[string]*prometheus.GaugeVec
 }
 
-func NewEngine(configPath string, reg PrometheusRegistry) (*validationEngine, error) {
+func NewEngine(configPath string) (*validationEngine, error) {
 	ve := &validationEngine{}
 
 	err := ve.LoadConfig(configPath)
@@ -136,7 +136,6 @@ func (ve *validationEngine) LoadConfig(path string) error {
 		return err
 	}
 
-	disableIncompatibleChecks(&config)
 	ve.config = config
 
 	return nil
@@ -147,6 +146,8 @@ type PrometheusRegistry interface {
 }
 
 func (ve *validationEngine) InitRegistry() error {
+	disableIncompatibleChecks(&ve.config)
+
 	registry, err := GetKubeLinterRegistry()
 	if err != nil {
 		return err
@@ -238,7 +239,6 @@ func (ve *validationEngine) GetCheckByName(name string) (config.Check, error) {
 
 // UpdateConfig TODO - doc
 func (ve *validationEngine) UpdateConfig(newconfig config.Config) {
-	disableIncompatibleChecks(&newconfig)
 	ve.config = newconfig
 }
 

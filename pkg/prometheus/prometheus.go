@@ -82,8 +82,8 @@ func getRouter(registry Registry, path string) (*http.ServeMux, error) {
 	return mux, nil
 }
 
-// GetRegistry returns a fully configured Prometheus registry with metrics based on Kube Linter validations
-func GetRegistry() (*prometheus.Registry, error) {
+// SetupRegistry returns a fully configured Prometheus registry with metrics based on Kube Linter validations
+func SetupRegistry() (*prometheus.Registry, error) {
 	prom := prometheus.NewRegistry()
 
 	reg, err := validations.GetKubeLinterRegistry()
