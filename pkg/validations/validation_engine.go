@@ -159,8 +159,6 @@ func (ve *validationEngine) InitRegistry() error {
 	ve.metrics = validationMetrics
 	ve.registeredChecks = registeredChecks
 
-	// keeping the validation engine glogal scoped for compatibility
-	// it would be a good idea to remove the global variable use in the long run
 	engine = *ve
 
 	return nil
@@ -204,7 +202,7 @@ func (ve *validationEngine) GetCheckByName(name string) (config.Check, error) {
 	return check, nil
 }
 
-// Start TODO - doc
+// Start will overwrite validations if no error appears with the new config
 func (ve *validationEngine) Start(ctx context.Context) error {
 	for {
 		select {

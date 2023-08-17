@@ -142,7 +142,7 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 		return nil, fmt.Errorf("initializing discovery client: %w", err)
 	}
 
-	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient) // TODO - deprecated validationengine param
+	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient)
 	if err != nil {
 		return nil, fmt.Errorf("initializing generic reconciler: %w", err)
 	}
