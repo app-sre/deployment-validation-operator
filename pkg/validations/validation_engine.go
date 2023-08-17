@@ -2,22 +2,20 @@ package validations
 
 import (
 	// Used to embed yamls by kube-linter
+	"context"
 	_ "embed"
 	"fmt"
 	"os"
 	"strings"
 
 	// Import checks from DVO
-	"github.com/app-sre/deployment-validation-operator/pkg/utils"
+	"github.com/app-sre/deployment-validation-operator/pkg/configmap"
 	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"golang.stackrox.io/kube-linter/pkg/configresolver"
 	"golang.stackrox.io/kube-linter/pkg/diagnostic"
-	"golang.stackrox.io/kube-linter/pkg/lintcontext"
-	"golang.stackrox.io/kube-linter/pkg/run"
 
 	// Import and initialize all check templates from kube-linter
 	_ "golang.stackrox.io/kube-linter/pkg/templates/all"
@@ -35,10 +33,13 @@ type validationEngine struct {
 	enabledChecks    []string
 	registeredChecks map[string]config.Check
 	metrics          map[string]*prometheus.GaugeVec
+	cmWatcher        *configmap.ConfigMapWatcher
 }
 
-func NewEngine(configPath string) (*validationEngine, error) {
-	ve := &validationEngine{}
+func NewEngine(configPath string, cmw configmap.ConfigMapWatcher) (*validationEngine, error) {
+	ve := &validationEngine{
+		cmWatcher: &cmw,
+	}
 
 	err := ve.LoadConfig(configPath)
 	if err != nil {
@@ -59,40 +60,6 @@ func (ve *validationEngine) CheckRegistry() checkregistry.CheckRegistry {
 
 func (ve *validationEngine) EnabledChecks() []string {
 	return ve.enabledChecks
-}
-
-func (ve *validationEngine) RunForObjects(objects []client.Object, namespaceUID string) (ValidationOutcome, error) {
-	lintCtx := &lintContextImpl{}
-	for _, obj := range objects {
-		// Only run checks against an object with no owners.  This should be
-		// the object that controls the configuration
-		if !utils.IsOwner(obj) {
-			continue
-		}
-		// If controller has no replicas clear do not run any validations
-		if isControllersWithNoReplicas(obj) {
-			continue
-		}
-		lintCtx.addObjects(lintcontext.Object{K8sObject: obj})
-	}
-	lintCtxs := []lintcontext.LintContext{lintCtx}
-	if len(lintCtxs) == 0 {
-		return ObjectValidationIgnored, nil
-	}
-	result, err := run.Run(lintCtxs, ve.CheckRegistry(), ve.EnabledChecks())
-	if err != nil {
-		log.Error(err, "error running validations")
-		return "", fmt.Errorf("error running validations: %v", err)
-	}
-
-	// Clear labels from past run to ensure only results from this run
-	// are reflected in the metrics
-	for _, o := range objects {
-		req := NewRequestFromObject(o)
-		req.NamespaceUID = namespaceUID
-		ve.ClearMetrics(result.Reports, req.ToPromLabels())
-	}
-	return processResult(result, namespaceUID)
 }
 
 // Get info on config file if it exists
@@ -237,9 +204,21 @@ func (ve *validationEngine) GetCheckByName(name string) (config.Check, error) {
 	return check, nil
 }
 
-// UpdateConfig TODO - doc
-func (ve *validationEngine) UpdateConfig(newconfig config.Config) {
-	ve.config = newconfig
+// Start TODO - doc
+func (ve *validationEngine) Start(ctx context.Context) error {
+	for {
+		select {
+		case cfg := <-ve.cmWatcher.ConfigChanged():
+			ve.config = cfg
+			err := ve.InitRegistry()
+			if err != nil {
+				fmt.Printf("error updating configuration from ConfigMap: %v\n", cfg)
+			}
+
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
 // disableIncompatibleChecks will forcibly update a kube-linter config
