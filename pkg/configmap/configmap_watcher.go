@@ -3,6 +3,7 @@ package configmap
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"golang.stackrox.io/kube-linter/pkg/config"
@@ -80,7 +81,8 @@ func (cmw ConfigMapWatcher) Start(ctx context.Context) error {
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			newCm := newObj.(*apicorev1.ConfigMap)
 
-			if configMapName != newCm.ObjectMeta.Name {
+			// This is sometimes triggered even if no change was due to the ConfigMap
+			if configMapName != newCm.ObjectMeta.Name || reflect.DeepEqual(oldObj, newObj) {
 				return
 			}
 
