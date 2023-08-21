@@ -120,7 +120,11 @@ func setupMetric(reg checkregistry.CheckRegistry, name string) (*prometheus.Gaug
 	return prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: strings.ReplaceAll(check.Spec.Name, "-", "_"),
-			Help: fmt.Sprintf("Description: %s ; Remediation: %s", check.Spec.Description, check.Spec.Remediation),
+			Help: fmt.Sprintf(
+				"Description: %s ; Remediation: %s",
+				check.Spec.Description,
+				check.Spec.Remediation,
+			),
 			ConstLabels: prometheus.Labels{
 				"check_description": check.Spec.Description,
 				"check_remediation": check.Spec.Remediation,

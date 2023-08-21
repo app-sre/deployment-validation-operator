@@ -32,7 +32,7 @@ type KubeLinterChecks struct {
 	} `yaml:"checks"`
 }
 
-type ConfigMapWatcher struct {
+type Watcher struct {
 	clientset kubernetes.Interface
 	checks    KubeLinterChecks
 	ch        chan config.Config
@@ -46,13 +46,13 @@ var configMapDataAccess = "deployment-validation-operator-config.yaml"
 // NewConfigMapWatcher returns a watcher that can be used both:
 // basic: with GetStaticDisabledChecks method, it returns an existent ConfigMap data's disabled check
 // dynamic: with StartInformer it sets an Informer that will be triggered on ConfigMap update
-func NewConfigMapWatcher(cfg *rest.Config) (ConfigMapWatcher, error) {
+func NewConfigMapWatcher(cfg *rest.Config) (Watcher, error) {
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return ConfigMapWatcher{}, fmt.Errorf("initializing clientset: %w", err)
+		return Watcher{}, fmt.Errorf("initializing clientset: %w", err)
 	}
 
-	return ConfigMapWatcher{
+	return Watcher{
 		clientset: clientset,
 		logger:    log.Log.WithName("ConfigMapWatcher"),
 		ch:        make(chan config.Config),
@@ -60,7 +60,7 @@ func NewConfigMapWatcher(cfg *rest.Config) (ConfigMapWatcher, error) {
 }
 
 // GetStaticKubelinterConfig returns the ConfigMap's checks configuration
-func (cmw *ConfigMapWatcher) GetStaticKubelinterConfig(ctx context.Context) (config.Config, error) {
+func (cmw *Watcher) GetStaticKubelinterConfig(ctx context.Context) (config.Config, error) {
 	cm, err := cmw.clientset.CoreV1().
 		ConfigMaps(configMapNamespace).Get(ctx, configMapName, v1.GetOptions{})
 	if err != nil {
@@ -71,7 +71,7 @@ func (cmw *ConfigMapWatcher) GetStaticKubelinterConfig(ctx context.Context) (con
 }
 
 // Start will update the channel structure with new configuration data from ConfigMap update event
-func (cmw ConfigMapWatcher) Start(ctx context.Context) error {
+func (cmw Watcher) Start(ctx context.Context) error {
 	factory := informers.NewSharedInformerFactoryWithOptions(
 		cmw.clientset, time.Second*30, informers.WithNamespace(configMapNamespace),
 	)
@@ -104,13 +104,13 @@ func (cmw ConfigMapWatcher) Start(ctx context.Context) error {
 }
 
 // ConfigChanged receives push notifications when the configuration is updated
-func (cmw *ConfigMapWatcher) ConfigChanged() <-chan config.Config {
+func (cmw *Watcher) ConfigChanged() <-chan config.Config {
 	return cmw.ch
 }
 
 // getKubeLinterConfig returns a valid Kube-linter Config structure
 // based on the checks received by the string
-func (cmw *ConfigMapWatcher) getKubeLinterConfig(data string) (config.Config, error) {
+func (cmw *Watcher) getKubeLinterConfig(data string) (config.Config, error) {
 	var cfg config.Config
 
 	err := yaml.Unmarshal([]byte(data), &cmw.checks)

@@ -3,14 +3,14 @@ package validations
 import (
 	// Used to embed yamls by kube-linter
 	"context"
-	_ "embed"
+	_ "embed" // nolint:golint
 	"fmt"
 	"os"
 	"strings"
 
 	// Import checks from DVO
 	"github.com/app-sre/deployment-validation-operator/pkg/configmap"
-	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all"
+	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all" // nolint:golint
 
 	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 	"golang.stackrox.io/kube-linter/pkg/config"
@@ -18,26 +18,26 @@ import (
 	"golang.stackrox.io/kube-linter/pkg/diagnostic"
 
 	// Import and initialize all check templates from kube-linter
-	_ "golang.stackrox.io/kube-linter/pkg/templates/all"
+	_ "golang.stackrox.io/kube-linter/pkg/templates/all" // nolint:golint
 
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/spf13/viper"
 )
 
-var engine validationEngine
+var engine ValidationEngine
 
-type validationEngine struct {
+type ValidationEngine struct {
 	config           config.Config
 	registry         checkregistry.CheckRegistry
 	enabledChecks    []string
 	registeredChecks map[string]config.Check
 	metrics          map[string]*prometheus.GaugeVec
-	cmWatcher        *configmap.ConfigMapWatcher
+	cmWatcher        *configmap.Watcher
 }
 
-func NewEngine(configPath string, cmw configmap.ConfigMapWatcher) (*validationEngine, error) {
-	ve := &validationEngine{
+func NewEngine(configPath string, cmw configmap.Watcher) (*ValidationEngine, error) {
+	ve := &ValidationEngine{
 		cmWatcher: &cmw,
 	}
 
@@ -54,11 +54,11 @@ func NewEngine(configPath string, cmw configmap.ConfigMapWatcher) (*validationEn
 	return ve, nil
 }
 
-func (ve *validationEngine) CheckRegistry() checkregistry.CheckRegistry {
+func (ve *ValidationEngine) CheckRegistry() checkregistry.CheckRegistry {
 	return ve.registry
 }
 
-func (ve *validationEngine) EnabledChecks() []string {
+func (ve *ValidationEngine) EnabledChecks() []string {
 	return ve.enabledChecks
 }
 
@@ -71,7 +71,7 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func (ve *validationEngine) LoadConfig(path string) error {
+func (ve *ValidationEngine) LoadConfig(path string) error {
 	if !fileExists(path) {
 		log.Info(fmt.Sprintf("config file %s does not exist. Use default configuration", path))
 		// TODO - This hardcode will be removed when a ConfigMap is set by default in regular installation
@@ -112,7 +112,7 @@ type PrometheusRegistry interface {
 	Register(prometheus.Collector) error
 }
 
-func (ve *validationEngine) InitRegistry() error {
+func (ve *ValidationEngine) InitRegistry() error {
 	disableIncompatibleChecks(&ve.config)
 
 	registry, err := GetKubeLinterRegistry()
@@ -164,7 +164,7 @@ func (ve *validationEngine) InitRegistry() error {
 	return nil
 }
 
-func (ve *validationEngine) GetMetric(name string) *prometheus.GaugeVec {
+func (ve *ValidationEngine) GetMetric(name string) *prometheus.GaugeVec {
 	m, ok := ve.metrics[name]
 	if !ok {
 		return nil
@@ -172,13 +172,13 @@ func (ve *validationEngine) GetMetric(name string) *prometheus.GaugeVec {
 	return m
 }
 
-func (ve *validationEngine) DeleteMetrics(labels prometheus.Labels) {
+func (ve *ValidationEngine) DeleteMetrics(labels prometheus.Labels) {
 	for _, vector := range ve.metrics {
 		vector.Delete(labels)
 	}
 }
 
-func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, labels prometheus.Labels) {
+func (ve *ValidationEngine) ClearMetrics(reports []diagnostic.WithContext, labels prometheus.Labels) {
 	// Create a list of validation names for use to delete the labels from any
 	// metric which isn't in the report but for which there is a metric
 	reportValidationNames := map[string]struct{}{}
@@ -194,7 +194,7 @@ func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, label
 	}
 }
 
-func (ve *validationEngine) GetCheckByName(name string) (config.Check, error) {
+func (ve *ValidationEngine) GetCheckByName(name string) (config.Check, error) {
 	check, ok := ve.registeredChecks[name]
 	if !ok {
 		return config.Check{}, fmt.Errorf("check '%s' is not registered", name)
@@ -203,7 +203,7 @@ func (ve *validationEngine) GetCheckByName(name string) (config.Check, error) {
 }
 
 // Start will overwrite validations if no error appears with the new config
-func (ve *validationEngine) Start(ctx context.Context) error {
+func (ve *ValidationEngine) Start(ctx context.Context) error {
 	for {
 		select {
 		case cfg := <-ve.cmWatcher.ConfigChanged():

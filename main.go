@@ -17,7 +17,7 @@ import (
 	"github.com/app-sre/deployment-validation-operator/internal/options"
 	"github.com/app-sre/deployment-validation-operator/pkg/configmap"
 	"github.com/app-sre/deployment-validation-operator/pkg/controller"
-	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
+	dvoProm "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
 
@@ -97,14 +97,14 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 
 	log.Info("-> Initialize Prometheus Registry")
 
-	reg, err := dvo_prom.SetupRegistry()
+	reg, err := dvoProm.SetupRegistry()
 	if err != nil {
 		return nil, fmt.Errorf("initializing Prometheus server: %w", err)
 	}
 
 	log.Info(fmt.Sprintf("-> Initialize Prometheus metrics endpoint on %q", opts.MetricsEndpoint()))
 
-	srv, err := dvo_prom.NewServer(reg, opts.MetricsPath, fmt.Sprintf(":%d", opts.MetricsPort))
+	srv, err := dvoProm.NewServer(reg, opts.MetricsPath, fmt.Sprintf(":%d", opts.MetricsPort))
 	if err != nil {
 		return nil, fmt.Errorf("initializing metrics server: %w", err)
 	}

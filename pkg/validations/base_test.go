@@ -28,13 +28,13 @@ const (
 	customCheckTemplate    = "minimum-replicas"
 )
 
-func newEngine(c config.Config) (validationEngine, error) {
-	ve := validationEngine{
+func newEngine(c config.Config) (ValidationEngine, error) {
+	ve := ValidationEngine{
 		config: c,
 	}
 	loadErr := ve.InitRegistry()
 	if loadErr != nil {
-		return validationEngine{}, loadErr
+		return ValidationEngine{}, loadErr
 	}
 	return ve, nil
 }
@@ -333,7 +333,7 @@ func stringInSlice(a string, list []string) bool {
 
 // getAllBuiltInKubeLinterChecks returns every check built-into kube-linter (including checks that DVO disables)
 func getAllBuiltInKubeLinterChecks() ([]string, error) {
-	ve := validationEngine{
+	ve := ValidationEngine{
 		config: newEngineConfigWithAllChecks(),
 	}
 	registry := checkregistry.New()
