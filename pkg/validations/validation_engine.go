@@ -6,7 +6,6 @@ import (
 	_ "embed" // nolint:golint
 	"fmt"
 	"os"
-	"strings"
 
 	// Import checks from DVO
 	"github.com/app-sre/deployment-validation-operator/pkg/configmap"
@@ -36,9 +35,10 @@ type ValidationEngine struct {
 	cmWatcher        *configmap.Watcher
 }
 
-func NewEngine(configPath string, cmw configmap.Watcher) (*ValidationEngine, error) {
+func NewEngine(configPath string, cmw configmap.Watcher, metrics map[string]*prometheus.GaugeVec) (*ValidationEngine, error) {
 	ve := &ValidationEngine{
 		cmWatcher: &cmw,
+		metrics:   metrics,
 	}
 
 	err := ve.LoadConfig(configPath)
@@ -131,8 +131,6 @@ func (ve *ValidationEngine) InitRegistry() error {
 		return err
 	}
 
-	// TODO - Use same approach than in prometheus package
-	validationMetrics := map[string]*prometheus.GaugeVec{}
 	registeredChecks := map[string]config.Check{}
 	for _, checkName := range enabledChecks {
 		check := registry.Load(checkName)
@@ -140,23 +138,10 @@ func (ve *ValidationEngine) InitRegistry() error {
 			return fmt.Errorf("unable to create metric for check %s", checkName)
 		}
 		registeredChecks[check.Spec.Name] = check.Spec
-		metric := newGaugeVecMetric(
-			strings.ReplaceAll(check.Spec.Name, "-", "_"),
-			fmt.Sprintf("Description: %s ; Remediation: %s",
-				check.Spec.Description, check.Spec.Remediation),
-			[]string{"namespace_uid", "namespace", "uid", "name", "kind"},
-			prometheus.Labels{
-				"check_description": check.Spec.Description,
-				"check_remediation": check.Spec.Remediation,
-			},
-		)
-
-		validationMetrics[checkName] = metric
 	}
 
 	ve.registry = registry
 	ve.enabledChecks = enabledChecks
-	ve.metrics = validationMetrics
 	ve.registeredChecks = registeredChecks
 
 	engine = *ve

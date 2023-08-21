@@ -1,10 +1,6 @@
 package validations
 
 import (
-	"fmt"
-	"strings"
-
-	"github.com/app-sre/deployment-validation-operator/config"
 	"golang.stackrox.io/kube-linter/pkg/builtinchecks"
 	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 	klConfig "golang.stackrox.io/kube-linter/pkg/config"
@@ -15,19 +11,6 @@ import (
 
 func DeleteMetrics(labels prometheus.Labels) {
 	engine.DeleteMetrics(labels)
-}
-
-func newGaugeVecMetric(
-	name, help string, labelNames []string, constLabels prometheus.Labels,
-) *prometheus.GaugeVec {
-	return prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name:        fmt.Sprintf("%s_%s", strings.ReplaceAll(config.OperatorName, "-", "_"), name),
-			Help:        help,
-			ConstLabels: constLabels,
-		},
-		labelNames,
-	)
 }
 
 // GetKubeLinterRegistry sets up a Kube Linter registry with builtin default validations

@@ -20,6 +20,7 @@ import (
 	dvoProm "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/go-logr/logr"
 	osappsv1 "github.com/openshift/api/apps/v1"
@@ -97,9 +98,10 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 
 	log.Info("-> Initialize Prometheus Registry")
 
-	reg, err := dvoProm.SetupRegistry()
+	reg := prometheus.NewRegistry()
+	metrics, err := dvoProm.PreloadMetrics(reg)
 	if err != nil {
-		return nil, fmt.Errorf("initializing Prometheus server: %w", err)
+		return nil, fmt.Errorf("preloading kube-linter metrics: %w", err)
 	}
 
 	log.Info(fmt.Sprintf("-> Initialize Prometheus metrics endpoint on %q", opts.MetricsEndpoint()))
@@ -126,7 +128,7 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 
 	log.Info("-> Initialize Validation Engine")
 
-	validationEngine, err := validations.NewEngine(opts.ConfigFile, cmWatcher)
+	validationEngine, err := validations.NewEngine(opts.ConfigFile, cmWatcher, metrics)
 	if err != nil {
 		return nil, fmt.Errorf("initializing validation engine: %w", err)
 	}

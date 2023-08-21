@@ -82,32 +82,34 @@ func getRouter(registry Registry, path string) (*http.ServeMux, error) {
 	return mux, nil
 }
 
-// SetupRegistry returns a fully configured Prometheus registry with metrics based on Kube Linter validations
-func SetupRegistry() (*prometheus.Registry, error) {
-	prom := prometheus.NewRegistry()
+// PreloadMetrics TODO : Doc this
+func PreloadMetrics(pr *prometheus.Registry) (map[string]*prometheus.GaugeVec, error) {
+	preloadedMetrics := make(map[string]*prometheus.GaugeVec)
 
-	reg, err := validations.GetKubeLinterRegistry()
+	klr, err := validations.GetKubeLinterRegistry()
 	if err != nil {
 		return nil, err
 	}
 
-	checks, err := validations.GetAllNamesFromRegistry(reg)
+	checks, err := validations.GetAllNamesFromRegistry(klr)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, checkName := range checks {
-		metric, err := setupMetric(reg, checkName)
+		metric, err := setupMetric(klr, checkName)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create metric for check %s", checkName)
 		}
 
-		if err := prom.Register(metric); err != nil {
+		if err := pr.Register(metric); err != nil {
 			return nil, fmt.Errorf("registering metric for check %q: %w", checkName, err)
 		}
+
+		preloadedMetrics[checkName] = metric
 	}
 
-	return prom, nil
+	return preloadedMetrics, nil
 }
 
 // setupMetric uses registered validations to return the correct metric for a Prometheus registry
