@@ -82,7 +82,16 @@ func getRouter(registry Registry, path string) (*http.ServeMux, error) {
 	return mux, nil
 }
 
-// PreloadMetrics TODO : Doc this
+// PreloadMetrics preloads metrics related to predefined checks into the provided Prometheus registry.
+// It retrieves predefined checks from the linter registry, sets up corresponding GaugeVec metrics,
+// and registers them in the Prometheus registry.
+//
+// Parameters:
+//   - pr: A pointer to a Prometheus registry where the metrics will be registered.
+//
+// Returns:
+//   - A map of check names to corresponding GaugeVec metrics.
+//   - An error if any error occurs during metric setup or registration.
 func PreloadMetrics(pr *prometheus.Registry) (map[string]*prometheus.GaugeVec, error) {
 	preloadedMetrics := make(map[string]*prometheus.GaugeVec)
 
@@ -112,7 +121,8 @@ func PreloadMetrics(pr *prometheus.Registry) (map[string]*prometheus.GaugeVec, e
 	return preloadedMetrics, nil
 }
 
-// setupMetric uses registered validations to return the correct metric for a Prometheus registry
+// setupMetric sets up a Prometheus GaugeVec metric based on the provided check name and information from a CheckRegistry.
+// The metric is created with the formatted name, description, and remediation information from the check specification.
 func setupMetric(reg checkregistry.CheckRegistry, name string) (*prometheus.GaugeVec, error) {
 	check := reg.Load(name)
 	if check == nil {

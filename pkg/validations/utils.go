@@ -13,7 +13,13 @@ func DeleteMetrics(labels prometheus.Labels) {
 	engine.DeleteMetrics(labels)
 }
 
-// GetKubeLinterRegistry sets up a Kube Linter registry with builtin default validations
+// GetKubeLinterRegistry returns a CheckRegistry containing kube-linter built-in validations.
+// It initializes a new CheckRegistry, loads the built-in validations into the registry,
+// and returns the resulting registry if successful.
+//
+// Returns:
+//   - A CheckRegistry containing kube-linter built-in validations if successful.
+//   - An error if the built-in validations fail to load into the registry.
 func GetKubeLinterRegistry() (checkregistry.CheckRegistry, error) {
 	registry := checkregistry.New()
 	if err := builtinchecks.LoadInto(registry); err != nil {
@@ -24,8 +30,15 @@ func GetKubeLinterRegistry() (checkregistry.CheckRegistry, error) {
 	return registry, nil
 }
 
-// GetAllNamesFromRegistry returns a slice with the names of all valid Kube Linter checks.
-// Since any check can be configured ad hoc, we return all valid checks.
+// GetAllNamesFromRegistry retrieves the names of all enabled checks from the provided CheckRegistry.
+// It fetches the names of checks that are enabled based on a specified configuration, excluding incompatible ones.
+//
+// Parameters:
+//   - reg: A CheckRegistry containing predefined checks and their specifications.
+//
+// Returns:
+//   - A slice of strings containing the names of all enabled checks if successful.
+//   - An error if there's an issue while fetching the enabled check names or validating the configuration.
 func GetAllNamesFromRegistry(reg checkregistry.CheckRegistry) ([]string, error) {
 	// Get all checks except for incompatible ones
 	cfg := klConfig.Config{
