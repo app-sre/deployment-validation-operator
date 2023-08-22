@@ -1,11 +1,15 @@
 package validations
 
 import (
+	"fmt"
+	"strings"
+
 	"golang.stackrox.io/kube-linter/pkg/builtinchecks"
 	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 	klConfig "golang.stackrox.io/kube-linter/pkg/config"
 	"golang.stackrox.io/kube-linter/pkg/configresolver"
 
+	"github.com/app-sre/deployment-validation-operator/config"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -55,4 +59,20 @@ func GetAllNamesFromRegistry(reg checkregistry.CheckRegistry) ([]string, error) 
 	}
 
 	return checks, nil
+}
+
+func newGaugeVecMetric(check klConfig.Check) *prometheus.GaugeVec {
+	return prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: strings.ReplaceAll(
+				fmt.Sprintf("%s_%s", config.OperatorName, check.Name),
+				"-", "_"),
+			Help: fmt.Sprintf(
+				"Description: %s ; Remediation: %s", check.Description, check.Remediation,
+			),
+			ConstLabels: prometheus.Labels{
+				"check_description": check.Description,
+				"check_remediation": check.Remediation,
+			},
+		}, []string{"namespace_uid", "namespace", "uid", "name", "kind"})
 }
