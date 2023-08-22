@@ -35,7 +35,7 @@ type ValidationEngine struct {
 	cmWatcher        *configmap.Watcher
 }
 
-// NewEngine creates a new ValidationEngine instance with the provided configuration path, configmap.Watcher, and metrics.
+// NewEngine creates a new ValidationEngine instance with the provided configuration path, a watcher, and metrics.
 // It initializes a ValidationEngine with the provided watcher for configmap changes and a set of preloaded metrics.
 // The engine's configuration is loaded from the specified configuration path, and its check registry is initialized.
 //
@@ -47,7 +47,11 @@ type ValidationEngine struct {
 // Returns:
 //   - A pointer to a new ValidationEngine instance if successful.
 //   - An error if there's an issue loading the configuration or initializing the check registry.
-func NewEngine(configPath string, cmw configmap.Watcher, metrics map[string]*prometheus.GaugeVec) (*ValidationEngine, error) {
+func NewEngine(
+	configPath string,
+	cmw configmap.Watcher,
+	metrics map[string]*prometheus.GaugeVec,
+) (*ValidationEngine, error) {
 	ve := &ValidationEngine{
 		cmWatcher: &cmw,
 		metrics:   metrics,

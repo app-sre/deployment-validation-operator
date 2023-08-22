@@ -121,7 +121,7 @@ func PreloadMetrics(pr *prometheus.Registry) (map[string]*prometheus.GaugeVec, e
 	return preloadedMetrics, nil
 }
 
-// setupMetric sets up a Prometheus GaugeVec metric based on the provided check name and information from a CheckRegistry.
+// setupMetric sets up a Prometheus metric based on the provided checkname and information from a CheckRegistry.
 // The metric is created with the formatted name, description, and remediation information from the check specification.
 func setupMetric(reg checkregistry.CheckRegistry, name string) (*prometheus.GaugeVec, error) {
 	check := reg.Load(name)
