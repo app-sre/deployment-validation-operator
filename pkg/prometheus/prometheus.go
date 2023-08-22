@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/app-sre/deployment-validation-operator/config"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
@@ -131,7 +132,9 @@ func setupMetric(reg checkregistry.CheckRegistry, name string) (*prometheus.Gaug
 
 	return prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: strings.ReplaceAll(check.Spec.Name, "-", "_"),
+			Name: strings.ReplaceAll(
+				fmt.Sprintf("%s_%s", config.OperatorName, check.Spec.Name),
+				"-", "_"),
 			Help: fmt.Sprintf(
 				"Description: %s ; Remediation: %s",
 				check.Spec.Description,
