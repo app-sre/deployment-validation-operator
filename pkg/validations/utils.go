@@ -62,11 +62,11 @@ func GetAllNamesFromRegistry(reg checkregistry.CheckRegistry) ([]string, error) 
 }
 
 func newGaugeVecMetric(check klConfig.Check) *prometheus.GaugeVec {
+	metricName := strings.ReplaceAll(fmt.Sprintf("%s_%s", config.OperatorName, check.Name), "-", "_")
+
 	return prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: strings.ReplaceAll(
-				fmt.Sprintf("%s_%s", config.OperatorName, check.Name),
-				"-", "_"),
+			Name: metricName,
 			Help: fmt.Sprintf(
 				"Description: %s ; Remediation: %s", check.Description, check.Remediation,
 			),

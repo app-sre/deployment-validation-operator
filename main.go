@@ -117,7 +117,7 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 
 	log.Info("Initialize ConfigMap watcher")
 
-	cmWatcher, err := configmap.NewConfigMapWatcher(cfg)
+	cmWatcher, err := configmap.NewWatcher(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("initializing configmap watcher: %w", err)
 	}
