@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	dvoConfig "github.com/app-sre/deployment-validation-operator/config"
+
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"gopkg.in/yaml.v3"
 
@@ -37,32 +39,46 @@ type Watcher struct {
 	checks    KubeLinterChecks
 	ch        chan config.Config
 	logger    logr.Logger
+	namespace string
 }
 
 var configMapName = "deployment-validation-operator-config"
 var configMapNamespace = "deployment-validation-operator"
 var configMapDataAccess = "deployment-validation-operator-config.yaml"
 
-// NewConfigMapWatcher returns a watcher that can be used both:
-// basic: with GetStaticDisabledChecks method, it returns an existent ConfigMap data's disabled check
-// dynamic: with StartInformer it sets an Informer that will be triggered on ConfigMap update
-func NewConfigMapWatcher(cfg *rest.Config) (Watcher, error) {
+// NewWatcher creates a new Watcher instance for observing changes to a ConfigMap.
+//
+// Parameters:
+//   - cfg: A pointer to a rest.Config representing the Kubernetes client configuration.
+//
+// Returns:
+//   - A Watcher instance for monitoring changes to DVO ConfigMap resource if the initialization is successful.
+//   - An error if there's an issue while initializing the Kubernetes clientset.
+func NewWatcher(cfg *rest.Config) (Watcher, error) {
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return Watcher{}, fmt.Errorf("initializing clientset: %w", err)
 	}
 
+	// the Informer will use this to monitor the namespace for the ConfigMap.
+	namespace, err := getDeploymentNamespace(clientset)
+	if err != nil {
+		return Watcher{}, fmt.Errorf("getting namespace: %w", err)
+	}
+
+	// fmt.Printf("namespaces: %v\n", deployments)
 	return Watcher{
 		clientset: clientset,
 		logger:    log.Log.WithName("ConfigMapWatcher"),
 		ch:        make(chan config.Config),
+		namespace: namespace,
 	}, nil
 }
 
 // GetStaticKubelinterConfig returns the ConfigMap's checks configuration
 func (cmw *Watcher) GetStaticKubelinterConfig(ctx context.Context) (config.Config, error) {
 	cm, err := cmw.clientset.CoreV1().
-		ConfigMaps(configMapNamespace).Get(ctx, configMapName, v1.GetOptions{})
+		ConfigMaps(cmw.namespace).Get(ctx, configMapName, v1.GetOptions{})
 	if err != nil {
 		return config.Config{}, fmt.Errorf("getting initial configuration: %w", err)
 	}
@@ -73,16 +89,33 @@ func (cmw *Watcher) GetStaticKubelinterConfig(ctx context.Context) (config.Confi
 // Start will update the channel structure with new configuration data from ConfigMap update event
 func (cmw Watcher) Start(ctx context.Context) error {
 	factory := informers.NewSharedInformerFactoryWithOptions(
-		cmw.clientset, time.Second*30, informers.WithNamespace(configMapNamespace),
+		cmw.clientset, time.Second*30, informers.WithNamespace(cmw.namespace),
 	)
 	informer := factory.Core().V1().ConfigMaps().Informer()
 
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{ // nolint:errcheck
+		AddFunc: func(obj interface{}) {
+			newCm := obj.(*apicorev1.ConfigMap)
+
+			if configMapName != newCm.GetName() {
+				return
+			}
+
+			cmw.logger.Info("ConfigMap has been created")
+
+			cfg, err := cmw.getKubeLinterConfig(newCm.Data[configMapDataAccess])
+			if err != nil {
+				cmw.logger.Error(err, "ConfigMap data format")
+				return
+			}
+
+			cmw.ch <- cfg
+		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			newCm := newObj.(*apicorev1.ConfigMap)
 
 			// This is sometimes triggered even if no change was due to the ConfigMap
-			if configMapName != newCm.ObjectMeta.Name || reflect.DeepEqual(oldObj, newObj) {
+			if configMapName != newCm.GetName() || reflect.DeepEqual(oldObj, newObj) {
 				return
 			}
 
@@ -121,4 +154,24 @@ func (cmw *Watcher) getKubeLinterConfig(data string) (config.Config, error) {
 	cfg.Checks = config.ChecksConfig(cmw.checks.Checks)
 
 	return cfg, nil
+}
+
+// getDeploymentNamespace retrieves the namespace of the Deployment associated with DVO.
+// If found, it returns the namespace of the Deployment.
+// If not found, it returns the default namespace value from `dvoConfig.OperatorNamespace`.
+func getDeploymentNamespace(clientset *kubernetes.Clientset) (string, error) {
+	deployments, err := clientset.AppsV1().Deployments(v1.NamespaceAll).
+		List(context.Background(), v1.ListOptions{})
+	if err != nil {
+		return "", fmt.Errorf("getting deployments from clientset: %w", err)
+	}
+
+	for _, deployment := range deployments.Items {
+		if deployment.GetName() == dvoConfig.OperatorName {
+			return deployment.GetNamespace(), nil
+		}
+	}
+
+	// set 'deployment-validation-operator' as default value
+	return dvoConfig.OperatorNamespace, nil
 }
