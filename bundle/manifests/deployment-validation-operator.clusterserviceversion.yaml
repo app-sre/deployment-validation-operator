@@ -1,0 +1,176 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+    createdAt: "2023-08-24T07:26:06Z"
+    operators.operatorframework.io/builder: operator-sdk-v1.28.1
+    operators.operatorframework.io/project_layout: unknown
+  name: deployment-validation-operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions: {}
+  description: Deployment Validation Operator description. TODO.
+  displayName: Deployment Validation Operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - get
+          - list
+          - watch
+        serviceAccountName: deployment-validation-operator
+      deployments:
+      - label:
+          app: deployment-validation-operator
+        name: deployment-validation-operator
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: deployment-validation-operator
+          strategy:
+            rollingUpdate:
+              maxSurge: 1
+              maxUnavailable: 0
+            type: RollingUpdate
+          template:
+            metadata:
+              labels:
+                app: deployment-validation-operator
+                name: deployment-validation-operator
+            spec:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                    - matchExpressions:
+                      - key: node-role.kubernetes.io/infra
+                        operator: Exists
+                podAntiAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                  - podAffinityTerm:
+                      labelSelector:
+                        matchExpressions:
+                        - key: app
+                          operator: In
+                          values:
+                          - deployment-validation-operator
+                      topologyKey: kubernetes.io/hostname
+                    weight: 100
+              containers:
+              - args:
+                - --config /config/deployment-validation-operator-config.yaml
+                env:
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: OPERATOR_NAME
+                  value: deployment-validation-operator
+                - name: NAMESPACE_IGNORE_PATTERN
+                  value: openshift.*|kube-.+|default|dedicated-admin
+                - name: RESOURCES_PER_LIST_QUERY
+                  value: "5"
+                - name: VALIDATION_CHECK_INTERVAL
+                  value: "2"
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                image: quay.io/deployment-validation-operator/dv-operator:latest
+                imagePullPolicy: Always
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 3
+                name: deployment-validation-operator
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                  timeoutSeconds: 3
+                resources:
+                  limits:
+                    cpu: 100m
+                    memory: 200Mi
+                  requests:
+                    cpu: 100m
+                    memory: 200Mi
+                securityContext:
+                  readOnlyRootFilesystem: true
+                volumeMounts:
+                - mountPath: /config
+                  name: dvo-config
+              restartPolicy: Always
+              serviceAccountName: deployment-validation-operator
+              terminationGracePeriodSeconds: 30
+              tolerations:
+              - effect: NoSchedule
+                key: node-role.kubernetes.io/infra
+                operator: Exists
+              volumes:
+              - configMap:
+                  name: deployment-validation-operator-config
+                  optional: true
+                name: dvo-config
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          - services
+          verbs:
+          - get
+          - create
+          - list
+          - delete
+          - update
+          - watch
+          - patch
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - servicemonitors
+          verbs:
+          - '*'
+        serviceAccountName: deployment-validation-operator
+    strategy: deployment
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - deployment-validation-operator
+  links:
+  - name: Deployment Validation Operator
+    url: https://deployment-validation-operator.domain
+  maintainers:
+  - email: your@email.com
+    name: Maintainer Name
+  maturity: alpha
+  provider:
+    name: Provider Name
+    url: https://your.domain
+  version: 0.0.0
