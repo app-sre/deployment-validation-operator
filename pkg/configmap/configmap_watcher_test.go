@@ -58,7 +58,7 @@ func TestStaticConfigMapWatcher(t *testing.T) {
 				},
 			}
 			client := kubefake.NewSimpleClientset([]runtime.Object{cm}...)
-			mock := Watcher{clientset: client}
+			mock := Watcher{clientset: client, namespace: configMapNamespace}
 
 			// When
 			test, err := mock.GetStaticKubelinterConfig(context.Background())
