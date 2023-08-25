@@ -51,12 +51,6 @@ spec:
                 name: deployment-validation-operator
             spec:
               affinity:
-                nodeAffinity:
-                  requiredDuringSchedulingIgnoredDuringExecution:
-                    nodeSelectorTerms:
-                    - matchExpressions:
-                      - key: node-role.kubernetes.io/infra
-                        operator: Exists
                 podAntiAffinity:
                   preferredDuringSchedulingIgnoredDuringExecution:
                   - podAffinityTerm:
