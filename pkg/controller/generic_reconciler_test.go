@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/app-sre/deployment-validation-operator/pkg/configmap"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -966,5 +967,5 @@ func createTestReconciler(scheme *runtime.Scheme, objects []client.Object) (*Gen
 	}
 	client := cliBuilder.Build()
 	cli := kubefake.NewSimpleClientset()
-	return NewGenericReconciler(client, cli.Discovery())
+	return NewGenericReconciler(client, cli.Discovery(), configmap.Watcher{})
 }

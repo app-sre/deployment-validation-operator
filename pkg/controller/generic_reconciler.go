@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 
+	"github.com/app-sre/deployment-validation-operator/pkg/configmap"
 	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/go-logr/logr"
@@ -37,10 +38,15 @@ type GenericReconciler struct {
 	client                client.Client
 	discovery             discovery.DiscoveryInterface
 	logger                logr.Logger
+	cmWatcher             *configmap.Watcher
 }
 
 // NewGenericReconciler returns a GenericReconciler struct
-func NewGenericReconciler(client client.Client, discovery discovery.DiscoveryInterface) (*GenericReconciler, error) {
+func NewGenericReconciler(
+	client client.Client,
+	discovery discovery.DiscoveryInterface,
+	cmw configmap.Watcher,
+) (*GenericReconciler, error) {
 	listLimit, err := getListLimit()
 	if err != nil {
 		return nil, err
@@ -54,6 +60,7 @@ func NewGenericReconciler(client client.Client, discovery discovery.DiscoveryInt
 		objectValidationCache: newValidationCache(),
 		currentObjects:        newValidationCache(),
 		logger:                ctrl.Log.WithName("reconcile"),
+		cmWatcher:             &cmw,
 	}, nil
 }
 
@@ -94,6 +101,8 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 
 // Start validating the given object kind every interval.
 func (gr *GenericReconciler) Start(ctx context.Context) error {
+	go gr.LookForConfigUpdates(ctx)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -108,6 +117,31 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 				// nikthoma: oct 11, 2022
 				gr.logger.Error(err, "error fetching and validating resource types")
 			}
+		}
+	}
+}
+
+func (gr *GenericReconciler) LookForConfigUpdates(ctx context.Context) {
+	for {
+		select {
+		case cfg := <-gr.cmWatcher.ConfigChanged():
+			//ve.config = cfg
+			validations.UpdateConfig(cfg) // save previous configuration in case of rollback
+			//err := ve.InitRegistry()
+			err := validations.InitRegistry()
+			if err == nil {
+				gr.objectValidationCache.drain()
+				validations.ResetMetrics()
+
+			} else {
+				gr.logger.Error(
+					err,
+					fmt.Sprintf("error updating configuration from ConfigMap: %v\n", cfg),
+				)
+			}
+
+		case <-ctx.Done():
+			return
 		}
 	}
 }
