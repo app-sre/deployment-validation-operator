@@ -3,11 +3,9 @@ package configmap
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
-	"strings"
 	"time"
-
-	dvoConfig "github.com/app-sre/deployment-validation-operator/config"
 
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"gopkg.in/yaml.v3"
@@ -62,12 +60,11 @@ func NewWatcher(cfg *rest.Config) (Watcher, error) {
 	}
 
 	// the Informer will use this to monitor the namespace for the ConfigMap.
-	namespace, err := getDeploymentNamespace(clientset)
+	namespace, err := getPodNamespace()
 	if err != nil {
 		return Watcher{}, fmt.Errorf("getting namespace: %w", err)
 	}
 
-	// fmt.Printf("namespaces: %v\n", deployments)
 	return Watcher{
 		clientset: clientset,
 		logger:    log.Log.WithName("ConfigMapWatcher"),
@@ -102,7 +99,11 @@ func (cmw Watcher) Start(ctx context.Context) error {
 				return
 			}
 
-			cmw.logger.Info("ConfigMap has been created")
+			cmw.logger.Info(
+				"a ConfigMap has been created under watched namespace",
+				"name", newCm.GetName(),
+				"namespace", newCm.GetNamespace(),
+			)
 
 			cfg, err := cmw.getKubeLinterConfig(newCm.Data[configMapDataAccess])
 			if err != nil {
@@ -120,7 +121,11 @@ func (cmw Watcher) Start(ctx context.Context) error {
 				return
 			}
 
-			cmw.logger.Info("ConfigMap has been updated")
+			cmw.logger.Info(
+				"a ConfigMap has been updated under watched namespace",
+				"name", newCm.GetName(),
+				"namespace", newCm.GetNamespace(),
+			)
 
 			cfg, err := cmw.getKubeLinterConfig(newCm.Data[configMapDataAccess])
 			if err != nil {
@@ -157,21 +162,11 @@ func (cmw *Watcher) getKubeLinterConfig(data string) (config.Config, error) {
 	return cfg, nil
 }
 
-// getDeploymentNamespace TODO - refactor name and doc
-func getDeploymentNamespace(clientset *kubernetes.Clientset) (string, error) {
-	pods, err := clientset.CoreV1().Pods(v1.NamespaceAll).
-		List(context.Background(), v1.ListOptions{
-			LabelSelector: "app=deployment-validation-operator",
-		})
-	if err != nil {
-		return "", fmt.Errorf("getting DVO pod from clientset: %w", err)
+func getPodNamespace() (string, error) {
+	namespace, exists := os.LookupEnv("POD_NAMESPACE")
+	if !exists {
+		return "", fmt.Errorf("could not find DVO pod")
 	}
 
-	for i := range pods.Items {
-		if strings.Contains(pods.Items[i].GetName(), dvoConfig.OperatorNamespace) {
-			return pods.Items[i].GetNamespace(), nil
-		}
-	}
-
-	return "", fmt.Errorf("could not find DVO pod")
+	return namespace, nil
 }
