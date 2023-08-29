@@ -76,3 +76,17 @@ func newGaugeVecMetric(check klConfig.Check) *prometheus.GaugeVec {
 			},
 		}, []string{"namespace_uid", "namespace", "uid", "name", "kind"})
 }
+
+func UpdateConfig(cfg klConfig.Config) {
+	engine.config = cfg
+}
+
+func InitRegistry() error {
+	return engine.InitRegistry()
+}
+
+func ResetMetrics() {
+	for _, metric := range engine.metrics {
+		metric.Reset()
+	}
+}
