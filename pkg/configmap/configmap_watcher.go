@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	dvoConfig "github.com/app-sre/deployment-validation-operator/config"
@@ -156,22 +157,21 @@ func (cmw *Watcher) getKubeLinterConfig(data string) (config.Config, error) {
 	return cfg, nil
 }
 
-// getDeploymentNamespace retrieves the namespace of the Deployment associated with DVO.
-// If found, it returns the namespace of the Deployment.
-// If not found, it returns the default namespace value from `dvoConfig.OperatorNamespace`.
+// getDeploymentNamespace TODO - refactor name and doc
 func getDeploymentNamespace(clientset *kubernetes.Clientset) (string, error) {
-	deployments, err := clientset.AppsV1().Deployments(v1.NamespaceAll).
-		List(context.Background(), v1.ListOptions{})
+	pods, err := clientset.CoreV1().Pods(v1.NamespaceAll).
+		List(context.Background(), v1.ListOptions{
+			LabelSelector: "app=deployment-validation-operator",
+		})
 	if err != nil {
-		return "", fmt.Errorf("getting deployments from clientset: %w", err)
+		return "", fmt.Errorf("getting DVO pod from clientset: %w", err)
 	}
 
-	for _, deployment := range deployments.Items {
-		if deployment.GetName() == dvoConfig.OperatorName {
-			return deployment.GetNamespace(), nil
+	for i := range pods.Items {
+		if strings.Contains(pods.Items[i].GetName(), dvoConfig.OperatorNamespace) {
+			return pods.Items[i].GetNamespace(), nil
 		}
 	}
 
-	// set 'deployment-validation-operator' as default value
-	return dvoConfig.OperatorNamespace, nil
+	return "", fmt.Errorf("could not find DVO pod")
 }
