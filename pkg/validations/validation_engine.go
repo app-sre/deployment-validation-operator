@@ -2,13 +2,13 @@ package validations
 
 import (
 	// Used to embed yamls by kube-linter
-	"context"
+
 	_ "embed" // nolint:golint
 	"fmt"
 	"os"
 
 	// Import checks from DVO
-	"github.com/app-sre/deployment-validation-operator/pkg/configmap"
+
 	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all" // nolint:golint
 
 	"golang.stackrox.io/kube-linter/pkg/checkregistry"
@@ -32,10 +32,9 @@ type ValidationEngine struct {
 	enabledChecks    []string
 	registeredChecks map[string]config.Check
 	metrics          map[string]*prometheus.GaugeVec
-	cmWatcher        *configmap.Watcher
 }
 
-// NewEngine creates a new ValidationEngine instance with the provided configuration path, a watcher, and metrics.
+// InitEngine creates a new ValidationEngine instance with the provided configuration path, a watcher, and metrics.
 // It initializes a ValidationEngine with the provided watcher for configmap changes and a set of preloaded metrics.
 // The engine's configuration is loaded from the specified configuration path, and its check registry is initialized.
 //
@@ -45,29 +44,23 @@ type ValidationEngine struct {
 //   - metrics: A map of preloaded Prometheus GaugeVec metrics.
 //
 // Returns:
-//   - A pointer to a new ValidationEngine instance if successful.
 //   - An error if there's an issue loading the configuration or initializing the check registry.
-func NewEngine(
-	configPath string,
-	cmw configmap.Watcher,
-	metrics map[string]*prometheus.GaugeVec,
-) (*ValidationEngine, error) {
+func InitEngine(configPath string, metrics map[string]*prometheus.GaugeVec) error {
 	ve := &ValidationEngine{
-		cmWatcher: &cmw,
-		metrics:   metrics,
+		metrics: metrics,
 	}
 
 	err := ve.LoadConfig(configPath)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = ve.InitRegistry()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return ve, nil
+	return nil
 }
 
 func (ve *ValidationEngine) CheckRegistry() checkregistry.CheckRegistry {
@@ -201,23 +194,6 @@ func (ve *ValidationEngine) GetCheckByName(name string) (config.Check, error) {
 		return config.Check{}, fmt.Errorf("check '%s' is not registered", name)
 	}
 	return check, nil
-}
-
-// Start will overwrite validations if no error appears with the new config
-func (ve *ValidationEngine) Start(ctx context.Context) error {
-	for {
-		select {
-		case cfg := <-ve.cmWatcher.ConfigChanged():
-			ve.config = cfg
-			err := ve.InitRegistry()
-			if err != nil {
-				fmt.Printf("error updating configuration from ConfigMap: %v\n", cfg)
-			}
-
-		case <-ctx.Done():
-			return nil
-		}
-	}
 }
 
 // disableIncompatibleChecks will forcibly update a kube-linter config

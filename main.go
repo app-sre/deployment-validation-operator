@@ -128,13 +128,9 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 
 	log.Info("Initialize Validation Engine")
 
-	validationEngine, err := validations.NewEngine(opts.ConfigFile, cmWatcher, metrics)
+	err = validations.InitEngine(opts.ConfigFile, metrics)
 	if err != nil {
 		return nil, fmt.Errorf("initializing validation engine: %w", err)
-	}
-
-	if err := mgr.Add(validationEngine); err != nil {
-		return nil, fmt.Errorf("adding validationEngine to manager: %w", err)
 	}
 
 	log.Info("Initialize Reconciler")
@@ -144,7 +140,7 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 		return nil, fmt.Errorf("initializing discovery client: %w", err)
 	}
 
-	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient)
+	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient, cmWatcher)
 	if err != nil {
 		return nil, fmt.Errorf("initializing generic reconciler: %w", err)
 	}
