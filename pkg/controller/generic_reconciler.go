@@ -45,7 +45,7 @@ type GenericReconciler struct {
 func NewGenericReconciler(
 	client client.Client,
 	discovery discovery.DiscoveryInterface,
-	cmw configmap.Watcher,
+	cmw *configmap.Watcher,
 ) (*GenericReconciler, error) {
 	listLimit, err := getListLimit()
 	if err != nil {
@@ -60,7 +60,7 @@ func NewGenericReconciler(
 		objectValidationCache: newValidationCache(),
 		currentObjects:        newValidationCache(),
 		logger:                ctrl.Log.WithName("reconcile"),
-		cmWatcher:             &cmw,
+		cmWatcher:             cmw,
 	}, nil
 }
 

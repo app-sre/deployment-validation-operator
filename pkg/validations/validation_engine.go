@@ -38,6 +38,7 @@ type ValidationEngine struct {
 // InitEngine creates a new ValidationEngine instance with the provided configuration path, a watcher, and metrics.
 // It initializes a ValidationEngine with the provided watcher for configmap changes and a set of preloaded metrics.
 // The engine's configuration is loaded from the specified configuration path, and its check registry is initialized.
+// InitRegistry sets this instance in the package scope in engine variable.
 //
 // Parameters:
 //   - configPath: The path to the configuration file for the ValidationEngine.

@@ -140,7 +140,7 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 		return nil, fmt.Errorf("initializing discovery client: %w", err)
 	}
 
-	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient, cmWatcher)
+	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient, &cmWatcher)
 	if err != nil {
 		return nil, fmt.Errorf("initializing generic reconciler: %w", err)
 	}
