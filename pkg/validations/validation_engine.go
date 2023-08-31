@@ -6,6 +6,7 @@ import (
 	_ "embed" // nolint:golint
 	"fmt"
 	"os"
+	"regexp"
 
 	// Import checks from DVO
 
@@ -134,7 +135,7 @@ func (ve *ValidationEngine) InitRegistry() error {
 		return err
 	}
 
-	enabledChecks, err := configresolver.GetEnabledChecksAndValidate(&ve.config, registry)
+	enabledChecks, err := ve.getValidChecks(registry)
 	if err != nil {
 		log.Error(err, "error finding enabled validations")
 		return err
@@ -194,6 +195,52 @@ func (ve *ValidationEngine) GetCheckByName(name string) (config.Check, error) {
 		return config.Check{}, fmt.Errorf("check '%s' is not registered", name)
 	}
 	return check, nil
+}
+
+// getValidChecks function fetches and validates the list of enabled checks from the ValidationEngine's
+// configuration. It uses the provided check registry to validate the enabled checks against available checks.
+// If any checks are found to be invalid (not present in the check registry), they are removed from the configuration.
+// The function then recursively calls itself to fetch a new list of valid checks without the invalid ones.
+func (ve *ValidationEngine) getValidChecks(registry checkregistry.CheckRegistry) ([]string, error) {
+	enabledChecks, err := configresolver.GetEnabledChecksAndValidate(&ve.config, registry)
+	if err != nil {
+		// error format from configresolver:
+		// "enabled checks validation error: [check \"check name\" not found, ...]"}
+		re := regexp.MustCompile(`check \"([^,]*)\" not found`)
+		if matches := re.FindAllStringSubmatch(err.Error(), -1); matches != nil {
+			for i := range matches {
+				log.Info("entered ConfigMap check was not validated and is ignored",
+					"validation name", matches[i][1],
+				)
+				ve.removeCheckFromConfig(matches[i][1])
+			}
+			return ve.getValidChecks(registry)
+		}
+		return []string{}, err
+	}
+
+	return enabledChecks, nil
+}
+
+// removeCheckFromConfig function searches for the given check name in both the "Include" and "Exclude" lists
+// of checks in the ValidationEngine's configuration. If the check is found in either list, it is removed by updating
+// the respective list.
+func (ve *ValidationEngine) removeCheckFromConfig(check string) {
+	include := ve.config.Checks.Include
+	for i := 0; i < len(include); i++ {
+		if include[i] == check {
+			ve.config.Checks.Include = append(include[:i], include[i+1:]...)
+			return
+		}
+	}
+
+	exclude := ve.config.Checks.Exclude
+	for i := 0; i < len(exclude); i++ {
+		if exclude[i] == check {
+			ve.config.Checks.Exclude = append(exclude[:i], exclude[i+1:]...)
+			return
+		}
+	}
 }
 
 // disableIncompatibleChecks will forcibly update a kube-linter config
