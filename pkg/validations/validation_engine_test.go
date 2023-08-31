@@ -28,7 +28,7 @@ func TestGetValidChecks(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			// Given
-			mock := ValidationEngine{
+			mock := validationEngine{
 				config: config.Config{
 					Checks: config.ChecksConfig{
 						DoNotAutoAddDefaults: true,
@@ -80,7 +80,7 @@ func TestRemoveCheckFromConfig(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			// Given
-			mock := ValidationEngine{config: config.Config{Checks: testCase.cfg}}
+			mock := validationEngine{config: config.Config{Checks: testCase.cfg}}
 
 			// When
 			mock.removeCheckFromConfig(testCase.check)

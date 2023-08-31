@@ -25,9 +25,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-var engine ValidationEngine
+var engine validationEngine
 
-type ValidationEngine struct {
+type validationEngine struct {
 	config           config.Config
 	registry         checkregistry.CheckRegistry
 	enabledChecks    []string
@@ -48,7 +48,7 @@ type ValidationEngine struct {
 // Returns:
 //   - An error if there's an issue loading the configuration or initializing the check registry.
 func InitEngine(configPath string, metrics map[string]*prometheus.GaugeVec) error {
-	ve := &ValidationEngine{
+	ve := &validationEngine{
 		metrics: metrics,
 	}
 
@@ -65,11 +65,11 @@ func InitEngine(configPath string, metrics map[string]*prometheus.GaugeVec) erro
 	return nil
 }
 
-func (ve *ValidationEngine) CheckRegistry() checkregistry.CheckRegistry {
+func (ve *validationEngine) CheckRegistry() checkregistry.CheckRegistry {
 	return ve.registry
 }
 
-func (ve *ValidationEngine) EnabledChecks() []string {
+func (ve *validationEngine) EnabledChecks() []string {
 	return ve.enabledChecks
 }
 
@@ -82,7 +82,7 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func (ve *ValidationEngine) LoadConfig(path string) error {
+func (ve *validationEngine) LoadConfig(path string) error {
 	if !fileExists(path) {
 		log.Info(fmt.Sprintf("config file %s does not exist. Use default configuration", path))
 		// TODO - This hardcode will be removed when a ConfigMap is set by default in regular installation
@@ -123,7 +123,7 @@ type PrometheusRegistry interface {
 	Register(prometheus.Collector) error
 }
 
-func (ve *ValidationEngine) InitRegistry() error {
+func (ve *validationEngine) InitRegistry() error {
 	disableIncompatibleChecks(&ve.config)
 
 	registry, err := GetKubeLinterRegistry()
@@ -160,7 +160,7 @@ func (ve *ValidationEngine) InitRegistry() error {
 	return nil
 }
 
-func (ve *ValidationEngine) GetMetric(name string) *prometheus.GaugeVec {
+func (ve *validationEngine) GetMetric(name string) *prometheus.GaugeVec {
 	m, ok := ve.metrics[name]
 	if !ok {
 		return nil
@@ -168,13 +168,13 @@ func (ve *ValidationEngine) GetMetric(name string) *prometheus.GaugeVec {
 	return m
 }
 
-func (ve *ValidationEngine) DeleteMetrics(labels prometheus.Labels) {
+func (ve *validationEngine) DeleteMetrics(labels prometheus.Labels) {
 	for _, vector := range ve.metrics {
 		vector.Delete(labels)
 	}
 }
 
-func (ve *ValidationEngine) ClearMetrics(reports []diagnostic.WithContext, labels prometheus.Labels) {
+func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, labels prometheus.Labels) {
 	// Create a list of validation names for use to delete the labels from any
 	// metric which isn't in the report but for which there is a metric
 	reportValidationNames := map[string]struct{}{}
@@ -190,7 +190,7 @@ func (ve *ValidationEngine) ClearMetrics(reports []diagnostic.WithContext, label
 	}
 }
 
-func (ve *ValidationEngine) GetCheckByName(name string) (config.Check, error) {
+func (ve *validationEngine) GetCheckByName(name string) (config.Check, error) {
 	check, ok := ve.registeredChecks[name]
 	if !ok {
 		return config.Check{}, fmt.Errorf("check '%s' is not registered", name)
@@ -202,7 +202,7 @@ func (ve *ValidationEngine) GetCheckByName(name string) (config.Check, error) {
 // configuration. It uses the provided check registry to validate the enabled checks against available checks.
 // If any checks are found to be invalid (not present in the check registry), they are removed from the configuration.
 // The function then recursively calls itself to fetch a new list of valid checks without the invalid ones.
-func (ve *ValidationEngine) getValidChecks(registry checkregistry.CheckRegistry) ([]string, error) {
+func (ve *validationEngine) getValidChecks(registry checkregistry.CheckRegistry) ([]string, error) {
 	enabledChecks, err := configresolver.GetEnabledChecksAndValidate(&ve.config, registry)
 	if err != nil {
 		// error format from configresolver:
@@ -226,7 +226,7 @@ func (ve *ValidationEngine) getValidChecks(registry checkregistry.CheckRegistry)
 // removeCheckFromConfig function searches for the given check name in both the "Include" and "Exclude" lists
 // of checks in the ValidationEngine's configuration. If the check is found in either list, it is removed by updating
 // the respective list.
-func (ve *ValidationEngine) removeCheckFromConfig(check string) {
+func (ve *validationEngine) removeCheckFromConfig(check string) {
 	include := ve.config.Checks.Include
 	for i := 0; i < len(include); i++ {
 		if include[i] == check {

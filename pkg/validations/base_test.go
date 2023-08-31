@@ -28,13 +28,13 @@ const (
 	customCheckTemplate    = "minimum-replicas"
 )
 
-func newEngine(c config.Config) (ValidationEngine, error) {
-	ve := ValidationEngine{
+func newEngine(c config.Config) (validationEngine, error) {
+	ve := validationEngine{
 		config: c,
 	}
 	loadErr := ve.InitRegistry()
 	if loadErr != nil {
-		return ValidationEngine{}, loadErr
+		return validationEngine{}, loadErr
 	}
 	// checks now are preloaded, adding them after Registry init
 	ve.metrics = make(map[string]*prometheus.GaugeVec)
@@ -339,7 +339,7 @@ func stringInSlice(a string, list []string) bool {
 
 // getAllBuiltInKubeLinterChecks returns every check built-into kube-linter (including checks that DVO disables)
 func getAllBuiltInKubeLinterChecks() ([]string, error) {
-	ve := ValidationEngine{
+	ve := validationEngine{
 		config: newEngineConfigWithAllChecks(),
 	}
 	registry := checkregistry.New()
