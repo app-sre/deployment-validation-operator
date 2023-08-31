@@ -967,5 +967,5 @@ func createTestReconciler(scheme *runtime.Scheme, objects []client.Object) (*Gen
 	}
 	client := cliBuilder.Build()
 	cli := kubefake.NewSimpleClientset()
-	return NewGenericReconciler(client, cli.Discovery(), configmap.Watcher{})
+	return NewGenericReconciler(client, cli.Discovery(), &configmap.Watcher{})
 }

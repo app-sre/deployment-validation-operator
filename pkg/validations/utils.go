@@ -77,14 +77,17 @@ func newGaugeVecMetric(check klConfig.Check) *prometheus.GaugeVec {
 		}, []string{"namespace_uid", "namespace", "uid", "name", "kind"})
 }
 
+// UpdateConfig provides an access to setup new configuration for the generic reconciler
 func UpdateConfig(cfg klConfig.Config) {
 	engine.config = cfg
 }
 
+// InitRegistry forces Validation Engine to initialize a new registry
 func InitRegistry() error {
 	return engine.InitRegistry()
 }
 
+// ResetMetrics resets all the metrics registered in the Validation Engine
 func ResetMetrics() {
 	for _, metric := range engine.metrics {
 		metric.Reset()

@@ -125,9 +125,7 @@ func (gr *GenericReconciler) LookForConfigUpdates(ctx context.Context) {
 	for {
 		select {
 		case cfg := <-gr.cmWatcher.ConfigChanged():
-			//ve.config = cfg
-			validations.UpdateConfig(cfg) // save previous configuration in case of rollback
-			//err := ve.InitRegistry()
+			validations.UpdateConfig(cfg)
 			err := validations.InitRegistry()
 			if err == nil {
 				gr.objectValidationCache.drain()
