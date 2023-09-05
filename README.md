@@ -143,7 +143,7 @@ You can run the unit tests via
 make test
 ```
 
-The end-to-end tests depend on [`ginkgo`](https://onsi.github.io/ginkgo/#installing-ginkgo). After exporting a `KUBECONFIG` variable, it can be ran via
+The end-to-end tests depend on [`ginkgo`](https://onsi.github.io/ginkgo/#installing-ginkgo). After exporting a `KUBECONFIG` variable, it can be run via
 
 ```
 make e2e-test
@@ -151,6 +151,16 @@ make e2e-test
 
 We use [openshift boilerplate](https://github.com/openshift/boilerplate) to manage our make targets. See this [doc](https://github.com/openshift/boilerplate/blob/master/boilerplate/openshift/golang-osd-operator/README.md) for further information.
 
+The OCP e2e PR checks exist in the [deployment-validation-operator-tests](https://gitlab.cee.redhat.com/ccx/deployment-validation-operator-tests) repository.
+Tests are developed there and once a new build is done, the image is pushed onto [quay.io](https://quay.io/repository/redhatqe/deployment-validation-operator-tests).
+This image is then mirrored by the mirroring job in openshift release with this [config](https://github.com/openshift/release/blob/master/core-services/image-mirroring/supplemental-ci-images/mapping_supplemental_ci_images_ci#L22).
+The config file for the e2e tests job is then found [here](https://github.com/openshift/release/blob/master/ci-operator/config/app-sre/deployment-validation-operator/app-sre-deployment-validation-operator-master.yaml).
+
+Since these tests depend on the content of the deploy/openshift folder, if any changes are done there, please run the following command:
+```
+operator-sdk generate bundle --package=deployment-validation-operator --input-dir=deploy/openshift
+```
+It is then necessary to head to bundle/manifests/clusterserviceversion.yaml and search for and remove the NodeAffinity section.
 
 ## Releases
 
