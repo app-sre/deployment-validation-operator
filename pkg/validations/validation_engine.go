@@ -85,22 +85,7 @@ func fileExists(filename string) bool {
 func (ve *validationEngine) LoadConfig(path string) error {
 	if !fileExists(path) {
 		log.Info(fmt.Sprintf("config file %s does not exist. Use default configuration", path))
-		// TODO - This hardcode will be removed when a ConfigMap is set by default in regular installation
-		ve.config.Checks.DoNotAutoAddDefaults = true
-		ve.config.Checks.Include = []string{
-			"host-ipc",
-			"host-network",
-			"host-pid",
-			"non-isolated-pod",
-			"pdb-max-unavailable",
-			"pdb-min-available",
-			"privilege-escalation-container",
-			"privileged-container",
-			"run-as-non-root",
-			"unsafe-sysctls",
-			"unset-cpu-requirements",
-			"unset-memory-requirements",
-		}
+		ve.config.Checks = GetDefaultChecks()
 
 		return nil
 	}

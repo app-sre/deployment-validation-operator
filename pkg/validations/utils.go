@@ -93,3 +93,24 @@ func ResetMetrics() {
 		metric.Reset()
 	}
 }
+
+// GetDefaultChecks provides a default set of checks usable in case there is no custom ConfigMap
+func GetDefaultChecks() klConfig.ChecksConfig {
+	return klConfig.ChecksConfig{
+		DoNotAutoAddDefaults: true,
+		Include: []string{
+			"host-ipc",
+			"host-network",
+			"host-pid",
+			"non-isolated-pod",
+			"pdb-max-unavailable",
+			"pdb-min-available",
+			"privilege-escalation-container",
+			"privileged-container",
+			"run-as-non-root",
+			"unsafe-sysctls",
+			"unset-cpu-requirements",
+			"unset-memory-requirements",
+		},
+	}
+}

@@ -10,6 +10,7 @@ import (
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"gopkg.in/yaml.v3"
 
+	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/go-logr/logr"
 	apicorev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -134,6 +135,11 @@ func (cmw Watcher) Start(ctx context.Context) error {
 			}
 
 			cmw.ch <- cfg
+		},
+		DeleteFunc: func(_ interface{}) {
+			cmw.ch <- config.Config{
+				Checks: validations.GetDefaultChecks(),
+			}
 		},
 	})
 
