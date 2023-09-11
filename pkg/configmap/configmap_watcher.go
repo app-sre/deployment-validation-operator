@@ -43,7 +43,6 @@ type Watcher struct {
 }
 
 var configMapName = "deployment-validation-operator-config"
-var configMapNamespace = "deployment-validation-operator"
 var configMapDataAccess = "deployment-validation-operator-config.yaml"
 
 // NewWatcher creates a new Watcher instance for observing changes to a ConfigMap.
@@ -52,21 +51,21 @@ var configMapDataAccess = "deployment-validation-operator-config.yaml"
 //   - cfg: A pointer to a rest.Config representing the Kubernetes client configuration.
 //
 // Returns:
-//   - A Watcher instance for monitoring changes to DVO ConfigMap resource if the initialization is successful.
+//   - A pointer to a Watcher instance for monitoring changes to DVO ConfigMap resource.
 //   - An error if there's an issue while initializing the Kubernetes clientset.
-func NewWatcher(cfg *rest.Config) (Watcher, error) {
+func NewWatcher(cfg *rest.Config) (*Watcher, error) {
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return Watcher{}, fmt.Errorf("initializing clientset: %w", err)
+		return nil, fmt.Errorf("initializing clientset: %w", err)
 	}
 
 	// the Informer will use this to monitor the namespace for the ConfigMap.
 	namespace, err := getPodNamespace()
 	if err != nil {
-		return Watcher{}, fmt.Errorf("getting namespace: %w", err)
+		return nil, fmt.Errorf("getting namespace: %w", err)
 	}
 
-	return Watcher{
+	return &Watcher{
 		clientset: clientset,
 		logger:    log.Log.WithName("ConfigMapWatcher"),
 		ch:        make(chan config.Config),
@@ -136,7 +135,15 @@ func (cmw Watcher) Start(ctx context.Context) error {
 
 			cmw.ch <- cfg
 		},
-		DeleteFunc: func(_ interface{}) {
+		DeleteFunc: func(oldObj interface{}) {
+			cm := oldObj.(*apicorev1.ConfigMap)
+
+			cmw.logger.Info(
+				"a ConfigMap has been deleted under watched namespace",
+				"name", cm.GetName(),
+				"namespace", cm.GetNamespace(),
+			)
+
 			cmw.ch <- config.Config{
 				Checks: validations.GetDefaultChecks(),
 			}

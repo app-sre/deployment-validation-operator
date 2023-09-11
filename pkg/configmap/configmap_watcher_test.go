@@ -13,6 +13,8 @@ import (
 )
 
 func TestStaticConfigMapWatcher(t *testing.T) {
+	var configMapNamespace = "deployment-validation-operator"
+
 	testCases := []struct {
 		name   string
 		data   string
