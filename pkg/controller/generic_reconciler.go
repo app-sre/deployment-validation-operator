@@ -185,6 +185,10 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 	sort.Slice(gvks, func(i, j int) bool {
 		f := gvks[i]
 		s := gvks[j]
+		// sort resource by Kind in the same group
+		if f.Group == s.Group {
+			return f.Kind < s.Kind
+		}
 		return f.Group < s.Group
 	})
 
