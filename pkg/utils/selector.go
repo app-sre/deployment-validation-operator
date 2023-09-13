@@ -9,8 +9,11 @@ type manifestPath []string
 
 var (
 	// known manifest/resource paths for selector requirements
-	selectorMatchLabels         manifestPath = []string{"spec", "selector", "matchLabels"}
-	podSelectorMatchLabels      manifestPath = []string{"spec", "podSelector", "matchLabels"}
+	selectorMatchLabels    manifestPath = []string{"spec", "selector", "matchLabels"}
+	podSelectorMatchLabels manifestPath = []string{"spec", "podSelector", "matchLabels"}
+	// v1.Service, v1.ReplicationController defines the selector as map[string]string
+	// (and not as metav1.LabelSelector) in the ".spec.selector" path
+	selectorMap                 manifestPath = []string{"spec", "selector"}
 	selectorMatchExpressions    manifestPath = []string{"spec", "selector", "matchExpressions"}
 	podSelectorMatchExpressions manifestPath = []string{"spec", "podSelector", "matchExpressions"}
 )
@@ -40,7 +43,7 @@ func GetLabelSelector(object *unstructured.Unstructured) *metav1.LabelSelector {
 // readMatchLabels tries to parse known paths for the "matchLabels" attribute in the
 // unstructured object input
 func readMatchLabels(object *unstructured.Unstructured) map[string]string {
-	for _, path := range []manifestPath{selectorMatchLabels, podSelectorMatchLabels} {
+	for _, path := range []manifestPath{selectorMatchLabels, podSelectorMatchLabels, selectorMap} {
 		pathExists := pathExistsAsMap(object, path)
 		if pathExists {
 			matchLabels, _, _ := unstructured.NestedStringMap(object.Object, path...)

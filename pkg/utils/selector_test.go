@@ -201,6 +201,31 @@ func TestGetLabelSelector(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "selector defined as map[string]string with no metav1.LabelSelector",
+			unstructuredResource: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "Service",
+					"apiVersion": "v1",
+					"metadata": map[string]string{
+						"name":      "test-service",
+						"namespace": "test",
+					},
+					"spec": map[string]interface{}{
+						"selector": map[string]interface{}{
+							"app":         "A",
+							"environment": "production",
+						},
+					},
+				},
+			},
+			expectedLabelSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app":         "A",
+					"environment": "production",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

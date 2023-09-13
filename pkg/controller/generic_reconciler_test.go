@@ -542,6 +542,68 @@ func TestGroupAppObjects(t *testing.T) {
 				"app=A": {"deployment-A"},
 			},
 		},
+		{
+			name:      "Pods with different matching Services",
+			namespace: "test",
+			objs: []client.Object{
+				&v1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "service-A",
+						Namespace: "test",
+					},
+					Spec: v1.ServiceSpec{
+						Selector: map[string]string{
+							"app": "A",
+						},
+					},
+				},
+				&v1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "service-B",
+						Namespace: "test",
+					},
+					Spec: v1.ServiceSpec{
+						Selector: map[string]string{
+							"app": "B",
+						},
+					},
+				},
+				&v1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-A",
+						Namespace: "test",
+						Labels: map[string]string{
+							"app": "A",
+						},
+					},
+				},
+				&v1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod-B",
+						Namespace: "test",
+						Labels: map[string]string{
+							"app": "B",
+						},
+					},
+				},
+			},
+			gvks: []schema.GroupVersionKind{
+				{
+					Group:   "",
+					Kind:    "Service",
+					Version: "v1",
+				},
+				{
+					Group:   "",
+					Kind:    "Pod",
+					Version: "v1",
+				},
+			},
+			expectedNames: map[string][]string{
+				"app=A": {"pod-A", "service-A"},
+				"app=B": {"pod-B", "service-B"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
