@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"fmt"
+	"runtime"
 	"testing"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
@@ -112,4 +114,33 @@ func TestValidationsCache(t *testing.T) {
 		assert.True(t, exists)
 		assert.Equal(t, validations.ObjectValid, resource2.outcome)
 	})
+}
+
+func printMemoryInfo(s string) {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	fmt.Printf("%s: %d KB\n", s, m.Alloc/1024)
+}
+
+func Benchmark_ValidationCache(b *testing.B) {
+	vc := newValidationCache()
+	printMemoryInfo("Memory consumption after empty cache creation")
+
+	for i := 0; i < b.N; i++ {
+		name := fmt.Sprintf("test-%d", i)
+		vc.store(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name}}, validations.ObjectValid)
+	}
+	printMemoryInfo(fmt.Sprintf("Memory consumption after storing %d items in the cache", b.N))
+	for i := 0; i < b.N; i++ {
+		name := fmt.Sprintf("test-%d", i)
+		vc.remove(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name}})
+	}
+	runtime.GC()
+	printMemoryInfo("Memory consumption after removing the items ")
+
+	for i := 0; i < b.N; i++ {
+		name := fmt.Sprintf("test-%d", i)
+		vc.store(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name}}, validations.ObjectValid)
+	}
+	printMemoryInfo(fmt.Sprintf("Memory consumption after storing %d items again", b.N))
 }
