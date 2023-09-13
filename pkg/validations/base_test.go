@@ -32,9 +32,15 @@ func newEngine(c config.Config) (validationEngine, error) {
 	ve := validationEngine{
 		config: c,
 	}
-	loadErr := ve.InitRegistry(prometheus.NewRegistry())
+	loadErr := ve.InitRegistry()
 	if loadErr != nil {
 		return validationEngine{}, loadErr
+	}
+	// checks now are preloaded, adding them after Registry init
+	ve.metrics = make(map[string]*prometheus.GaugeVec)
+	for _, checkName := range ve.EnabledChecks() {
+		check := ve.registeredChecks[checkName]
+		ve.metrics[checkName] = newGaugeVecMetric(check)
 	}
 	return ve, nil
 }

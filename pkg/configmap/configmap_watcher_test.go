@@ -1,4 +1,4 @@
-package controller
+package configmap
 
 import (
 	"context"
@@ -13,6 +13,8 @@ import (
 )
 
 func TestStaticConfigMapWatcher(t *testing.T) {
+	var configMapNamespace = "deployment-validation-operator"
+
 	testCases := []struct {
 		name   string
 		data   string
@@ -58,7 +60,7 @@ func TestStaticConfigMapWatcher(t *testing.T) {
 				},
 			}
 			client := kubefake.NewSimpleClientset([]runtime.Object{cm}...)
-			mock := ConfigMapWatcher{clientset: client}
+			mock := Watcher{clientset: client, namespace: configMapNamespace}
 
 			// When
 			test, err := mock.GetStaticKubelinterConfig(context.Background())

@@ -4,8 +4,8 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-    createdAt: "2023-08-24T07:58:38Z"
-    operators.operatorframework.io/builder: operator-sdk-v1.28.1
+    createdAt: "2023-09-12T14:13:09Z"
+    operators.operatorframework.io/builder: operator-sdk-v1.31.0+git
     operators.operatorframework.io/project_layout: unknown
   name: deployment-validation-operator.v0.0.0
   namespace: placeholder
@@ -82,6 +82,10 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.name
+                - name: POD_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
                 image: quay.io/deployment-validation-operator/dv-operator:latest
                 imagePullPolicy: Always
                 livenessProbe:

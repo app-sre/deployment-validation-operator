@@ -7,10 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/app-sre/deployment-validation-operator/config"
+	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
+	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 )
 
 type Registry interface {
@@ -78,6 +81,70 @@ func getRouter(registry Registry, path string) (*http.ServeMux, error) {
 	mux.Handle(path, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 
 	return mux, nil
+}
+
+// PreloadMetrics preloads metrics related to predefined checks into the provided Prometheus registry.
+// It retrieves predefined checks from the linter registry, sets up corresponding GaugeVec metrics,
+// and registers them in the Prometheus registry.
+//
+// Parameters:
+//   - pr: A pointer to a Prometheus registry where the metrics will be registered.
+//
+// Returns:
+//   - A map of check names to corresponding GaugeVec metrics.
+//   - An error if any error occurs during metric setup or registration.
+func PreloadMetrics(pr *prometheus.Registry) (map[string]*prometheus.GaugeVec, error) {
+	preloadedMetrics := make(map[string]*prometheus.GaugeVec)
+
+	klr, err := validations.GetKubeLinterRegistry()
+	if err != nil {
+		return nil, err
+	}
+
+	checks, err := validations.GetAllNamesFromRegistry(klr)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, checkName := range checks {
+		metric, err := setupMetric(klr, checkName)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create metric for check %s", checkName)
+		}
+
+		if err := pr.Register(metric); err != nil {
+			return nil, fmt.Errorf("registering metric for check %q: %w", checkName, err)
+		}
+
+		preloadedMetrics[checkName] = metric
+	}
+
+	return preloadedMetrics, nil
+}
+
+// setupMetric sets up a Prometheus metric based on the provided checkname and information from a CheckRegistry.
+// The metric is created with the formatted name, description, and remediation information from the check specification.
+func setupMetric(reg checkregistry.CheckRegistry, name string) (*prometheus.GaugeVec, error) {
+	check := reg.Load(name)
+	if check == nil {
+		return nil, fmt.Errorf("unable to create metric for check %s", name)
+	}
+
+	return prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: strings.ReplaceAll(
+				fmt.Sprintf("%s_%s", config.OperatorName, check.Spec.Name),
+				"-", "_"),
+			Help: fmt.Sprintf(
+				"Description: %s ; Remediation: %s",
+				check.Spec.Description,
+				check.Spec.Remediation,
+			),
+			ConstLabels: prometheus.Labels{
+				"check_description": check.Spec.Description,
+				"check_remediation": check.Spec.Remediation,
+			},
+		}, []string{"namespace_uid", "namespace", "uid", "name", "kind"}), nil
 }
 
 type Server struct {

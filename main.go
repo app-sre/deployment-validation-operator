@@ -15,8 +15,9 @@ import (
 	apis "github.com/app-sre/deployment-validation-operator/api"
 	dvconfig "github.com/app-sre/deployment-validation-operator/config"
 	"github.com/app-sre/deployment-validation-operator/internal/options"
+	"github.com/app-sre/deployment-validation-operator/pkg/configmap"
 	"github.com/app-sre/deployment-validation-operator/pkg/controller"
-	dvo_prom "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
+	dvoProm "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
 	"github.com/prometheus/client_golang/prometheus"
@@ -86,56 +87,26 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 		return nil, fmt.Errorf("getting config: %w", err)
 	}
 
-	log.Info("Initialize Scheme")
-
-	scheme, err := initializeScheme()
-	if err != nil {
-		return nil, fmt.Errorf("initializing scheme: %w", err)
-	}
-
 	log.Info("Initialize Manager")
 
-	mgrOpts, err := getManagerOptions(scheme, opts)
-	if err != nil {
-		return nil, fmt.Errorf("getting manager options: %w", err)
-	}
-
-	mgr, err := manager.New(cfg, mgrOpts)
+	mgr, err := initManager(log, opts, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("initializing manager: %w", err)
 	}
 
-	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
-		return nil, fmt.Errorf("adding healthz check: %w", err)
-	}
-
-	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
-		return nil, fmt.Errorf("adding readyz check: %w", err)
-	}
-
 	log.Info("Registering Components")
 
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
-	if err != nil {
-		return nil, fmt.Errorf("initializing discovery client: %w", err)
-	}
-
-	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient)
-	if err != nil {
-		return nil, fmt.Errorf("initializing generic reconciler: %w", err)
-	}
-
-	if err = gr.AddToManager(mgr); err != nil {
-		return nil, fmt.Errorf("adding generic reconciler to manager: %w", err)
-	}
-
-	log.Info("Initializing Prometheus Registry")
+	log.Info("Initialize Prometheus Registry")
 
 	reg := prometheus.NewRegistry()
+	metrics, err := dvoProm.PreloadMetrics(reg)
+	if err != nil {
+		return nil, fmt.Errorf("preloading kube-linter metrics: %w", err)
+	}
 
-	log.Info(fmt.Sprintf("Initializing Prometheus metrics endpoint on %q", opts.MetricsEndpoint()))
+	log.Info(fmt.Sprintf("Initialize Prometheus metrics endpoint on %q", opts.MetricsEndpoint()))
 
-	srv, err := dvo_prom.NewServer(reg, opts.MetricsPath, fmt.Sprintf(":%d", opts.MetricsPort))
+	srv, err := dvoProm.NewServer(reg, opts.MetricsPath, fmt.Sprintf(":%d", opts.MetricsPort))
 	if err != nil {
 		return nil, fmt.Errorf("initializing metrics server: %w", err)
 	}
@@ -144,10 +115,38 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 		return nil, fmt.Errorf("adding metrics server to manager: %w", err)
 	}
 
-	log.Info("Initializing Validation Engine")
+	log.Info("Initialize ConfigMap watcher")
 
-	if err := validations.InitializeValidationEngine(opts.ConfigFile, reg); err != nil {
+	cmWatcher, err := configmap.NewWatcher(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("initializing configmap watcher: %w", err)
+	}
+
+	if err := mgr.Add(cmWatcher); err != nil {
+		return nil, fmt.Errorf("adding configmap watcher to manager: %w", err)
+	}
+
+	log.Info("Initialize Validation Engine")
+
+	err = validations.InitEngine(opts.ConfigFile, metrics)
+	if err != nil {
 		return nil, fmt.Errorf("initializing validation engine: %w", err)
+	}
+
+	log.Info("Initialize Reconciler")
+
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
+	if err != nil {
+		return nil, fmt.Errorf("initializing discovery client: %w", err)
+	}
+
+	gr, err := controller.NewGenericReconciler(mgr.GetClient(), discoveryClient, cmWatcher)
+	if err != nil {
+		return nil, fmt.Errorf("initializing generic reconciler: %w", err)
+	}
+
+	if err = gr.AddToManager(mgr); err != nil {
+		return nil, fmt.Errorf("adding generic reconciler to manager: %w", err)
 	}
 
 	return mgr, nil
@@ -234,4 +233,34 @@ func kubeClientQPS() (float32, error) {
 	}
 	qps = float32(val)
 	return qps, err
+}
+
+func initManager(log logr.Logger, opts options.Options, cfg *rest.Config) (manager.Manager, error) {
+	log.Info("Initialize Scheme")
+	scheme, err := initializeScheme()
+	if err != nil {
+		return nil, fmt.Errorf("initializing scheme: %w", err)
+	}
+
+	log.Info("Getting Manager Options")
+	mgrOpts, err := getManagerOptions(scheme, opts)
+	if err != nil {
+		return nil, fmt.Errorf("getting manager options: %w", err)
+	}
+
+	mgr, err := manager.New(cfg, mgrOpts)
+	if err != nil {
+		return nil, fmt.Errorf("getting new manager: %w", err)
+	}
+
+	log.Info("Adding Healthz and Readyz checks")
+	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
+		return nil, fmt.Errorf("adding healthz check: %w", err)
+	}
+
+	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
+		return nil, fmt.Errorf("adding readyz check: %w", err)
+	}
+
+	return mgr, nil
 }

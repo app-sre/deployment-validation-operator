@@ -2,22 +2,23 @@ package validations
 
 import (
 	// Used to embed yamls by kube-linter
-	_ "embed"
+
+	_ "embed" // nolint:golint
 	"fmt"
 	"os"
-	"strings"
+	"regexp"
 
 	// Import checks from DVO
-	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all"
 
-	"golang.stackrox.io/kube-linter/pkg/builtinchecks"
+	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all" // nolint:golint
+
 	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"golang.stackrox.io/kube-linter/pkg/configresolver"
 	"golang.stackrox.io/kube-linter/pkg/diagnostic"
 
 	// Import and initialize all check templates from kube-linter
-	_ "golang.stackrox.io/kube-linter/pkg/templates/all"
+	_ "golang.stackrox.io/kube-linter/pkg/templates/all" // nolint:golint
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -32,6 +33,36 @@ type validationEngine struct {
 	enabledChecks    []string
 	registeredChecks map[string]config.Check
 	metrics          map[string]*prometheus.GaugeVec
+}
+
+// InitEngine creates a new ValidationEngine instance with the provided configuration path, a watcher, and metrics.
+// It initializes a ValidationEngine with the provided watcher for configmap changes and a set of preloaded metrics.
+// The engine's configuration is loaded from the specified configuration path, and its check registry is initialized.
+// InitRegistry sets this instance in the package scope in engine variable.
+//
+// Parameters:
+//   - configPath: The path to the configuration file for the ValidationEngine.
+//   - cmw: A configmap.Watcher for monitoring changes to configmaps.
+//   - metrics: A map of preloaded Prometheus GaugeVec metrics.
+//
+// Returns:
+//   - An error if there's an issue loading the configuration or initializing the check registry.
+func InitEngine(configPath string, metrics map[string]*prometheus.GaugeVec) error {
+	ve := &validationEngine{
+		metrics: metrics,
+	}
+
+	err := ve.LoadConfig(configPath)
+	if err != nil {
+		return err
+	}
+
+	err = ve.InitRegistry()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (ve *validationEngine) CheckRegistry() checkregistry.CheckRegistry {
@@ -54,22 +85,7 @@ func fileExists(filename string) bool {
 func (ve *validationEngine) LoadConfig(path string) error {
 	if !fileExists(path) {
 		log.Info(fmt.Sprintf("config file %s does not exist. Use default configuration", path))
-		// TODO - This hardcode will be removed when a ConfigMap is set by default in regular installation
-		ve.config.Checks.DoNotAutoAddDefaults = true
-		ve.config.Checks.Include = []string{
-			"host-ipc",
-			"host-network",
-			"host-pid",
-			"non-isolated-pod",
-			"pdb-max-unavailable",
-			"pdb-min-available",
-			"privilege-escalation-container",
-			"privileged-container",
-			"run-as-non-root",
-			"unsafe-sysctls",
-			"unset-cpu-requirements",
-			"unset-memory-requirements",
-		}
+		ve.config.Checks = GetDefaultChecks()
 
 		return nil
 	}
@@ -82,6 +98,7 @@ func (ve *validationEngine) LoadConfig(path string) error {
 		log.Error(err, "failed to load config")
 		return err
 	}
+
 	ve.config = config
 
 	return nil
@@ -91,12 +108,11 @@ type PrometheusRegistry interface {
 	Register(prometheus.Collector) error
 }
 
-func (ve *validationEngine) InitRegistry(promReg PrometheusRegistry) error {
+func (ve *validationEngine) InitRegistry() error {
 	disableIncompatibleChecks(&ve.config)
 
-	registry := checkregistry.New()
-	if err := builtinchecks.LoadInto(registry); err != nil {
-		log.Error(err, "failed to load built-in validations")
+	registry, err := GetKubeLinterRegistry()
+	if err != nil {
 		return err
 	}
 
@@ -105,13 +121,12 @@ func (ve *validationEngine) InitRegistry(promReg PrometheusRegistry) error {
 		return err
 	}
 
-	enabledChecks, err := configresolver.GetEnabledChecksAndValidate(&ve.config, registry)
+	enabledChecks, err := ve.getValidChecks(registry)
 	if err != nil {
 		log.Error(err, "error finding enabled validations")
 		return err
 	}
 
-	validationMetrics := map[string]*prometheus.GaugeVec{}
 	registeredChecks := map[string]config.Check{}
 	for _, checkName := range enabledChecks {
 		check := registry.Load(checkName)
@@ -119,28 +134,13 @@ func (ve *validationEngine) InitRegistry(promReg PrometheusRegistry) error {
 			return fmt.Errorf("unable to create metric for check %s", checkName)
 		}
 		registeredChecks[check.Spec.Name] = check.Spec
-		metric := newGaugeVecMetric(
-			strings.ReplaceAll(check.Spec.Name, "-", "_"),
-			fmt.Sprintf("Description: %s ; Remediation: %s",
-				check.Spec.Description, check.Spec.Remediation),
-			[]string{"namespace_uid", "namespace", "uid", "name", "kind"},
-			prometheus.Labels{
-				"check_description": check.Spec.Description,
-				"check_remediation": check.Spec.Remediation,
-			},
-		)
-
-		if err := promReg.Register(metric); err != nil {
-			return fmt.Errorf("registering metric for check %q: %w", check.Spec.Name, err)
-		}
-
-		validationMetrics[checkName] = metric
 	}
 
 	ve.registry = registry
 	ve.enabledChecks = enabledChecks
-	ve.metrics = validationMetrics
 	ve.registeredChecks = registeredChecks
+
+	engine = *ve
 
 	return nil
 }
@@ -175,34 +175,58 @@ func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, label
 	}
 }
 
-// InitializeValidationEngine will initialize the validation engine from scratch.
-// If an existing engine exists, it will not be replaced with the new one unless all
-// initialization steps succeed.
-func InitializeValidationEngine(configPath string, reg PrometheusRegistry) error {
-	ve := validationEngine{}
-
-	err := ve.LoadConfig(configPath)
-	if err != nil {
-		return err
-	}
-
-	err = ve.InitRegistry(reg)
-	if err != nil {
-		return err
-	}
-
-	// Only replace the exisiting engine if no errors occurred
-	engine = ve
-
-	return nil
-}
-
 func (ve *validationEngine) GetCheckByName(name string) (config.Check, error) {
 	check, ok := ve.registeredChecks[name]
 	if !ok {
 		return config.Check{}, fmt.Errorf("check '%s' is not registered", name)
 	}
 	return check, nil
+}
+
+// getValidChecks function fetches and validates the list of enabled checks from the ValidationEngine's
+// configuration. It uses the provided check registry to validate the enabled checks against available checks.
+// If any checks are found to be invalid (not present in the check registry), they are removed from the configuration.
+// The function then recursively calls itself to fetch a new list of valid checks without the invalid ones.
+func (ve *validationEngine) getValidChecks(registry checkregistry.CheckRegistry) ([]string, error) {
+	enabledChecks, err := configresolver.GetEnabledChecksAndValidate(&ve.config, registry)
+	if err != nil {
+		// error format from configresolver:
+		// "enabled checks validation error: [check \"check name\" not found, ...]"}
+		re := regexp.MustCompile(`check \"([^,]*)\" not found`)
+		if matches := re.FindAllStringSubmatch(err.Error(), -1); matches != nil {
+			for i := range matches {
+				log.Info("entered ConfigMap check was not validated and is ignored",
+					"validation name", matches[i][1],
+				)
+				ve.removeCheckFromConfig(matches[i][1])
+			}
+			return ve.getValidChecks(registry)
+		}
+		return []string{}, err
+	}
+
+	return enabledChecks, nil
+}
+
+// removeCheckFromConfig function searches for the given check name in both the "Include" and "Exclude" lists
+// of checks in the ValidationEngine's configuration. If the check is found in either list, it is removed by updating
+// the respective list.
+func (ve *validationEngine) removeCheckFromConfig(check string) {
+	include := ve.config.Checks.Include
+	for i := 0; i < len(include); i++ {
+		if include[i] == check {
+			ve.config.Checks.Include = append(include[:i], include[i+1:]...)
+			return
+		}
+	}
+
+	exclude := ve.config.Checks.Exclude
+	for i := 0; i < len(exclude); i++ {
+		if exclude[i] == check {
+			ve.config.Checks.Exclude = append(exclude[:i], exclude[i+1:]...)
+			return
+		}
+	}
 }
 
 // disableIncompatibleChecks will forcibly update a kube-linter config
