@@ -43,15 +43,15 @@ func newValidationResource(
 	rscVer resourceVersion,
 	uid string,
 	outcome validations.ValidationOutcome,
-) validationResource {
-	return validationResource{
+) *validationResource {
+	return &validationResource{
 		uid:     uid,
 		version: rscVer,
 		outcome: outcome,
 	}
 }
 
-type validationCache map[validationKey]validationResource
+type validationCache map[validationKey]*validationResource
 
 // newValidationCache returns a new empty instance of validationCache struct
 func newValidationCache() *validationCache {
@@ -98,7 +98,7 @@ func (vc *validationCache) removeKey(key validationKey) {
 // retrieve returns a tuple of 'validationResource' (if present)
 // and 'ok' which returns 'true' if a 'validationResource' exists
 // for the given 'Object' and 'false' otherwise.
-func (vc *validationCache) retrieve(obj client.Object) (validationResource, bool) {
+func (vc *validationCache) retrieve(obj client.Object) (*validationResource, bool) {
 	key := newValidationKey(obj)
 	val, exists := (*vc)[key]
 	return val, exists
@@ -112,10 +112,10 @@ func (vc *validationCache) retrieve(obj client.Object) (validationResource, bool
 // cases 'false' is returned.
 func (vc *validationCache) objectAlreadyValidated(obj client.Object) bool {
 	validationOutcome, ok := vc.retrieve(obj)
-	storedResourceVersion := validationOutcome.version
 	if !ok {
 		return false
 	}
+	storedResourceVersion := validationOutcome.version
 	currentResourceVersion := obj.GetResourceVersion()
 	if string(storedResourceVersion) != currentResourceVersion {
 		vc.remove(obj)
