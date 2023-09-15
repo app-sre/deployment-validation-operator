@@ -58,14 +58,12 @@ type validationEngine struct {
 	metrics          map[string]*prometheus.GaugeVec
 }
 
-// NewValidationEngine creates a new ValidationEngine instance with the provided configuration path, a watcher, and metrics. // nolint: lll
-// It initializes a ValidationEngine with the provided watcher for configmap changes and a set of preloaded metrics. // nolint: lll
-// The engine's configuration is loaded from the specified configuration path, and its check registry is initialized. // nolint: lll
-// InitRegistry sets this instance in the package scope in engine variable.
+// NewValidationEngine creates a new ValidationEngine instance
+// with the provided configuration path and metrics.
+// It initializes a ValidationEngine with the provided watcher for configmap changes and a set of preloaded metrics.
 //
 // Parameters:
 //   - configPath: The path to the configuration file for the ValidationEngine.
-//   - cmw: A configmap.Watcher for monitoring changes to configmaps.
 //   - metrics: A map of preloaded Prometheus GaugeVec metrics.
 //
 // Returns:
