@@ -46,7 +46,6 @@ func GetAllNamesFromRegistry(reg checkregistry.CheckRegistry) ([]string, error) 
 			AddAllBuiltIn: true,
 		},
 	}
-	disableIncompatibleChecks(&cfg)
 
 	checks, err := configresolver.GetEnabledChecksAndValidate(&cfg, reg)
 	if err != nil {

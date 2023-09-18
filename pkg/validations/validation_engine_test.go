@@ -8,10 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	promUtils "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
-	"golang.stackrox.io/kube-linter/pkg/builtinchecks"
-	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 	"golang.stackrox.io/kube-linter/pkg/config"
-	"golang.stackrox.io/kube-linter/pkg/configresolver"
 	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -144,16 +141,6 @@ func newCustomCheck() config.Check {
 	}
 }
 
-func newEngineConfigWithAllChecks() config.Config {
-	return config.Config{
-		CustomChecks: []config.Check{},
-		Checks: config.ChecksConfig{
-			AddAllBuiltIn:        true,
-			DoNotAutoAddDefaults: false,
-		},
-	}
-}
-
 func createTestDeployment(args testutils.TemplateArgs) (*appsv1.Deployment, error) {
 	d, err := testutils.CreateDeploymentFromTemplate(
 		&args)
@@ -199,7 +186,6 @@ func TestUpdateConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ve, err := newValidationEngine("", make(map[string]*prometheus.GaugeVec))
 			assert.NoError(t, err, "failed to create a new validation engine")
-			disableIncompatibleChecks(&tt.initialConfig)
 			assert.Equal(t, tt.initialConfig, ve.config)
 			ve.SetConfig(tt.updatedConfig)
 			assert.Equal(t, tt.updatedConfig, ve.config)
@@ -354,40 +340,25 @@ func getMetricValue(v *validationEngine, checkName string, labels prometheus.Lab
 	return int(promUtils.ToFloat64(metric)), nil
 }
 
-func TestIncompatibleChecksAreDisabled(t *testing.T) {
-	// Initialize engine
-	ve, err := newValidationEngine("test-resources/default-config.yaml", make(map[string]*prometheus.GaugeVec))
+func TestExcludedChecksAreNotActive(t *testing.T) {
+	ve, err := newValidationEngine("test-resources/config-with-some-excluded-checks.yaml",
+		make(map[string]*prometheus.GaugeVec))
 	assert.NoError(t, err, "Error initializing engine")
 
-	badChecks := getIncompatibleChecks()
-	allKubeLinterChecks, err := getAllBuiltInKubeLinterChecks()
-	assert.NoError(t, err, "Got unexpected error while getting all checks built-into kube-linter")
-	expectedNumChecks := (len(allKubeLinterChecks) - len(badChecks))
+	deployment, err := createTestDeployment(
+		testutils.TemplateArgs{Replicas: 1, ResourceLimits: false, ResourceRequests: false})
+	assert.NoError(t, err, "Error creating deployment from template")
+	request := NewRequestFromObject(deployment)
+	request.NamespaceUID = "1234-6789-1011-testUID"
 
-	enabledChecks := ve.enabledChecks
-	assert.Equal(t, expectedNumChecks, len(enabledChecks),
-		"Expected exactly %v checks to be enabled, but got '%v' checks from list '%v'",
-		expectedNumChecks, len(enabledChecks), enabledChecks)
+	_, err = ve.RunValidationsForObjects([]client.Object{deployment}, request.NamespaceUID)
+	assert.NoError(t, err)
 
-	for _, badCheck := range badChecks {
-		assert.NotContains(t, enabledChecks, badCheck)
-	}
-}
+	// following two checks are excluded in the corresponding config file
+	labels := request.ToPromLabels()
+	_, err = getMetricValue(ve, "unset-cpu-requirements", labels)
+	assert.Error(t, err, "gauge vector unset-cpu-requirements not found")
 
-// getAllBuiltInKubeLinterChecks returns every check built-into kube-linter (including checks that DVO disables)
-func getAllBuiltInKubeLinterChecks() ([]string, error) {
-	ve := validationEngine{
-		config: newEngineConfigWithAllChecks(),
-	}
-	registry := checkregistry.New()
-	if err := builtinchecks.LoadInto(registry); err != nil {
-		return nil, fmt.Errorf("failed to load built-in validations: %s", err.Error())
-	}
-
-	enabledChecks, err := configresolver.GetEnabledChecksAndValidate(&ve.config, registry)
-	if err != nil {
-		return nil, fmt.Errorf("error finding enabled validations: %s", err.Error())
-	}
-
-	return enabledChecks, nil
+	_, err = getMetricValue(ve, "unset-memory-requirements", labels)
+	assert.Error(t, err, "gauge vector unset-memory-requirements not found")
 }

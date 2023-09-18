@@ -204,8 +204,6 @@ func (ve *validationEngine) processResult(result run.Result, namespaceUID string
 }
 
 func (ve *validationEngine) InitRegistry() error {
-	disableIncompatibleChecks(&ve.config)
-
 	registry, err := GetKubeLinterRegistry()
 	if err != nil {
 		return err
@@ -329,26 +327,5 @@ func (ve *validationEngine) removeCheckFromConfig(check string) {
 			ve.config.Checks.Exclude = append(exclude[:i], exclude[i+1:]...)
 			return
 		}
-	}
-}
-
-// disableIncompatibleChecks will forcibly update a kube-linter config
-// to disable checks that are incompatible with DVO.
-// the same check name may end up in the exclude list multiple times as a result of this; this is OK.
-func disableIncompatibleChecks(c *config.Config) {
-	c.Checks.Exclude = append(c.Checks.Exclude, getIncompatibleChecks()...)
-}
-
-// getIncompatibleChecks returns an array of kube-linter check names that are incompatible with DVO
-// these checks involve kube-linter comparing properties from multiple kubernetes objects at once.
-// (e.g. "non-existent-service-account" checks that all serviceaccounts referenced by deployment objects
-// exist as serviceaccount objects).
-// DVO currently only performs a check against a single kubernetes object at a time,
-// so these checks that compare multiple objects together will always fail.
-func getIncompatibleChecks() []string {
-	return []string{
-		"dangling-service",
-		"non-existent-service-account",
-		//"non-isolated-pod",
 	}
 }
