@@ -154,13 +154,12 @@ func newEngineConfigWithAllChecks() config.Config {
 	}
 }
 
-func createTestDeployment(replicas int32) (*appsv1.Deployment, error) {
+func createTestDeployment(args testutils.TemplateArgs) (*appsv1.Deployment, error) {
 	d, err := testutils.CreateDeploymentFromTemplate(
-		testutils.NewTemplateArgs())
+		&args)
 	if err != nil {
 		return nil, err
 	}
-	d.Spec.Replicas = &replicas
 	return &d, nil
 }
 
@@ -202,7 +201,7 @@ func TestUpdateConfig(t *testing.T) {
 			assert.NoError(t, err, "failed to create a new validation engine")
 			disableIncompatibleChecks(&tt.initialConfig)
 			assert.Equal(t, tt.initialConfig, ve.config)
-			ve.UpdateConfig(tt.updatedConfig)
+			ve.SetConfig(tt.updatedConfig)
 			assert.Equal(t, tt.updatedConfig, ve.config)
 
 		})
@@ -239,12 +238,12 @@ func TestRunValidationsForObjects(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			customCheck := newCustomCheck()
 			metrics := make(map[string]*prometheus.GaugeVec)
 			ve, err := newValidationEngine("test-resources/config-with-custom-check.yaml", metrics)
 			assert.NoError(t, err, "Error creating a new validation engine")
 
-			deployment, err := createTestDeployment(tt.initialReplicaCount)
+			deployment, err := createTestDeployment(
+				testutils.TemplateArgs{Replicas: int(tt.initialReplicaCount)})
 			assert.NoError(t, err, "Error creating deployment from template")
 			request := NewRequestFromObject(deployment)
 			request.NamespaceUID = "1234-6789-1011-testUID"
@@ -254,13 +253,13 @@ func TestRunValidationsForObjects(t *testing.T) {
 			assert.NoError(t, err, "Error running validations")
 
 			labels := request.ToPromLabels()
-			metric, err := ve.getMetric(customCheck.Name).GetMetricWith(labels)
+			metric, err := ve.getMetric(customCheckName).GetMetricWith(labels)
 			assert.NoError(t, err, "Error getting prometheus metric")
 
 			expectedConstLabelSubString := fmt.Sprintf(""+
 				"constLabels: {check_description=\"%s\",check_remediation=\"%s\"}",
-				customCheck.Description,
-				customCheck.Remediation,
+				customCheckDescription,
+				customCheckRemediation,
 			)
 			assert.Contains(t, metric.Desc().String(), expectedConstLabelSubString,
 				"Metric is missing expected constant labels! Expected:\n%s\nGot:\n%s",
@@ -269,7 +268,7 @@ func TestRunValidationsForObjects(t *testing.T) {
 			metricValue := int(promUtils.ToFloat64(metric))
 			assert.Equal(t, tt.initialExpectedMetricValue, metricValue,
 				"Deployment test failed %#v: got %d want %d",
-				customCheck.Name, metricValue, tt.initialExpectedMetricValue)
+				customCheckName, metricValue, tt.initialExpectedMetricValue)
 
 			// Problem resolved
 			deployment.Spec.Replicas = &tt.updatedReplicaCount
@@ -279,30 +278,80 @@ func TestRunValidationsForObjects(t *testing.T) {
 			// The 'GetMetricWith()' function will create a new metric with provided labels if it
 			// does not exist. The default value of a metric is 0. Therefore, a value of 0 implies we
 			// successfully cleared the metric label combination.
-			metric, err = ve.getMetric("test-minimum-replicas").GetMetricWith(labels)
+			customCheckMetricVal, err := getMetricValue(ve, customCheckName, labels)
 			assert.NoError(t, err, "Error getting prometheus metric")
-
-			metricValue = int(promUtils.ToFloat64(metric))
-			assert.Equal(t, tt.updatedExpectedMetricValue, metricValue,
+			assert.Equal(t, tt.updatedExpectedMetricValue, customCheckMetricVal,
 				"Deployment test failed %#v: got %d want %d", "test-minimum-replicas",
-				metricValue, tt.updatedExpectedMetricValue)
+				customCheckMetricVal, tt.updatedExpectedMetricValue)
 
 			if tt.runAdditionalValidation {
 				deployment.Spec.Replicas = &tt.initialReplicaCount
 				_, err = ve.RunValidationsForObjects([]client.Object{deployment}, request.NamespaceUID)
 				assert.NoError(t, err, "Error running validations")
 
-				metric, err = ve.getMetric(customCheck.Name).GetMetricWith(labels)
+				customCheckMetricVal, err := getMetricValue(ve, customCheckName, labels)
 				assert.NoError(t, err, "Error getting prometheus metric")
-
-				// If metrics are cleared then the value will be == 0
-				metricValue = int(promUtils.ToFloat64(metric))
-				assert.Equal(t, tt.initialExpectedMetricValue, metricValue,
+				assert.Equal(t, tt.initialExpectedMetricValue, customCheckMetricVal,
 					"Deployment test failed %#v: got %d want %d", "test-minimum-replicas",
-					metricValue, tt.initialExpectedMetricValue)
+					customCheckMetricVal, tt.initialExpectedMetricValue)
 			}
 		})
 	}
+}
+
+func TestRunValidationsForObjectsAndResetMetrics(t *testing.T) {
+	metrics := make(map[string]*prometheus.GaugeVec)
+	ve, err := newValidationEngine("test-resources/config-with-custom-check.yaml", metrics)
+	assert.NoError(t, err, "Error creating a new validation engine")
+
+	deployment, err := createTestDeployment(
+		testutils.TemplateArgs{Replicas: 1, ResourceLimits: false, ResourceRequests: false})
+	assert.NoError(t, err, "Error creating deployment from template")
+	request := NewRequestFromObject(deployment)
+	request.NamespaceUID = "1234-6789-1011-testUID"
+
+	// run validations with "broken" (replica=1) deployment object
+	_, err = ve.RunValidationsForObjects([]client.Object{deployment}, request.NamespaceUID)
+	assert.NoError(t, err, "Error running validations")
+
+	labels := request.ToPromLabels()
+	unsetCPUReqMetricVal, err := getMetricValue(ve, "unset-cpu-requirements", labels)
+	assert.NoError(t, err, "Error getting prometheus metric")
+	assert.Equal(t, 1, unsetCPUReqMetricVal,
+		"Deployment test failed unset-cpu-requirements: got %d want %d",
+		unsetCPUReqMetricVal, 1)
+
+	customCheckMetricVal, err := getMetricValue(ve, customCheckName, labels)
+	assert.NoError(t, err, "Error getting prometheus metric")
+	assert.Equal(t, 1, customCheckMetricVal,
+		"Deployment test failed %#v: got %d want %d",
+		customCheckName, customCheckMetricVal, 1)
+
+	ve.ResetMetrics()
+	// metrics have value 0 when reset
+	unsetCPUReqMetricVal, err = getMetricValue(ve, "unset-cpu-requirements", labels)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, unsetCPUReqMetricVal,
+		"Deployment test failed unset-cpu-requirements: got %d want %d",
+		unsetCPUReqMetricVal, 0)
+
+	customCheckMetricVal, err = getMetricValue(ve, customCheckName, labels)
+	assert.NoError(t, err, "Error getting prometheus metric")
+	assert.Equal(t, 0, customCheckMetricVal,
+		"Deployment test failed %#v: got %d want %d",
+		customCheckName, customCheckMetricVal, 0)
+}
+
+func getMetricValue(v *validationEngine, checkName string, labels prometheus.Labels) (int, error) {
+	gauge := v.getMetric(checkName)
+	if gauge == nil {
+		return 0, fmt.Errorf("gauge vector %s not found ", checkName)
+	}
+	metric, err := gauge.GetMetricWith(labels)
+	if err != nil {
+		return 0, err
+	}
+	return int(promUtils.ToFloat64(metric)), nil
 }
 
 func TestIncompatibleChecksAreDisabled(t *testing.T) {

@@ -128,7 +128,7 @@ func (gr *GenericReconciler) LookForConfigUpdates(ctx context.Context) {
 	for {
 		select {
 		case cfg := <-gr.cmWatcher.ConfigChanged():
-			gr.validationEngine.UpdateConfig(cfg)
+			gr.validationEngine.SetConfig(cfg)
 			err := gr.validationEngine.InitRegistry()
 			if err != nil {
 				gr.logger.Error(

@@ -43,10 +43,16 @@ var (
 )
 
 type Interface interface {
+	// InitRegistry creates new kubelinter check registry and loads all the enabled
+	// and custom checks.
 	InitRegistry() error
+	// DeleteMetrics deletes the Prometheus Gauge vector with the corresponding labels
 	DeleteMetrics(labels prometheus.Labels)
+	// ResetMetrics resets all the Prometheus Gauge vectors
 	ResetMetrics()
-	UpdateConfig(cfg config.Config)
+	// SetConfig sets the kubelinter configuration
+	SetConfig(cfg config.Config)
+	// RunValidationsForObjects runs kubelinter validations for provided slice (group) of objects.
 	RunValidationsForObjects(objects []client.Object, namespaceUID string) (ValidationOutcome, error)
 }
 
@@ -301,7 +307,7 @@ func (ve *validationEngine) getValidChecks(registry checkregistry.CheckRegistry)
 	return enabledChecks, nil
 }
 
-func (ve *validationEngine) UpdateConfig(cfg config.Config) {
+func (ve *validationEngine) SetConfig(cfg config.Config) {
 	ve.config = cfg
 }
 
