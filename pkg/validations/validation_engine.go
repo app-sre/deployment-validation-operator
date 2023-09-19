@@ -6,16 +6,22 @@ import (
 	_ "embed" // nolint:golint
 	"fmt"
 	"os"
+	"reflect"
 	"regexp"
 
 	// Import checks from DVO
 
+	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all" // nolint:golint
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"golang.stackrox.io/kube-linter/pkg/checkregistry"
 	"golang.stackrox.io/kube-linter/pkg/config"
 	"golang.stackrox.io/kube-linter/pkg/configresolver"
 	"golang.stackrox.io/kube-linter/pkg/diagnostic"
+	"golang.stackrox.io/kube-linter/pkg/lintcontext"
+	"golang.stackrox.io/kube-linter/pkg/run"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	// Import and initialize all check templates from kube-linter
 	_ "golang.stackrox.io/kube-linter/pkg/templates/all" // nolint:golint
@@ -25,7 +31,30 @@ import (
 	"github.com/spf13/viper"
 )
 
-var engine validationEngine
+var log = logf.Log.WithName("validations")
+
+type ValidationOutcome string
+
+var (
+	ObjectNeedsImprovement  ValidationOutcome = "object needs improvement"
+	ObjectValid             ValidationOutcome = "object valid"
+	ObjectsValid            ValidationOutcome = "objects are valid"
+	ObjectValidationIgnored ValidationOutcome = "object validation ignored"
+)
+
+type Interface interface {
+	// InitRegistry creates new kubelinter check registry and loads all the enabled
+	// and custom checks.
+	InitRegistry() error
+	// DeleteMetrics deletes the Prometheus Gauge vector with the corresponding labels
+	DeleteMetrics(labels prometheus.Labels)
+	// ResetMetrics resets all the Prometheus Gauge vectors
+	ResetMetrics()
+	// SetConfig sets the kubelinter configuration
+	SetConfig(cfg config.Config)
+	// RunValidationsForObjects runs kubelinter validations for provided slice (group) of objects.
+	RunValidationsForObjects(objects []client.Object, namespaceUID string) (ValidationOutcome, error)
+}
 
 type validationEngine struct {
 	config           config.Config
@@ -35,42 +64,33 @@ type validationEngine struct {
 	metrics          map[string]*prometheus.GaugeVec
 }
 
-// InitEngine creates a new ValidationEngine instance with the provided configuration path, a watcher, and metrics.
+// NewValidationEngine creates a new ValidationEngine instance
+// with the provided configuration path and metrics.
 // It initializes a ValidationEngine with the provided watcher for configmap changes and a set of preloaded metrics.
-// The engine's configuration is loaded from the specified configuration path, and its check registry is initialized.
-// InitRegistry sets this instance in the package scope in engine variable.
 //
 // Parameters:
 //   - configPath: The path to the configuration file for the ValidationEngine.
-//   - cmw: A configmap.Watcher for monitoring changes to configmaps.
 //   - metrics: A map of preloaded Prometheus GaugeVec metrics.
 //
 // Returns:
 //   - An error if there's an issue loading the configuration or initializing the check registry.
-func InitEngine(configPath string, metrics map[string]*prometheus.GaugeVec) error {
-	ve := &validationEngine{
-		metrics: metrics,
+func NewValidationEngine(configPath string, metrics map[string]*prometheus.GaugeVec) (Interface, error) {
+	cfg, err := loadConfig(configPath)
+	if err != nil {
+		return nil, err
 	}
 
-	err := ve.LoadConfig(configPath)
-	if err != nil {
-		return err
+	ve := &validationEngine{
+		metrics: metrics,
+		config:  cfg,
 	}
 
 	err = ve.InitRegistry()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
-}
-
-func (ve *validationEngine) CheckRegistry() checkregistry.CheckRegistry {
-	return ve.registry
-}
-
-func (ve *validationEngine) EnabledChecks() []string {
-	return ve.enabledChecks
+	return ve, nil
 }
 
 // Get info on config file if it exists
@@ -82,30 +102,105 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func (ve *validationEngine) LoadConfig(path string) error {
+func loadConfig(path string) (config.Config, error) {
 	if !fileExists(path) {
 		log.Info(fmt.Sprintf("config file %s does not exist. Use default configuration", path))
-		ve.config.Checks = GetDefaultChecks()
-
-		return nil
+		return config.Config{
+			Checks: GetDefaultChecks(),
+		}, nil
 	}
 
 	v := viper.New()
-
 	// Load Configuration
-	config, err := config.Load(v, path)
-	if err != nil {
-		log.Error(err, "failed to load config")
-		return err
-	}
-
-	ve.config = config
-
-	return nil
+	return config.Load(v, path)
 }
 
-type PrometheusRegistry interface {
-	Register(prometheus.Collector) error
+// RunValidationsForObjects runs validation for the group of related objects
+func (ve *validationEngine) RunValidationsForObjects(objects []client.Object,
+	namespaceUID string) (ValidationOutcome, error) {
+	lintCtx := &lintContextImpl{}
+	for _, obj := range objects {
+		// Only run checks against an object with no owners.  This should be
+		// the object that controls the configuration
+		if !utils.IsOwner(obj) {
+			continue
+		}
+		// If controller has no replicas clear do not run any validations
+		if ve.isControllersWithNoReplicas(obj) {
+			continue
+		}
+		lintCtx.addObjects(lintcontext.Object{K8sObject: obj})
+	}
+	lintCtxs := []lintcontext.LintContext{lintCtx}
+	if len(lintCtxs) == 0 {
+		return ObjectValidationIgnored, nil
+	}
+	result, err := run.Run(lintCtxs, ve.registry, ve.enabledChecks)
+	if err != nil {
+		log.Error(err, "error running validations")
+		return "", fmt.Errorf("error running validations: %v", err)
+	}
+
+	// Clear labels from past run to ensure only results from this run
+	// are reflected in the metrics
+	for _, o := range objects {
+		req := NewRequestFromObject(o)
+		req.NamespaceUID = namespaceUID
+		ve.clearMetrics(result.Reports, req.ToPromLabels())
+	}
+	return ve.processResult(result, namespaceUID)
+}
+
+// isControllersWithNoReplicas checks if the provided object has no replicas
+func (ve *validationEngine) isControllersWithNoReplicas(obj client.Object) bool {
+	objValue := reflect.Indirect(reflect.ValueOf(obj))
+	spec := objValue.FieldByName("Spec")
+	if spec.IsValid() {
+		replicas := spec.FieldByName("Replicas")
+		if replicas.IsValid() {
+			numReplicas, ok := replicas.Interface().(*int32)
+
+			// clear labels if we fail to get a value for numReplicas, or if value is <= 0
+			if !ok || numReplicas == nil || *numReplicas <= 0 {
+				req := NewRequestFromObject(obj)
+				ve.DeleteMetrics(req.ToPromLabels())
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (ve *validationEngine) processResult(result run.Result, namespaceUID string) (ValidationOutcome, error) {
+	outcome := ObjectValid
+	for _, report := range result.Reports {
+		check, err := ve.getCheckByName(report.Check)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Failed to get check '%s' by name", report.Check))
+			return "", fmt.Errorf("error running validations: %v", err)
+		}
+		obj := report.Object.K8sObject
+		logger := log.WithValues(
+			"request.namespace", obj.GetNamespace(),
+			"request.name", obj.GetName(),
+			"kind", obj.GetObjectKind().GroupVersionKind().Kind,
+			"validation", report.Check,
+			"check_description", check.Description,
+			"check_remediation", report.Remediation,
+			"check_failure_reason", report.Diagnostic.Message,
+		)
+		metric := ve.getMetric(report.Check)
+		if metric == nil {
+			log.Error(nil, "no metric found for validation", report.Check)
+		} else {
+			req := NewRequestFromObject(obj)
+			req.NamespaceUID = namespaceUID
+			metric.With(req.ToPromLabels()).Set(1)
+			logger.Info(report.Remediation)
+			outcome = ObjectNeedsImprovement
+		}
+	}
+	return outcome, nil
 }
 
 func (ve *validationEngine) InitRegistry() error {
@@ -140,12 +235,10 @@ func (ve *validationEngine) InitRegistry() error {
 	ve.enabledChecks = enabledChecks
 	ve.registeredChecks = registeredChecks
 
-	engine = *ve
-
 	return nil
 }
 
-func (ve *validationEngine) GetMetric(name string) *prometheus.GaugeVec {
+func (ve *validationEngine) getMetric(name string) *prometheus.GaugeVec {
 	m, ok := ve.metrics[name]
 	if !ok {
 		return nil
@@ -159,7 +252,7 @@ func (ve *validationEngine) DeleteMetrics(labels prometheus.Labels) {
 	}
 }
 
-func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, labels prometheus.Labels) {
+func (ve *validationEngine) clearMetrics(reports []diagnostic.WithContext, labels prometheus.Labels) {
 	// Create a list of validation names for use to delete the labels from any
 	// metric which isn't in the report but for which there is a metric
 	reportValidationNames := map[string]struct{}{}
@@ -175,7 +268,13 @@ func (ve *validationEngine) ClearMetrics(reports []diagnostic.WithContext, label
 	}
 }
 
-func (ve *validationEngine) GetCheckByName(name string) (config.Check, error) {
+func (ve *validationEngine) ResetMetrics() {
+	for _, metric := range ve.metrics {
+		metric.Reset()
+	}
+}
+
+func (ve *validationEngine) getCheckByName(name string) (config.Check, error) {
 	check, ok := ve.registeredChecks[name]
 	if !ok {
 		return config.Check{}, fmt.Errorf("check '%s' is not registered", name)
@@ -206,6 +305,10 @@ func (ve *validationEngine) getValidChecks(registry checkregistry.CheckRegistry)
 	}
 
 	return enabledChecks, nil
+}
+
+func (ve *validationEngine) SetConfig(cfg config.Config) {
+	ve.config = cfg
 }
 
 // removeCheckFromConfig function searches for the given check name in both the "Include" and "Exclude" lists

@@ -39,6 +39,7 @@ type GenericReconciler struct {
 	discovery             discovery.DiscoveryInterface
 	logger                logr.Logger
 	cmWatcher             *configmap.Watcher
+	validationEngine      validations.Interface
 }
 
 // NewGenericReconciler returns a GenericReconciler struct
@@ -46,6 +47,7 @@ func NewGenericReconciler(
 	client client.Client,
 	discovery discovery.DiscoveryInterface,
 	cmw *configmap.Watcher,
+	validationEngine validations.Interface,
 ) (*GenericReconciler, error) {
 	listLimit, err := getListLimit()
 	if err != nil {
@@ -61,6 +63,7 @@ func NewGenericReconciler(
 		currentObjects:        newValidationCache(),
 		logger:                ctrl.Log.WithName("reconcile"),
 		cmWatcher:             cmw,
+		validationEngine:      validationEngine,
 	}, nil
 }
 
@@ -125,18 +128,17 @@ func (gr *GenericReconciler) LookForConfigUpdates(ctx context.Context) {
 	for {
 		select {
 		case cfg := <-gr.cmWatcher.ConfigChanged():
-			validations.UpdateConfig(cfg)
-			err := validations.InitRegistry()
-			if err == nil {
-				gr.objectValidationCache.drain()
-				validations.ResetMetrics()
-
-			} else {
+			gr.validationEngine.SetConfig(cfg)
+			err := gr.validationEngine.InitRegistry()
+			if err != nil {
 				gr.logger.Error(
 					err,
 					fmt.Sprintf("error updating configuration from ConfigMap: %v\n", cfg),
 				)
+				continue
 			}
+			gr.objectValidationCache.drain()
+			gr.validationEngine.ResetMetrics()
 
 		case <-ctx.Done():
 			return
@@ -300,7 +302,7 @@ func (gr *GenericReconciler) reconcileGroupOfObjects(ctx context.Context,
 		cliObjects = append(cliObjects, typedClientObject)
 	}
 
-	outcome, err := validations.RunValidationsForObjects(cliObjects, namespaceUID)
+	outcome, err := gr.validationEngine.RunValidationsForObjects(cliObjects, namespaceUID)
 	if err != nil {
 		return fmt.Errorf("running validations: %w", err)
 	}
@@ -363,7 +365,7 @@ func (gr *GenericReconciler) handleResourceDeletions() {
 			UID:          v.uid,
 		}
 
-		validations.DeleteMetrics(req.ToPromLabels())
+		gr.validationEngine.DeleteMetrics(req.ToPromLabels())
 
 		gr.objectValidationCache.removeKey(k)
 

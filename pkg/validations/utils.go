@@ -13,10 +13,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func DeleteMetrics(labels prometheus.Labels) {
-	engine.DeleteMetrics(labels)
-}
-
 // GetKubeLinterRegistry returns a CheckRegistry containing kube-linter built-in validations.
 // It initializes a new CheckRegistry, loads the built-in validations into the registry,
 // and returns the resulting registry if successful.
@@ -75,23 +71,6 @@ func newGaugeVecMetric(check klConfig.Check) *prometheus.GaugeVec {
 				"check_remediation": check.Remediation,
 			},
 		}, []string{"namespace_uid", "namespace", "uid", "name", "kind"})
-}
-
-// UpdateConfig provides an access to setup new configuration for the generic reconciler
-func UpdateConfig(cfg klConfig.Config) {
-	engine.config = cfg
-}
-
-// InitRegistry forces Validation Engine to initialize a new registry
-func InitRegistry() error {
-	return engine.InitRegistry()
-}
-
-// ResetMetrics resets all the metrics registered in the Validation Engine
-func ResetMetrics() {
-	for _, metric := range engine.metrics {
-		metric.Reset()
-	}
 }
 
 // GetDefaultChecks provides a default set of checks usable in case there is no custom ConfigMap
