@@ -13,6 +13,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	customCheckName        = "test-minimum-replicas"
+	customCheckDescription = "some description"
+	customCheckRemediation = "some remediation"
+	customCheckTemplate    = "minimum-replicas"
+	testNamespaceUID       = "1234-6789-1011-testUID"
+)
+
 func TestGetValidChecks(t *testing.T) {
 	testCases := []struct {
 		name     string
@@ -96,13 +104,6 @@ func TestRemoveCheckFromConfig(t *testing.T) {
 		})
 	}
 }
-
-const (
-	customCheckName        = "test-minimum-replicas"
-	customCheckDescription = "some description"
-	customCheckRemediation = "some remediation"
-	customCheckTemplate    = "minimum-replicas"
-)
 
 func newValidationEngine(configPath string, metrics map[string]*prometheus.GaugeVec) (*validationEngine, error) {
 	config, err := loadConfig(configPath)
@@ -232,7 +233,7 @@ func TestRunValidationsForObjects(t *testing.T) {
 				testutils.TemplateArgs{Replicas: int(tt.initialReplicaCount)})
 			assert.NoError(t, err, "Error creating deployment from template")
 			request := NewRequestFromObject(deployment)
-			request.NamespaceUID = "1234-6789-1011-testUID"
+			request.NamespaceUID = testNamespaceUID
 
 			// run validations with "broken" (replica=1) deployment object
 			_, err = ve.RunValidationsForObjects([]client.Object{deployment}, request.NamespaceUID)
@@ -294,7 +295,7 @@ func TestRunValidationsForObjectsAndResetMetrics(t *testing.T) {
 		testutils.TemplateArgs{Replicas: 1, ResourceLimits: false, ResourceRequests: false})
 	assert.NoError(t, err, "Error creating deployment from template")
 	request := NewRequestFromObject(deployment)
-	request.NamespaceUID = "1234-6789-1011-testUID"
+	request.NamespaceUID = testNamespaceUID
 
 	// run validations with "broken" (replica=1) deployment object
 	_, err = ve.RunValidationsForObjects([]client.Object{deployment}, request.NamespaceUID)
@@ -349,7 +350,7 @@ func TestExcludedChecksAreNotActive(t *testing.T) {
 		testutils.TemplateArgs{Replicas: 1, ResourceLimits: false, ResourceRequests: false})
 	assert.NoError(t, err, "Error creating deployment from template")
 	request := NewRequestFromObject(deployment)
-	request.NamespaceUID = "1234-6789-1011-testUID"
+	request.NamespaceUID = testNamespaceUID
 
 	_, err = ve.RunValidationsForObjects([]client.Object{deployment}, request.NamespaceUID)
 	assert.NoError(t, err)
