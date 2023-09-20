@@ -48,6 +48,8 @@ type Interface interface {
 	InitRegistry() error
 	// DeleteMetrics deletes the Prometheus Gauge vector with the corresponding labels
 	DeleteMetrics(labels prometheus.Labels)
+	// GetEnabledChecks returns the current collection of enabled checks
+	GetEnabledChecks() []string
 	// ResetMetrics resets all the Prometheus Gauge vectors
 	ResetMetrics()
 	// SetConfig sets the kubelinter configuration
@@ -270,6 +272,11 @@ func (ve *validationEngine) ResetMetrics() {
 	for _, metric := range ve.metrics {
 		metric.Reset()
 	}
+}
+
+// GetEnabledChecks returns the current collection of enabled checks
+func (ve validationEngine) GetEnabledChecks() []string {
+	return ve.enabledChecks
 }
 
 func (ve *validationEngine) getCheckByName(name string) (config.Check, error) {

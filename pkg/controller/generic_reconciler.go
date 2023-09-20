@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -143,7 +144,10 @@ func (gr *GenericReconciler) LookForConfigUpdates(ctx context.Context) {
 			gr.objectValidationCache.drain()
 			gr.validationEngine.ResetMetrics()
 
-			// TODO log new checks by name
+			gr.logger.Info(
+				"Current set of enabled checks",
+				"checks", strings.Join(gr.validationEngine.GetEnabledChecks(), ", "),
+			)
 
 		case <-ctx.Done():
 			return
