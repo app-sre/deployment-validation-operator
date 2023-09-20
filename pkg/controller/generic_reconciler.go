@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -127,8 +128,10 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 func (gr *GenericReconciler) LookForConfigUpdates(ctx context.Context) {
 	for {
 		select {
-		case cfg := <-gr.cmWatcher.ConfigChanged():
+		case <-gr.cmWatcher.ConfigChanged():
+			cfg := gr.cmWatcher.GetConfig()
 			gr.validationEngine.SetConfig(cfg)
+
 			err := gr.validationEngine.InitRegistry()
 			if err != nil {
 				gr.logger.Error(
@@ -137,8 +140,14 @@ func (gr *GenericReconciler) LookForConfigUpdates(ctx context.Context) {
 				)
 				continue
 			}
+
 			gr.objectValidationCache.drain()
 			gr.validationEngine.ResetMetrics()
+
+			gr.logger.Info(
+				"Current set of enabled checks",
+				"checks", strings.Join(gr.validationEngine.GetEnabledChecks(), ", "),
+			)
 
 		case <-ctx.Done():
 			return
