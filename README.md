@@ -14,13 +14,33 @@ This operator doesn't define any CRDs at the moment. It has been bootstrapped wi
 
 [Architecure Diagrams](./docs/architecture.md)
 
+## Running the operator locally
+
+To build the operator binary, you can run the following make target:
+
+```
+make go-build
+```
+
+The binary is created in the `build/_output/bin/` directory and can be run using:
+
+```
+POD_NAMESPACE="deployment-validation-operator" WATCH_NAMESPACE="" NAMESPACE_IGNORE_PATTERN='^(openshift.*|kube-.*)$' build/_output/bin/deployment-validation-operator --kubeconfig=$HOME/.kube/config --zap-devel
+```
+
+Finally you can check metrics exposed by the operator with:
+
+```
+curl localhost:8383/metrics
+```
+
 ## Deployment
 
 The manifests to deploy DVO take a permissive approach to permissions.  This is done to make it easier to support monitoring new object kinds without having to change rbac rules.  This means that elevated permissions will be required in order to deploy DVO through standard manifests.  There is a manifest to deploy DVO though OLM from opereatorhub which does alleviate this need to have elevated permissions.
 
 * DVO deployment should only deploy 1 pod as currently metrics are not replicated across a standard 3 causing installation issues (will be fixed in a later version)
 
-### Manual installation (without OLM)
+### Manual installation
 
 There are manifests to install the operator under the [`deploy/openshift`](deploy/openshift) directory. A typical installation would go as follows:
 
@@ -28,6 +48,7 @@ There are manifests to install the operator under the [`deploy/openshift`](deplo
     * If deploying to a namespace other than `deployment-validation-operator`, there are commented lines you must change in `deploy/openshift/cluster-role-binding.yaml` and `deploy/openshift/role-binding.yaml` first
 * Create the service, service account, configmap, roles and role bindings
 * Create the operator deployment
+    * **Note that the `nodeAffinity` attribute by default requires a node with the `node-role.kubernetes.io/infra` selector. In common (self-managed) clusters there is usually no such node, so you can remove the `nodeAffinity` attribtue when deploying to those environments.**
 
 ```
 oc new-project deployment-validation-operator
@@ -43,44 +64,6 @@ do
     oc create -f deploy/openshift/$manifest
 done
 ```
-
-### Installation via OLM
-
-There is a manifest to deploy DVO via OLM artifacts.  This assumes that OLM is already running in the cluster.  To deploy via OLM:
-
-* Generate the deployment YAML from the openshift template
-* Deploy one of the two following YAML templates (not both!):
-
-```
-# deploy this if you DO NOT want OLM to automatically upgrade DVO
-oc new-project deployment-validation-operator
-oc process --local NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' -f deploy/openshift/deployment-validation-operator-olm.yaml | oc apply -f -
-```
-
-```
-# otherwise, deploy this if you DO want OLM to automatically upgrade DVO
-# set REGISTRY_POLLING_INTERVAL to be shorter to have OLM check for new DVO versions more frequently if desired; e.g. '45m'
-# the shorter the interval, the more resources OLM may consume
-# read more about OLM catalog polling: https://github.com/operator-framework/
-operator-lifecycle-manager/blob/master/doc/design/catalog-polling.md
-
-oc new-project deployment-validation-operator
-oc process --local \
-NAMESPACE_IGNORE_PATTERN='openshift.*|kube-.+' \
-REGISTRY_POLLING_INTERVAL='24h' \
--f deploy/openshift/deployment-validation-operator-olm-with-polling.yaml \
-| oc apply -f -
-```
-
-If DVO is deployed to a namespace other than the one where OLM is deployed, which is usually the case, then a network policy may be required to allow OLM to see the artifacts in the DVO namespace.  For example, if OLM is deployed in the namespace `operator-lifecycle-manager` then the network policy would be deployed like this:
-
-```
-oc process --local NAMESPACE='operator-lifecycle-manager' -f deploy/openshift/network-policies.yaml | oc apply -f -
-```
-
-> Note: When installing on OSD it would be beneficial to use an expanced NAMESPACE_IGNORE_PATTERN like
-`NAMESPACE_IGNORE_PATTERN='^(openshift.|kube-.|default|dedicated-admin|redhat-.|acm|addon-dba-operator|codeready-.|prow)$'`
-
 ## Install Grafana dashboard
 
 There are manifests to install a simple grafana dashboard under the [`deploy/observability`](deploy/observability) directory.
