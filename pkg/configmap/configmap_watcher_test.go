@@ -1,73 +1,125 @@
 package configmap
 
 import (
-	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"golang.stackrox.io/kube-linter/pkg/config"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
-func TestStaticConfigMapWatcher(t *testing.T) {
-	var configMapNamespace = "deployment-validation-operator"
-
-	testCases := []struct {
-		name   string
-		data   string
-		checks config.ChecksConfig
+func TestReadConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		configData     string
+		expectedConfig config.Config
+		expectedError  error
 	}{
 		{
-			name: "kube-linter 'doNotAutoAddDefaults' is gathered from configuration",
-			data: "checks:\n  doNotAutoAddDefaults: true",
-			checks: config.ChecksConfig{
-				DoNotAutoAddDefaults: true,
+			name: "Basic valid config",
+			configData: `
+checks:
+  doNotAutoAddDefaults: false
+  addAllBuiltIn: true
+  include:
+  - "unset-memory-requirements"
+  - "unset-cpu-requirements"`,
+			expectedConfig: config.Config{
+				Checks: config.ChecksConfig{
+					AddAllBuiltIn:        true,
+					DoNotAutoAddDefaults: false,
+					Include:              []string{"unset-memory-requirements", "unset-cpu-requirements"}, // nolint: lll
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "Invalid config field \"doNotAutoAddDefaultsAAA\"",
+			configData: `
+checks:
+  doNotAutoAddDefaultsAAA: false
+  addAllBuiltIn: true
+  include:
+  - "unset-memory-requirements"
+  - "unset-cpu-requirements"`,
+			expectedError: fmt.Errorf("unmarshalling configmap data: error unmarshaling JSON: while decoding JSON: json: unknown field \"doNotAutoAddDefaultsAAA\""), // nolint: lll
+			expectedConfig: config.Config{
+				Checks: config.ChecksConfig{
+					AddAllBuiltIn:        true,
+					DoNotAutoAddDefaults: false,
+					Include:              []string{"unset-memory-requirements", "unset-cpu-requirements"}, // nolint: lll
+				},
 			},
 		},
 		{
-			name: "kube-linter 'addAllBuiltIn' is gathered from configuration",
-			data: "checks:\n  addAllBuiltIn: true",
-			checks: config.ChecksConfig{
-				AddAllBuiltIn: true,
+			name: "Invalid config field \"include\"",
+			configData: `
+checks:
+  doNotAutoAddDefaults: false
+  addAllBuiltIn: true
+  includeaa:
+  - "unset-memory-requirements"
+  - "unset-cpu-requirements"`,
+			expectedError: fmt.Errorf("unmarshalling configmap data: error unmarshaling JSON: while decoding JSON: json: unknown field \"includeaa\""), // nolint: lll
+			expectedConfig: config.Config{
+				Checks: config.ChecksConfig{
+					AddAllBuiltIn:        true,
+					DoNotAutoAddDefaults: false,
+				},
 			},
 		},
 		{
-			name: "kube-linter 'exclude' is gathered from configuration",
-			data: "checks:\n  exclude: [\"check1\", \"check2\"]",
-			checks: config.ChecksConfig{
-				Exclude: []string{"check1", "check2"},
-			},
-		},
-		{
-			name: "kube-linter 'include' is gathered from configuration",
-			data: "checks:\n  include: [\"check1\", \"check2\"]",
-			checks: config.ChecksConfig{
-				Include: []string{"check1", "check2"},
+			name: "Valid config with custom check",
+			configData: `
+checks:
+  doNotAutoAddDefaults: false
+  addAllBuiltIn: true
+  include:
+  - "unset-memory-requirements"
+customChecks:
+  - name: test-minimum-replicas
+    description: "some description"
+    remediation: "some remediation"
+    template: minimum-replicas
+    params:
+      minReplicas: 3
+    scope:
+      objectKinds:
+        - DeploymentLike`,
+			expectedError: nil,
+			expectedConfig: config.Config{
+				Checks: config.ChecksConfig{
+					AddAllBuiltIn:        true,
+					DoNotAutoAddDefaults: false,
+					Include:              []string{"unset-memory-requirements"},
+				},
+				CustomChecks: []config.Check{
+					{
+						Name:        "test-minimum-replicas",
+						Description: "some description",
+						Remediation: "some remediation",
+						Template:    "minimum-replicas",
+						Params: map[string]interface{}{
+							"minReplicas": float64(3),
+						},
+						Scope: &config.ObjectKindsDesc{
+							ObjectKinds: []string{"DeploymentLike"},
+						},
+					},
+				},
 			},
 		},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			// Given
-			cm := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Namespace: configMapNamespace, Name: configMapName},
-				Data: map[string]string{
-					"deployment-validation-operator-config.yaml": testCase.data,
-				},
+			cfg, err := readConfig(tt.configData)
+			if tt.expectedError != nil {
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
+			} else {
+				assert.NoError(t, err)
 			}
-			client := kubefake.NewSimpleClientset([]runtime.Object{cm}...)
-			mock := Watcher{clientset: client, namespace: configMapNamespace}
-
-			// When
-			test, err := mock.GetStaticKubelinterConfig(context.Background())
-
-			// Assert
-			assert.NoError(t, err)
-			assert.Equal(t, testCase.checks, test.Checks)
+			assert.Equal(t, tt.expectedConfig, cfg)
 		})
 	}
 }
