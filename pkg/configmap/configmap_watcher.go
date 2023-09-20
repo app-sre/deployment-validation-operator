@@ -37,7 +37,8 @@ type KubeLinterChecks struct {
 type Watcher struct {
 	clientset kubernetes.Interface
 	checks    KubeLinterChecks
-	ch        chan config.Config
+	cfg       config.Config
+	ch        chan struct{}
 	logger    logr.Logger
 	namespace string
 }
@@ -68,7 +69,7 @@ func NewWatcher(cfg *rest.Config) (*Watcher, error) {
 	return &Watcher{
 		clientset: clientset,
 		logger:    log.Log.WithName("ConfigMapWatcher"),
-		ch:        make(chan config.Config),
+		ch:        make(chan struct{}),
 		namespace: namespace,
 	}, nil
 }
@@ -85,7 +86,7 @@ func (cmw *Watcher) GetStaticKubelinterConfig(ctx context.Context) (config.Confi
 }
 
 // Start will update the channel structure with new configuration data from ConfigMap update event
-func (cmw Watcher) Start(ctx context.Context) error {
+func (cmw *Watcher) Start(ctx context.Context) error {
 	factory := informers.NewSharedInformerFactoryWithOptions(
 		cmw.clientset, time.Second*30, informers.WithNamespace(cmw.namespace),
 	)
@@ -111,7 +112,9 @@ func (cmw Watcher) Start(ctx context.Context) error {
 				return
 			}
 
-			cmw.ch <- cfg
+			cmw.cfg = cfg
+
+			cmw.ch <- struct{}{}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			newCm := newObj.(*apicorev1.ConfigMap)
@@ -133,7 +136,9 @@ func (cmw Watcher) Start(ctx context.Context) error {
 				return
 			}
 
-			cmw.ch <- cfg
+			cmw.cfg = cfg
+
+			cmw.ch <- struct{}{}
 		},
 		DeleteFunc: func(oldObj interface{}) {
 			cm := oldObj.(*apicorev1.ConfigMap)
@@ -144,9 +149,11 @@ func (cmw Watcher) Start(ctx context.Context) error {
 				"namespace", cm.GetNamespace(),
 			)
 
-			cmw.ch <- config.Config{
+			cmw.cfg = config.Config{
 				Checks: validations.GetDefaultChecks(),
 			}
+
+			cmw.ch <- struct{}{}
 		},
 	})
 
@@ -156,8 +163,13 @@ func (cmw Watcher) Start(ctx context.Context) error {
 }
 
 // ConfigChanged receives push notifications when the configuration is updated
-func (cmw *Watcher) ConfigChanged() <-chan config.Config {
+func (cmw *Watcher) ConfigChanged() <-chan struct{} {
 	return cmw.ch
+}
+
+// GetConfig returns a previously saved kube-linter Config structure
+func (cmw *Watcher) GetConfig() config.Config {
+	return cmw.cfg
 }
 
 // getKubeLinterConfig returns a valid Kube-linter Config structure

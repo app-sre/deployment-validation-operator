@@ -127,8 +127,10 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 func (gr *GenericReconciler) LookForConfigUpdates(ctx context.Context) {
 	for {
 		select {
-		case cfg := <-gr.cmWatcher.ConfigChanged():
+		case <-gr.cmWatcher.ConfigChanged():
+			cfg := gr.cmWatcher.GetConfig()
 			gr.validationEngine.SetConfig(cfg)
+
 			err := gr.validationEngine.InitRegistry()
 			if err != nil {
 				gr.logger.Error(
@@ -137,8 +139,11 @@ func (gr *GenericReconciler) LookForConfigUpdates(ctx context.Context) {
 				)
 				continue
 			}
+
 			gr.objectValidationCache.drain()
 			gr.validationEngine.ResetMetrics()
+
+			// TODO log new checks by name
 
 		case <-ctx.Done():
 			return
