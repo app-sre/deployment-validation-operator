@@ -8,12 +8,11 @@ import (
 	"time"
 
 	"golang.stackrox.io/kube-linter/pkg/config"
-	"gopkg.in/yaml.v3"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
+	"github.com/ghodss/yaml"
 	"github.com/go-logr/logr"
 	apicorev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -21,22 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// this structure mirrors Kube-Linter configuration structure
-// it is used as a bridge to unmarshall ConfigMap data
-// doc: https://pkg.go.dev/golang.stackrox.io/kube-linter/pkg/config#Config
-type KubeLinterChecks struct {
-	Checks struct {
-		AddAllBuiltIn        bool     `yaml:"addAllBuiltIn,omitempty"`
-		DoNotAutoAddDefaults bool     `yaml:"doNotAutoAddDefaults,omitempty"`
-		Exclude              []string `yaml:"exclude,omitempty"`
-		Include              []string `yaml:"include,omitempty"`
-		IgnorePaths          []string `yaml:"ignorePaths,omitempty"`
-	} `yaml:"checks"`
-}
-
 type Watcher struct {
 	clientset kubernetes.Interface
-	checks    KubeLinterChecks
 	cfg       config.Config
 	ch        chan struct{}
 	logger    logr.Logger
@@ -74,17 +59,6 @@ func NewWatcher(cfg *rest.Config) (*Watcher, error) {
 	}, nil
 }
 
-// GetStaticKubelinterConfig returns the ConfigMap's checks configuration
-func (cmw *Watcher) GetStaticKubelinterConfig(ctx context.Context) (config.Config, error) {
-	cm, err := cmw.clientset.CoreV1().
-		ConfigMaps(cmw.namespace).Get(ctx, configMapName, v1.GetOptions{})
-	if err != nil {
-		return config.Config{}, fmt.Errorf("getting initial configuration: %w", err)
-	}
-
-	return cmw.getKubeLinterConfig(cm.Data[configMapDataAccess])
-}
-
 // Start will update the channel structure with new configuration data from ConfigMap update event
 func (cmw *Watcher) Start(ctx context.Context) error {
 	factory := informers.NewSharedInformerFactoryWithOptions(
@@ -106,7 +80,7 @@ func (cmw *Watcher) Start(ctx context.Context) error {
 				"namespace", newCm.GetNamespace(),
 			)
 
-			cfg, err := cmw.getKubeLinterConfig(newCm.Data[configMapDataAccess])
+			cfg, err := readConfig(newCm.Data[configMapDataAccess])
 			if err != nil {
 				cmw.logger.Error(err, "ConfigMap data format")
 				return
@@ -130,7 +104,7 @@ func (cmw *Watcher) Start(ctx context.Context) error {
 				"namespace", newCm.GetNamespace(),
 			)
 
-			cfg, err := cmw.getKubeLinterConfig(newCm.Data[configMapDataAccess])
+			cfg, err := readConfig(newCm.Data[configMapDataAccess])
 			if err != nil {
 				cmw.logger.Error(err, "ConfigMap data format")
 				return
@@ -172,17 +146,15 @@ func (cmw *Watcher) GetConfig() config.Config {
 	return cmw.cfg
 }
 
-// getKubeLinterConfig returns a valid Kube-linter Config structure
+// readConfig returns a valid Kube-linter Config structure
 // based on the checks received by the string
-func (cmw *Watcher) getKubeLinterConfig(data string) (config.Config, error) {
+func readConfig(data string) (config.Config, error) {
 	var cfg config.Config
 
-	err := yaml.Unmarshal([]byte(data), &cmw.checks)
+	err := yaml.Unmarshal([]byte(data), &cfg, yaml.DisallowUnknownFields)
 	if err != nil {
 		return cfg, fmt.Errorf("unmarshalling configmap data: %w", err)
 	}
-
-	cfg.Checks = config.ChecksConfig(cmw.checks.Checks)
 
 	return cfg, nil
 }
