@@ -3,7 +3,6 @@ package pprof
 import (
 	"context"
 	"net/http"
-	_ "net/http/pprof" // this adds all pprof handlers to http.Server
 	"time"
 )
 
