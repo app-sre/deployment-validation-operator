@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/pprof"
 	"strings"
 	"time"
 
@@ -55,6 +56,21 @@ func NewServer(registry Registry, path, addr string) (*Server, error) {
 	}, nil
 }
 
+// newPprofServeMux creates a new HTTP ServeMux with pprof handlers registered.
+// It is intended for exposing pprof endpoints such as CPU and memory profiling.
+func newPprofServeMux() *http.ServeMux {
+	mux := http.NewServeMux()
+
+	// Register pprof handlers on the ServeMux with specific URL paths.
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+	return mux
+}
+
 // getRouter registers two collectors to deliver metrics on a given path
 // It may return registerCollectorError if the collectors are already registered
 func getRouter(registry Registry, path string) (*http.ServeMux, error) {
@@ -77,7 +93,7 @@ func getRouter(registry Registry, path string) (*http.ServeMux, error) {
 		}
 	}
 
-	mux := http.NewServeMux()
+	mux := newPprofServeMux()
 	mux.Handle(path, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 
 	return mux, nil
