@@ -52,10 +52,10 @@ spec:
         - --config /config/deployment-validation-operator-config.yaml
         resources:
           requests:
-            memory: "200Mi"
+            memory: "400Mi"
             cpu: "100m"
           limits:
-            memory: "200Mi"
+            memory: "400Mi"
             cpu: "100m"
         livenessProbe:
           httpGet:
