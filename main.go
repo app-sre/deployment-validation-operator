@@ -17,7 +17,6 @@ import (
 	"github.com/app-sre/deployment-validation-operator/internal/options"
 	"github.com/app-sre/deployment-validation-operator/pkg/configmap"
 	"github.com/app-sre/deployment-validation-operator/pkg/controller"
-	"github.com/app-sre/deployment-validation-operator/pkg/pprof"
 	dvoProm "github.com/app-sre/deployment-validation-operator/pkg/prometheus"
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"github.com/app-sre/deployment-validation-operator/version"
@@ -114,14 +113,6 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 
 	if err := mgr.Add(srv); err != nil {
 		return nil, fmt.Errorf("adding metrics server to manager: %w", err)
-	}
-
-	// hotfix : adding minimal pprof server to manager
-	// TODO: server configuration, unify with prometheus server struct, add unit tests, ...
-	log.Info("Initialize Pprof endpoint on port 6060")
-	pprof := pprof.NewServer()
-	if err := mgr.Add(pprof); err != nil {
-		return nil, fmt.Errorf("adding pprof server to manager: %w", err)
 	}
 
 	log.Info("Initialize ConfigMap watcher")
