@@ -9,7 +9,7 @@ const (
 	// the usage of list-continue mechanism ensures that the memory consumption
 	// by this operator always stays under a desired threshold irrespective of the
 	// number of resource instances for any kubernetes resource
-	defaultListLimit = 5
+	defaultListLimit = 20
 
 	// EnvKubeClientQPS overrides defaultKubeClientQPS
 	EnvKubeClientQPS string = "KUBECLIENT_QPS"

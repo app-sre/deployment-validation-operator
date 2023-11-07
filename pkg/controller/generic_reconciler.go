@@ -54,7 +54,6 @@ func NewGenericReconciler(
 	if err != nil {
 		return nil, err
 	}
-
 	return &GenericReconciler{
 		client:                client,
 		discovery:             discovery,
@@ -184,12 +183,19 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 	return nil
 }
 
+type unstructuredWithSelector struct {
+	unstructured *unstructured.Unstructured
+	selector     labels.Selector
+}
+
 // groupAppObjects iterates over provided GroupVersionKind in given namespace
 // and returns map of objects grouped by their "app" label
 func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 	namespace string, gvks []schema.GroupVersionKind) (map[string][]*unstructured.Unstructured, error) {
 	relatedObjects := make(map[string][]*unstructured.Unstructured)
+	labelToLabelSet := make(map[string]*labels.Set)
 
+	var objectsWithNonEmptySelector []*unstructuredWithSelector
 	// sorting GVKs is very important for getting the consistent results
 	// when trying to match the 'app' label values. We must be sure that
 	// resources from the group apps/v1 are processed between first.
@@ -202,7 +208,6 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 		}
 		return f.Group < s.Group
 	})
-
 	for _, gvk := range gvks {
 		list := unstructured.UnstructuredList{}
 		listOptions := &client.ListOptions{
@@ -219,8 +224,13 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 			for i := range list.Items {
 				obj := &list.Items[i]
 				unstructured.RemoveNestedField(obj.Object, "metadata", "managedFields")
-				processResourceLabels(obj, relatedObjects)
-				gr.processResourceSelectors(obj, relatedObjects)
+				processResourceLabels(obj, relatedObjects, labelToLabelSet)
+				sel, err := getLabelSelector(obj)
+				if err != nil || sel == labels.Nothing() {
+					continue
+				}
+				objectsWithNonEmptySelector = append(objectsWithNonEmptySelector,
+					&unstructuredWithSelector{unstructured: obj, selector: sel})
 			}
 
 			listContinue := list.GetContinue()
@@ -230,14 +240,27 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 			listOptions.Continue = listContinue
 		}
 	}
+	for label := range relatedObjects {
+		labelsSet := labelToLabelSet[label]
+		for _, o := range objectsWithNonEmptySelector {
+			if o.selector.Matches(labelsSet) {
+				relatedObjects[label] = append(relatedObjects[label], o.unstructured)
+			}
+		}
+	}
 	return relatedObjects, nil
+}
+
+func getLabelSelector(obj *unstructured.Unstructured) (labels.Selector, error) {
+	labelSelector := utils.GetLabelSelector(obj)
+	return metav1.LabelSelectorAsSelector(labelSelector)
 }
 
 // processResourceLabels reads resource labels and if the labels
 // are not empty then format them into string and put the string value
 // as key and the object as a value into "relatedObjects" map
 func processResourceLabels(obj *unstructured.Unstructured,
-	relatedObjects map[string][]*unstructured.Unstructured) {
+	relatedObjects map[string][]*unstructured.Unstructured, labelSetMapping map[string]*labels.Set) {
 
 	objLabels := utils.GetLabels(obj)
 	if len(objLabels) == 0 {
@@ -245,30 +268,7 @@ func processResourceLabels(obj *unstructured.Unstructured,
 	}
 	labelsString := labels.FormatLabels(objLabels)
 	relatedObjects[labelsString] = append(relatedObjects[labelsString], obj)
-}
-
-// processResourceSelectors reads resource selector and then tries to match
-// the selector to known labels (keys in the relatedObjects map). If a match is found then
-// the object is added to the corresponding group (values in the relatedObjects map).
-func (gr *GenericReconciler) processResourceSelectors(obj *unstructured.Unstructured,
-	relatedObjects map[string][]*unstructured.Unstructured) {
-	labelSelector := utils.GetLabelSelector(obj)
-	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
-	if err != nil {
-		gr.logger.Error(err, "cannot convert label selector for object", obj.GetKind(), obj.GetName())
-		return
-	}
-
-	for k := range relatedObjects {
-		labelsSet, err := labels.ConvertSelectorToLabelsMap(k)
-		if err != nil {
-			gr.logger.Error(err, "cannot convert selector to labels map for", obj.GetKind(), obj.GetName())
-			continue
-		}
-		if selector.Matches(labelsSet) {
-			relatedObjects[k] = append(relatedObjects[k], obj)
-		}
-	}
+	labelSetMapping[labelsString] = &objLabels
 }
 
 func (gr *GenericReconciler) processNamespacedResources(
@@ -279,6 +279,7 @@ func (gr *GenericReconciler) processNamespacedResources(
 		if err != nil {
 			return err
 		}
+
 		for label, objects := range relatedObjects {
 			gr.logger.Info("reconcileNamespaceResources",
 				"Reconciling group of", len(objects), "objects with app label", label,
