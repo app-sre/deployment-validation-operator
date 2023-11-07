@@ -218,6 +218,7 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 
 			for i := range list.Items {
 				obj := &list.Items[i]
+				unstructured.RemoveNestedField(obj.Object, "metadata", "managedFields")
 				processResourceLabels(obj, relatedObjects)
 				gr.processResourceSelectors(obj, relatedObjects)
 			}
@@ -280,7 +281,8 @@ func (gr *GenericReconciler) processNamespacedResources(
 		}
 		for label, objects := range relatedObjects {
 			gr.logger.Info("reconcileNamespaceResources",
-				"Reconciling group of", len(objects), "objects with app label", label)
+				"Reconciling group of", len(objects), "objects with app label", label,
+				"in the namespace", ns.name)
 			err := gr.reconcileGroupOfObjects(ctx, objects, ns.name)
 			if err != nil {
 				return fmt.Errorf(
