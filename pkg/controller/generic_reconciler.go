@@ -162,7 +162,10 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 	once.Do(func() {
 		apiResources, err := reconcileResourceList(gr.discovery, gr.client.Scheme())
 		if err != nil {
-			gr.logger.Error(err, "retrieving API resources to reconcile")
+			gr.logger.Error(
+				err,
+				"cannot read API resources",
+			)
 			return
 		}
 		gr.apiResources = apiResources
@@ -191,16 +194,30 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 	return nil
 }
 
+type unstructuredWithSelector struct {
+	unstructured *unstructured.Unstructured
+	selector     labels.Selector
+}
+
+type groupOfObjects struct {
+	objects []*unstructured.Unstructured
+	label   string
+}
+
 // groupAppObjects iterates over provided GroupVersionKind in given namespace
 // and returns map of objects grouped by their "app" label
 func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
-	namespace string, gvks []schema.GroupVersionKind) (map[string][]*unstructured.Unstructured, error) {
+	namespace string, gvks []schema.GroupVersionKind,
+	ch chan groupOfObjects) {
+	defer close(ch)
 	relatedObjects := make(map[string][]*unstructured.Unstructured)
+	labelToLabelSet := make(map[string]*labels.Set)
 
+	var objectsWithNonEmptySelector []*unstructuredWithSelector
 	// sorting GVKs is very important for getting the consistent results
 	// when trying to match the 'app' label values. We must be sure that
 	// resources from the group apps/v1 are processed between first.
-	sort.Slice(gvks, func(i, j int) bool {
+	sort.SliceStable(gvks, func(i, j int) bool {
 		f := gvks[i]
 		s := gvks[j]
 		// sort resource by Kind in the same group
@@ -209,7 +226,6 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 		}
 		return f.Group < s.Group
 	})
-
 	for _, gvk := range gvks {
 		list := unstructured.UnstructuredList{}
 		listOptions := &client.ListOptions{
@@ -220,14 +236,19 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 		for {
 
 			if err := gr.client.List(ctx, &list, listOptions); err != nil {
-				return nil, fmt.Errorf("listing %s: %w", gvk.String(), err)
+				continue
 			}
 
 			for i := range list.Items {
 				obj := &list.Items[i]
 				unstructured.RemoveNestedField(obj.Object, "metadata", "managedFields")
-				processResourceLabels(obj, relatedObjects)
-				gr.processResourceSelectors(obj, relatedObjects)
+				processResourceLabels(obj, relatedObjects, labelToLabelSet)
+				sel, err := getLabelSelector(obj)
+				if err != nil || sel == labels.Nothing() {
+					continue
+				}
+				objectsWithNonEmptySelector = append(objectsWithNonEmptySelector,
+					&unstructuredWithSelector{unstructured: obj, selector: sel})
 			}
 
 			listContinue := list.GetContinue()
@@ -237,14 +258,27 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 			listOptions.Continue = listContinue
 		}
 	}
-	return relatedObjects, nil
+	for label := range relatedObjects {
+		labelsSet := labelToLabelSet[label]
+		for _, o := range objectsWithNonEmptySelector {
+			if o.selector.Matches(labelsSet) {
+				relatedObjects[label] = append(relatedObjects[label], o.unstructured)
+			}
+		}
+		ch <- groupOfObjects{label: label, objects: relatedObjects[label]}
+	}
+}
+
+func getLabelSelector(obj *unstructured.Unstructured) (labels.Selector, error) {
+	labelSelector := utils.GetLabelSelector(obj)
+	return metav1.LabelSelectorAsSelector(labelSelector)
 }
 
 // processResourceLabels reads resource labels and if the labels
 // are not empty then format them into string and put the string value
 // as key and the object as a value into "relatedObjects" map
 func processResourceLabels(obj *unstructured.Unstructured,
-	relatedObjects map[string][]*unstructured.Unstructured) {
+	relatedObjects map[string][]*unstructured.Unstructured, labelSetMapping map[string]*labels.Set) {
 
 	objLabels := utils.GetLabels(obj)
 	if len(objLabels) == 0 {
@@ -252,57 +286,35 @@ func processResourceLabels(obj *unstructured.Unstructured,
 	}
 	labelsString := labels.FormatLabels(objLabels)
 	relatedObjects[labelsString] = append(relatedObjects[labelsString], obj)
-}
-
-// processResourceSelectors reads resource selector and then tries to match
-// the selector to known labels (keys in the relatedObjects map). If a match is found then
-// the object is added to the corresponding group (values in the relatedObjects map).
-func (gr *GenericReconciler) processResourceSelectors(obj *unstructured.Unstructured,
-	relatedObjects map[string][]*unstructured.Unstructured) {
-	labelSelector := utils.GetLabelSelector(obj)
-	selector, err := metav1.LabelSelectorAsSelector(labelSelector)
-	if err != nil {
-		gr.logger.Error(err, "cannot convert label selector for object", obj.GetKind(), obj.GetName())
-		return
-	}
-
-	if selector == labels.Nothing() {
-		return
-	}
-
-	for k := range relatedObjects {
-		labelsSet, err := labels.ConvertSelectorToLabelsMap(k)
-		if err != nil {
-			gr.logger.Error(err, "cannot convert selector to labels map for", obj.GetKind(), obj.GetName())
-			continue
-		}
-		if selector.Matches(labelsSet) {
-			relatedObjects[k] = append(relatedObjects[k], obj)
-		}
-	}
+	labelSetMapping[labelsString] = &objLabels
 }
 
 func (gr *GenericReconciler) processNamespacedResources(
 	ctx context.Context, gvks []schema.GroupVersionKind, namespaces *[]namespace) error {
 
+	var wg sync.WaitGroup
+	wg.Add(len(*namespaces))
 	for _, ns := range *namespaces {
-		relatedObjects, err := gr.groupAppObjects(ctx, ns.name, gvks)
-		if err != nil {
-			return err
-		}
-		for label, objects := range relatedObjects {
-			gr.logger.Info("reconcileNamespaceResources",
-				"Reconciling group of", len(objects), "objects with labels", label,
-				"in the namespace", ns.name)
-			err := gr.reconcileGroupOfObjects(ctx, objects, ns.name)
-			if err != nil {
-				return fmt.Errorf(
-					"reconciling related objects with labels '%s': %w", label, err,
-				)
-			}
-		}
-	}
+		namespace := ns.name
+		go func() {
+			ch := make(chan groupOfObjects)
+			go gr.groupAppObjects(ctx, namespace, gvks, ch)
 
+			for groupOfObjects := range ch {
+				gr.logger.Info("reconcileNamespaceResources",
+					"Reconciling group of", len(groupOfObjects.objects),
+					"objects with labels", groupOfObjects.label,
+					"in the namespace", namespace)
+				err := gr.reconcileGroupOfObjects(ctx, groupOfObjects.objects, namespace)
+				if err != nil {
+					gr.logger.Error(err, "error reconciling group of ",
+						len(groupOfObjects.objects), "objects ", "in the namespace", namespace)
+				}
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
 	return nil
 }
 

@@ -612,13 +612,18 @@ func TestGroupAppObjects(t *testing.T) {
 			// create testing reconciler
 			gr, err := createTestReconciler(nil, tt.objs)
 			assert.NoError(t, err)
-			groupMap, err := gr.groupAppObjects(context.Background(), tt.namespace, tt.gvks)
-			assert.NoError(t, err)
+			ch := make(chan groupOfObjects)
+			go gr.groupAppObjects(context.Background(), tt.namespace, tt.gvks, ch)
 
+			resultMap := make(map[string][]string)
+			for groupOfObjects := range ch {
+				actualNames := unstructuredToNames(groupOfObjects.objects)
+				resultMap[groupOfObjects.label] = actualNames
+			}
 			for expectedLabel, expectedNames := range tt.expectedNames {
-				objects, ok := groupMap[expectedLabel]
+				actualNames, ok := resultMap[expectedLabel]
 				assert.True(t, ok, "can't find label %s", expectedLabel)
-				actualNames := unstructuredToNames(objects)
+				//actualNames := unstructuredToNames(objects)
 				for _, expectedName := range expectedNames {
 					assert.Contains(t, actualNames, expectedName,
 						"can't find %s for label value %s", expectedName, expectedLabel)
@@ -982,7 +987,7 @@ func TestHandleResourceDeletions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			testReconciler, err := createTestReconciler(nil, nil)
 			assert.NoError(t, err)
-			testReconciler.watchNamespaces.setCache(&tt.testNamespaces)
+			testReconciler.watchNamespaces.setCache(&tt.testNamespaces) // nolint:gosec
 
 			// store the test objects in the caches
 			for _, co := range tt.testCurrentObjects {

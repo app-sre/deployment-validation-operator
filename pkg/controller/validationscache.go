@@ -1,10 +1,14 @@
 package controller
 
 import (
+	"sync"
+
 	"github.com/app-sre/deployment-validation-operator/pkg/validations"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var lock sync.Mutex
 
 type validationKey struct {
 	group, version, kind, namespace, name string
@@ -68,6 +72,8 @@ func (vc *validationCache) has(key validationKey) bool {
 // constraint: cached outcomes will be updated in-place for a given object and
 // consecutive updates will not preserve previous state.
 func (vc *validationCache) store(obj client.Object, outcome validations.ValidationOutcome) {
+	lock.Lock()
+	defer lock.Unlock()
 	key := newValidationKey(obj)
 	(*vc)[key] = newValidationResource(
 		newResourceversionVal(obj.GetResourceVersion()),
@@ -92,6 +98,8 @@ func (vc *validationCache) remove(obj client.Object) {
 
 // removeKey deletes a key, and its value, from the instance
 func (vc *validationCache) removeKey(key validationKey) {
+	lock.Lock()
+	defer lock.Unlock()
 	delete(*vc, key)
 }
 
