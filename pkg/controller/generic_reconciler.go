@@ -259,6 +259,10 @@ func (gr *GenericReconciler) processResourceSelectors(obj *unstructured.Unstruct
 		return
 	}
 
+	if selector == labels.Nothing() {
+		return
+	}
+
 	for k := range relatedObjects {
 		labelsSet, err := labels.ConvertSelectorToLabelsMap(k)
 		if err != nil {
