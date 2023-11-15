@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -27,7 +28,8 @@ import (
 )
 
 var (
-	_ manager.Runnable = &GenericReconciler{}
+	_    manager.Runnable = &GenericReconciler{}
+	once sync.Once
 )
 
 // GenericReconciler watches a defined object
@@ -41,6 +43,7 @@ type GenericReconciler struct {
 	logger                logr.Logger
 	cmWatcher             *configmap.Watcher
 	validationEngine      validations.Interface
+	apiResources          []metav1.APIResource
 }
 
 // NewGenericReconciler returns a GenericReconciler struct
@@ -156,12 +159,16 @@ func (gr *GenericReconciler) LookForConfigUpdates(ctx context.Context) {
 }
 
 func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
-	apiResources, err := reconcileResourceList(gr.discovery, gr.client.Scheme())
-	if err != nil {
-		return fmt.Errorf("retrieving resources to reconcile: %w", err)
-	}
+	once.Do(func() {
+		apiResources, err := reconcileResourceList(gr.discovery, gr.client.Scheme())
+		if err != nil {
+			gr.logger.Error(err, "retrieving API resources to reconcile")
+			return
+		}
+		gr.apiResources = apiResources
+	})
 
-	for i, resource := range apiResources {
+	for i, resource := range gr.apiResources {
 		gr.logger.Info("apiResource", "no", i+1, "Group", resource.Group,
 			"Version", resource.Version,
 			"Kind", resource.Kind)
@@ -173,7 +180,7 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 		return fmt.Errorf("getting watched namespaces: %w", err)
 	}
 
-	gvkResources := gr.getNamespacedResourcesGVK(apiResources)
+	gvkResources := gr.getNamespacedResourcesGVK(gr.apiResources)
 	errNR := gr.processNamespacedResources(ctx, gvkResources, namespaces)
 	if errNR != nil {
 		return fmt.Errorf("processing namespace scoped resources: %w", errNR)
@@ -209,8 +216,8 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 			Limit:     gr.listLimit,
 			Namespace: namespace,
 		}
+		list.SetGroupVersionKind(gvk)
 		for {
-			list.SetGroupVersionKind(gvk)
 
 			if err := gr.client.List(ctx, &list, listOptions); err != nil {
 				return nil, fmt.Errorf("listing %s: %w", gvk.String(), err)
@@ -285,12 +292,12 @@ func (gr *GenericReconciler) processNamespacedResources(
 		}
 		for label, objects := range relatedObjects {
 			gr.logger.Info("reconcileNamespaceResources",
-				"Reconciling group of", len(objects), "objects with app label", label,
+				"Reconciling group of", len(objects), "objects with labels", label,
 				"in the namespace", ns.name)
 			err := gr.reconcileGroupOfObjects(ctx, objects, ns.name)
 			if err != nil {
 				return fmt.Errorf(
-					"reconciling related objects with 'app' label value '%s': %w", label, err,
+					"reconciling related objects with labels '%s': %w", label, err,
 				)
 			}
 		}
