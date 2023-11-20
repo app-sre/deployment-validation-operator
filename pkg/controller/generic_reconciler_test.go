@@ -610,10 +610,10 @@ func TestGroupAppObjects(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// create testing reconciler
-			gr, err := createTestReconciler(nil, tt.objs)
+			gr, err := createTestReconciler(nil, tt.gvks, tt.objs)
 			assert.NoError(t, err)
 			ch := make(chan groupOfObjects)
-			go gr.groupAppObjects(context.Background(), tt.namespace, tt.gvks, ch)
+			go gr.groupAppObjects(context.Background(), tt.namespace, ch)
 
 			resultMap := make(map[string][]string)
 			for groupOfObjects := range ch {
@@ -691,7 +691,7 @@ func TestUnstructuredToTyped(t *testing.T) {
 			err := v1.AddToScheme(tt.scheme)
 			assert.NoError(t, err)
 
-			gr, err := createTestReconciler(tt.scheme, nil)
+			gr, err := createTestReconciler(tt.scheme, nil, nil)
 			assert.NoError(t, err)
 			o, err := gr.unstructuredToTyped(tt.u)
 			if tt.expectedError == nil {
@@ -741,11 +741,8 @@ func TestGetNamespacedResourcesGVK(t *testing.T) {
 
 	for _, ut := range unitTests {
 		t.Run(ut.name, func(t *testing.T) {
-			// Given
-			gr := GenericReconciler{}
-
 			// When
-			test := gr.getNamespacedResourcesGVK(ut.arg)
+			test := getNamespacedResourcesGVK(ut.arg)
 
 			// Assert
 			assert.Equal(t, ut.result, test)
@@ -866,12 +863,12 @@ func TestProcessNamespacedResources(t *testing.T) {
 			err = policyv1.AddToScheme(sch)
 			assert.NoError(t, err)
 
-			testReconciler, err := createTestReconciler(sch, tt.objects)
+			testReconciler, err := createTestReconciler(sch, tt.gvks, tt.objects)
 			assert.NoError(t, err)
 
 			// set some namespaces to be watched
 			testReconciler.watchNamespaces.setCache(tt.namespaces)
-			err = testReconciler.processNamespacedResources(context.Background(), tt.gvks, tt.namespaces)
+			err = testReconciler.processNamespacedResources(context.Background(), tt.namespaces)
 			assert.NoError(t, err)
 			for _, o := range tt.objects {
 				vr, ok := testReconciler.objectValidationCache.retrieve(o)
@@ -985,7 +982,7 @@ func TestHandleResourceDeletions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			testReconciler, err := createTestReconciler(nil, nil)
+			testReconciler, err := createTestReconciler(nil, nil, nil)
 			assert.NoError(t, err)
 			testReconciler.watchNamespaces.setCache(&tt.testNamespaces) // nolint:gosec
 
@@ -1020,12 +1017,13 @@ func TestHandleResourceDeletions(t *testing.T) {
 
 func TestListLimit(t *testing.T) {
 	os.Setenv(EnvResorucesPerListQuery, "2")
-	testReconciler, err := createTestReconciler(runtime.NewScheme(), nil)
+	testReconciler, err := createTestReconciler(runtime.NewScheme(), nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), testReconciler.listLimit)
 }
 
-func createTestReconciler(scheme *runtime.Scheme, objects []client.Object) (*GenericReconciler, error) {
+func createTestReconciler(scheme *runtime.Scheme, gvks []schema.GroupVersionKind,
+	objects []client.Object) (*GenericReconciler, error) {
 	cliBuilder := clifake.NewClientBuilder()
 	if scheme != nil {
 		cliBuilder.WithScheme(scheme)
@@ -1040,5 +1038,10 @@ func createTestReconciler(scheme *runtime.Scheme, objects []client.Object) (*Gen
 	if err != nil {
 		return nil, err
 	}
-	return NewGenericReconciler(client, cli.Discovery(), &configmap.Watcher{}, ve)
+	testGenericReconciler, err := NewGenericReconciler(client, cli.Discovery(), &configmap.Watcher{}, ve)
+	if err != nil {
+		return nil, err
+	}
+	testGenericReconciler.resourceGVKs = gvks
+	return testGenericReconciler, nil
 }

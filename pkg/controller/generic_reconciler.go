@@ -44,6 +44,7 @@ type GenericReconciler struct {
 	cmWatcher             *configmap.Watcher
 	validationEngine      validations.Interface
 	apiResources          []metav1.APIResource
+	resourceGVKs          []schema.GroupVersionKind
 }
 
 // NewGenericReconciler returns a GenericReconciler struct
@@ -169,6 +170,20 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 			return
 		}
 		gr.apiResources = apiResources
+		gvks := getNamespacedResourcesGVK(gr.apiResources)
+		// sorting GVKs is very important for getting the consistent results
+		// when trying to match the 'app' label values. We must be sure that
+		// resources from the group apps/v1 are processed between first.
+		sort.SliceStable(gvks, func(i, j int) bool {
+			f := gvks[i]
+			s := gvks[j]
+			// sort resource by Kind in the same group
+			if f.Group == s.Group {
+				return f.Kind < s.Kind
+			}
+			return f.Group < s.Group
+		})
+		gr.resourceGVKs = gvks
 	})
 
 	for i, resource := range gr.apiResources {
@@ -183,8 +198,7 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 		return fmt.Errorf("getting watched namespaces: %w", err)
 	}
 
-	gvkResources := gr.getNamespacedResourcesGVK(gr.apiResources)
-	errNR := gr.processNamespacedResources(ctx, gvkResources, namespaces)
+	errNR := gr.processNamespacedResources(ctx, namespaces)
 	if errNR != nil {
 		return fmt.Errorf("processing namespace scoped resources: %w", errNR)
 	}
@@ -207,26 +221,14 @@ type groupOfObjects struct {
 // groupAppObjects iterates over provided GroupVersionKind in given namespace
 // and returns map of objects grouped by their "app" label
 func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
-	namespace string, gvks []schema.GroupVersionKind,
-	ch chan groupOfObjects) {
+	namespace string, ch chan groupOfObjects) {
 	defer close(ch)
 	relatedObjects := make(map[string][]*unstructured.Unstructured)
 	labelToLabelSet := make(map[string]*labels.Set)
 
 	var objectsWithNonEmptySelector []*unstructuredWithSelector
-	// sorting GVKs is very important for getting the consistent results
-	// when trying to match the 'app' label values. We must be sure that
-	// resources from the group apps/v1 are processed between first.
-	sort.SliceStable(gvks, func(i, j int) bool {
-		f := gvks[i]
-		s := gvks[j]
-		// sort resource by Kind in the same group
-		if f.Group == s.Group {
-			return f.Kind < s.Kind
-		}
-		return f.Group < s.Group
-	})
-	for _, gvk := range gvks {
+
+	for _, gvk := range gr.resourceGVKs {
 		list := unstructured.UnstructuredList{}
 		listOptions := &client.ListOptions{
 			Limit:     gr.listLimit,
@@ -290,7 +292,7 @@ func processResourceLabels(obj *unstructured.Unstructured,
 }
 
 func (gr *GenericReconciler) processNamespacedResources(
-	ctx context.Context, gvks []schema.GroupVersionKind, namespaces *[]namespace) error {
+	ctx context.Context, namespaces *[]namespace) error {
 
 	var wg sync.WaitGroup
 	wg.Add(len(*namespaces))
@@ -298,7 +300,7 @@ func (gr *GenericReconciler) processNamespacedResources(
 		namespace := ns.name
 		go func() {
 			ch := make(chan groupOfObjects)
-			go gr.groupAppObjects(ctx, namespace, gvks, ch)
+			go gr.groupAppObjects(ctx, namespace, ch)
 
 			for groupOfObjects := range ch {
 				gr.logger.Info("reconcileNamespaceResources",
@@ -408,7 +410,7 @@ func (gr *GenericReconciler) handleResourceDeletions() {
 }
 
 // getNamespacedResourcesGVK filters APIResources and returns the ones within a namespace
-func (gr GenericReconciler) getNamespacedResourcesGVK(resources []metav1.APIResource) []schema.GroupVersionKind {
+func getNamespacedResourcesGVK(resources []metav1.APIResource) []schema.GroupVersionKind {
 	namespacedResources := make([]schema.GroupVersionKind, 0)
 	for _, resource := range resources {
 		if resource.Namespaced {
