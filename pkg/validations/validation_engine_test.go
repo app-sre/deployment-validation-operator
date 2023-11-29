@@ -223,7 +223,8 @@ func TestRunValidationsForObjects(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, testCase := range tests {
+		tt := testCase
 		t.Run(tt.name, func(t *testing.T) {
 			metrics := make(map[string]*prometheus.GaugeVec)
 			ve, err := newValidationEngine("test-resources/config-with-custom-check.yaml", metrics)

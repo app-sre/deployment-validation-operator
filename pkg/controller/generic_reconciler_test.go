@@ -978,7 +978,8 @@ func TestHandleResourceDeletions(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, testCase := range tests {
+		tt := testCase
 		t.Run(tt.name, func(t *testing.T) {
 			testReconciler, err := createTestReconciler(nil, nil)
 			assert.NoError(t, err)
