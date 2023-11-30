@@ -49,115 +49,6 @@ objects:
               - "true"
       resourceApplyMode: Sync
       resources:
-        - apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: openshift-deployment-validation-operator
-            labels:
-              openshift.io/cluster-monitoring: "true"
-        - apiVersion: operators.coreos.com/v1alpha1
-          kind: CatalogSource
-          metadata:
-            name: deployment-validation-operator-catalog
-            namespace: openshift-deployment-validation-operator
-          spec:
-            sourceType: grpc
-            image: ${REGISTRY_IMG}@${IMAGE_DIGEST}
-            displayName: Deployment Validation Operator
-            publisher: Red Hat
-        - apiVersion: operators.coreos.com/v1
-          kind: OperatorGroup
-          metadata:
-            name: deployment-validation-operator-og
-            namespace: openshift-deployment-validation-operator
-            annotations:
-              olm.operatorframework.io/exclude-global-namespace-resolution: "true"
-          spec:
-            upgradeStrategy: TechPreviewUnsafeFailForward
-            targetNamespaces:
-              - openshift-deployment-validation-operator
-        - apiVersion: operators.coreos.com/v1alpha1
-          kind: Subscription
-          metadata:
-            name: deployment-validation-operator
-            namespace: openshift-deployment-validation-operator
-          spec:
-            channel: ${CHANNEL}
-            config:
-              env:
-              - name: "NAMESPACE_IGNORE_PATTERN"
-                value: "^(openshift.*|kube-.*|default|dedicated-admin|redhat-.*|acm|addon-dba-operator|codeready-.*|prow)$"
-            name: deployment-validation-operator
-            source: deployment-validation-operator-catalog
-            sourceNamespace: openshift-deployment-validation-operator
-        - apiVersion: networking.k8s.io/v1
-          kind: NetworkPolicy
-          metadata:
-            name: allow-from-openshift-insights
-            namespace: openshift-deployment-validation-operator
-          spec:
-            podSelector: {}
-            ingress:
-              - from:
-                - namespaceSelector:
-                    matchLabels:
-                      name: openshift-insights
-          policyTypes:
-            - Ingress
-        - apiVersion: networking.k8s.io/v1
-          kind: NetworkPolicy
-          metadata:
-            name: allow-from-openshift-olm
-            namespace: openshift-deployment-validation-operator
-          spec:
-            podSelector: {}
-            ingress:
-              - from:
-                - namespaceSelector:
-                    matchLabels:
-                      name: openshift-operator-lifecycle-manager
-          policyTypes:
-            - Ingress
-        - apiVersion: v1
-          kind: Service
-          metadata:
-            name: deployment-validation-operator-metrics
-            namespace: openshift-deployment-validation-operator
-            labels:
-              name: deployment-validation-operator
-          spec:
-            ports:
-            - name: http-metrics
-              port: 8383
-              protocol: TCP
-              targetPort: 8383
-            selector:
-              name: deployment-validation-operator
-        - apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: deployment-validation-operator-config
-            namespace: openshift-deployment-validation-operator
-            labels:
-              name: deployment-validation-operator
-          data:
-            deployment-validation-operator-config.yaml: |-
-              checks:
-                doNotAutoAddDefaults: true
-                addAllBuiltIn: false
-                include:
-                - "host-ipc"
-                - "host-network"
-                - "host-pid"
-                - "non-isolated-pod"
-                - "pdb-max-unavailable"
-                - "pdb-min-available"
-                - "privilege-escalation-container"
-                - "privileged-container"
-                - "run-as-non-root"
-                - "unsafe-sysctls"
-                - "unset-cpu-requirements"
-                - "unset-memory-requirements"
         - apiVersion: policy.open-cluster-management.io/v1
           kind: Policy
           metadata:
@@ -183,12 +74,121 @@ objects:
                     object-templates:
                       - complianceType: MustHave
                         objectDefinition:
-                          apiVersion: package-operator.run/v1alpha1
+                        - apiVersion: package-operator.run/v1alpha1
                           kind: Package
                           metadata:
                             name: deployment-validation-operator
                           spec:
                             image: ${REGISTRY_IMG}@${IMAGE_DIGEST}
+                        - apiVersion: v1
+                          kind: Namespace
+                          metadata:
+                            name: openshift-deployment-validation-operator
+                            labels:
+                              openshift.io/cluster-monitoring: "true"
+                        - apiVersion: operators.coreos.com/v1alpha1
+                          kind: CatalogSource
+                          metadata:
+                            name: deployment-validation-operator-catalog
+                            namespace: openshift-deployment-validation-operator
+                          spec:
+                            sourceType: grpc
+                            image: ${REGISTRY_IMG}@${IMAGE_DIGEST}
+                            displayName: Deployment Validation Operator
+                            publisher: Red Hat
+                        - apiVersion: operators.coreos.com/v1
+                          kind: OperatorGroup
+                          metadata:
+                            name: deployment-validation-operator-og
+                            namespace: openshift-deployment-validation-operator
+                            annotations:
+                              olm.operatorframework.io/exclude-global-namespace-resolution: "true"
+                          spec:
+                            upgradeStrategy: TechPreviewUnsafeFailForward
+                            targetNamespaces:
+                              - openshift-deployment-validation-operator
+                        - apiVersion: operators.coreos.com/v1alpha1
+                          kind: Subscription
+                          metadata:
+                            name: deployment-validation-operator
+                            namespace: openshift-deployment-validation-operator
+                          spec:
+                            channel: ${CHANNEL}
+                            config:
+                              env:
+                              - name: "NAMESPACE_IGNORE_PATTERN"
+                                value: "^(openshift.*|kube-.*|default|dedicated-admin|redhat-.*|acm|addon-dba-operator|codeready-.*|prow)$"
+                            name: deployment-validation-operator
+                            source: deployment-validation-operator-catalog
+                            sourceNamespace: openshift-deployment-validation-operator
+                        - apiVersion: networking.k8s.io/v1
+                          kind: NetworkPolicy
+                          metadata:
+                            name: allow-from-openshift-insights
+                            namespace: openshift-deployment-validation-operator
+                          spec:
+                            podSelector: {}
+                            ingress:
+                              - from:
+                                - namespaceSelector:
+                                    matchLabels:
+                                      name: openshift-insights
+                          policyTypes:
+                            - Ingress
+                        - apiVersion: networking.k8s.io/v1
+                          kind: NetworkPolicy
+                          metadata:
+                            name: allow-from-openshift-olm
+                            namespace: openshift-deployment-validation-operator
+                          spec:
+                            podSelector: {}
+                            ingress:
+                              - from:
+                                - namespaceSelector:
+                                    matchLabels:
+                                      name: openshift-operator-lifecycle-manager
+                          policyTypes:
+                            - Ingress
+                        - apiVersion: v1
+                          kind: Service
+                          metadata:
+                            name: deployment-validation-operator-metrics
+                            namespace: openshift-deployment-validation-operator
+                            labels:
+                              name: deployment-validation-operator
+                          spec:
+                            ports:
+                            - name: http-metrics
+                              port: 8383
+                              protocol: TCP
+                              targetPort: 8383
+                            selector:
+                              name: deployment-validation-operator
+                        - apiVersion: v1
+                          kind: ConfigMap
+                          metadata:
+                            name: deployment-validation-operator-config
+                            namespace: openshift-deployment-validation-operator
+                            labels:
+                              name: deployment-validation-operator
+                          data:
+                            deployment-validation-operator-config.yaml: |-
+                              checks:
+                                doNotAutoAddDefaults: true
+                                addAllBuiltIn: false
+                                include:
+                                - "host-ipc"
+                                - "host-network"
+                                - "host-pid"
+                                - "non-isolated-pod"
+                                - "pdb-max-unavailable"
+                                - "pdb-min-available"
+                                - "privilege-escalation-container"
+                                - "privileged-container"
+                                - "run-as-non-root"
+                                - "unsafe-sysctls"
+                                - "unset-cpu-requirements"
+                                - "unset-memory-requirements"
         - apiVersion: apps.open-cluster-management.io/v1
           kind: PlacementRule
           metadata:
