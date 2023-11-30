@@ -102,8 +102,6 @@ If no custom configuration is found (the ConfigMap does not exist or does not co
 * "unset-cpu-requirements"
 * "unset-memory-requirements"
 
-**constraint**: Currently, the configuration isn't continuously monitored and is only checked at startup. If a new set of checks is configured in a ConfigMap, the pod running DVO will need to be rebooted.
-
 ### Enabling checks
 
 To enable all checks, set the `addAllBuiltIn` property to `true`. If you only want to enable individual checks, include them as a collection in the `include` property and leave `addAllBuiltIn` with a value of `false`.
