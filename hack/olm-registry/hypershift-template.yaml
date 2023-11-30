@@ -35,18 +35,18 @@ objects:
         managed.openshift.io/gitHash: ${IMAGE_TAG}
         managed.openshift.io/gitRepoName: ${REPO_NAME}
         managed.openshift.io/osd: "true"
-      name: deployment-validation-operator
+      name: deployment-validation-operator-hypershift
     spec:
       clusterDeploymentSelector:
-        matchLabels:
-          api.openshift.com/managed: "true"
         matchExpressions:
-          - key: hive.openshift.io/version-major-minor
+          - key: ext-hypershift.openshift.io/cluster-type
+            operator: In
+            values:
+              - management-cluster
+          - key: api.openshift.com/fedramp
             operator: NotIn
-            values: ["4.1", "4.2", "4.3", "4.4", "4.5", "4.6", "4.7", "4.8", "4.9", "4.10"]
-          - key: hive.openshift.io/version-major-minor-patch
-            operator: NotIn
-            values: ["4.11.0", "4.11.1", "4.11.2", "4.11.3", "4.11.4", "4.11.5", "4.11.6", "4.11.7", "4.11.8", "4.11.9"]
+            values:
+              - "true"
       resourceApplyMode: Sync
       resources:
         - apiVersion: v1
@@ -143,13 +143,21 @@ objects:
           data:
             deployment-validation-operator-config.yaml: |-
               checks:
-                # if doNotAutoAddDefaults is true, default checks are not automatically added.
-                doNotAutoAddDefaults: false
-
-                # addAllBuiltIn, if set, adds all built-in checks. This allows users to
-                # explicitly opt-out of checks that are not relevant using Exclude.
-                # Takes precedence over doNotAutoAddDefaults, if both are set.
-                addAllBuiltIn: true
+                doNotAutoAddDefaults: true
+                addAllBuiltIn: false
+                include:
+                - "host-ipc"
+                - "host-network"
+                - "host-pid"
+                - "non-isolated-pod"
+                - "pdb-max-unavailable"
+                - "pdb-min-available"
+                - "privilege-escalation-container"
+                - "privileged-container"
+                - "run-as-non-root"
+                - "unsafe-sysctls"
+                - "unset-cpu-requirements"
+                - "unset-memory-requirements"
         - apiVersion: policy.open-cluster-management.io/v1
           kind: Policy
           metadata:
@@ -172,9 +180,6 @@ objects:
                     evaluationInterval:
                       compliant: 2h
                       noncompliant: 45s
-                    namespaceSelector:
-                      matchLabels:
-                        hypershift.openshift.io/hosted-control-plane: "true"
                     object-templates:
                       - complianceType: MustHave
                         objectDefinition:
