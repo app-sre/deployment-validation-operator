@@ -1061,7 +1061,8 @@ func BenchmarkGroupAppObjects(b *testing.B) {
 				Selector: &metav1.LabelSelector{
 					MatchExpressions: []metav1.LabelSelectorRequirement{
 						{
-							Key: "app", Operator: metav1.LabelSelectorOpIn, Values: []string{"A", "B", "C"},
+							Key: "app", Operator: metav1.LabelSelectorOpIn,
+							Values: []string{"A", "B", "C"},
 						},
 					},
 				},
@@ -1073,7 +1074,8 @@ func BenchmarkGroupAppObjects(b *testing.B) {
 				Selector: &metav1.LabelSelector{
 					MatchExpressions: []metav1.LabelSelectorRequirement{
 						{
-							Key: "app", Operator: metav1.LabelSelectorOpNotIn, Values: []string{"C"},
+							Key: "app", Operator: metav1.LabelSelectorOpNotIn,
+							Values: []string{"C"},
 						},
 					},
 				},
