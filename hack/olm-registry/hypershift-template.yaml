@@ -38,15 +38,8 @@ objects:
       name: deployment-validation-operator-hypershift
     spec:
       clusterDeploymentSelector:
-        matchExpressions:
-          - key: ext-hypershift.openshift.io/cluster-type
-            operator: In
-            values:
-              - management-cluster
-          - key: api.openshift.com/fedramp
-            operator: NotIn
-            values:
-              - "true"
+        matchLabels:
+          ext-hypershift.openshift.io/cluster-type: service-cluster
       resourceApplyMode: Sync
       resources:
         - apiVersion: policy.open-cluster-management.io/v1
