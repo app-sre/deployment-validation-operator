@@ -74,18 +74,14 @@ objects:
                     object-templates:
                       - complianceType: MustHave
                         objectDefinition:
-                        - apiVersion: package-operator.run/v1alpha1
-                          kind: Package
-                          metadata:
-                            name: deployment-validation-operator
-                          spec:
-                            image: ${REGISTRY_IMG}@${IMAGE_DIGEST}
                         - apiVersion: v1
                           kind: Namespace
                           metadata:
                             name: openshift-deployment-validation-operator
                             labels:
                               openshift.io/cluster-monitoring: "true"
+                      - complianceType: MustHave
+                        objectDefinition:
                         - apiVersion: operators.coreos.com/v1alpha1
                           kind: CatalogSource
                           metadata:
@@ -96,6 +92,8 @@ objects:
                             image: ${REGISTRY_IMG}@${IMAGE_DIGEST}
                             displayName: Deployment Validation Operator
                             publisher: Red Hat
+                      - complianceType: MustHave
+                        objectDefinition:
                         - apiVersion: operators.coreos.com/v1
                           kind: OperatorGroup
                           metadata:
@@ -107,6 +105,8 @@ objects:
                             upgradeStrategy: TechPreviewUnsafeFailForward
                             targetNamespaces:
                               - openshift-deployment-validation-operator
+                      - complianceType: MustHave
+                        objectDefinition:
                         - apiVersion: operators.coreos.com/v1alpha1
                           kind: Subscription
                           metadata:
@@ -121,6 +121,8 @@ objects:
                             name: deployment-validation-operator
                             source: deployment-validation-operator-catalog
                             sourceNamespace: openshift-deployment-validation-operator
+                      - complianceType: MustHave
+                        objectDefinition:
                         - apiVersion: networking.k8s.io/v1
                           kind: NetworkPolicy
                           metadata:
@@ -133,8 +135,10 @@ objects:
                                 - namespaceSelector:
                                     matchLabels:
                                       name: openshift-insights
-                          policyTypes:
-                            - Ingress
+                            policyTypes:
+                              - Ingress
+                      - complianceType: MustHave
+                        objectDefinition:
                         - apiVersion: networking.k8s.io/v1
                           kind: NetworkPolicy
                           metadata:
@@ -147,8 +151,10 @@ objects:
                                 - namespaceSelector:
                                     matchLabels:
                                       name: openshift-operator-lifecycle-manager
-                          policyTypes:
-                            - Ingress
+                            policyTypes:
+                              - Ingress
+                      - complianceType: MustHave
+                        objectDefinition:                      
                         - apiVersion: v1
                           kind: Service
                           metadata:
@@ -164,6 +170,8 @@ objects:
                               targetPort: 8383
                             selector:
                               name: deployment-validation-operator
+                      - complianceType: MustHave
+                        objectDefinition:
                         - apiVersion: v1
                           kind: ConfigMap
                           metadata:
@@ -200,7 +208,7 @@ objects:
               type: ManagedClusterConditionAvailable
             clusterSelector:
               matchExpressions:
-                - key: hypershift.open-cluster-management.io/management-cluster
+                - key: hypershift.open-cluster-management.io/hosted-cluster
                   operator: In
                   values:
                     - "true"
