@@ -1048,6 +1048,25 @@ func createTestReconciler(scheme *runtime.Scheme, gvks []schema.GroupVersionKind
 	return testGenericReconciler, nil
 }
 
+// BenchmarkGroupAppObjects measures the performance of grouping Kubernetes objects based on their labels.
+// The benchmark focuses on a scenario where a Reconciler needs to group different objects based on the 'app' label.
+// # Benchmark configuration:
+//
+// The benchmark is configured with the following parameters:
+// - namespace: "test" - The namespace in which the objects will be created.
+// - deploymentNumber: 100 - The number of Deployment objects to create to test.
+// - channelBuffer: 10 - The buffer size for the channel used in the grouping process.
+//
+// # How to run:
+//
+// To run the benchmark, run the following command:
+//
+//	go test -bench=BenchmarkGroupAppObjects
+//
+// Adjust the number of deployments or the buffer to match a given scenario.
+// Note that the local benchmark can be modified by other processes running in the background.
+// If the 'groupAppObjects' function is modified, run some benchmarks with before and after status
+// to compare performance improvements.
 func BenchmarkGroupAppObjects(b *testing.B) {
 	namespace := "test"
 	deploymentNumber := 100
