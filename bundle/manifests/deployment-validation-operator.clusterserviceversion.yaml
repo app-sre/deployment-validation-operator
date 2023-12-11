@@ -73,7 +73,7 @@ spec:
                 - name: OPERATOR_NAME
                   value: deployment-validation-operator
                 - name: NAMESPACE_IGNORE_PATTERN
-                  value: openshift.*|kube-.+|default|dedicated-admin
+                  value: openshift.*|kube-.+|open-cluster-management-.*|default|dedicated-admin
                 - name: RESOURCES_PER_LIST_QUERY
                   value: "5"
                 - name: VALIDATION_CHECK_INTERVAL
