@@ -1138,7 +1138,7 @@ func generateDeployments(count int, namespace string) []client.Object {
 				Name:      fmt.Sprintf("test-deployment-%d", i),
 				Namespace: namespace,
 				Labels: map[string]string{
-					"app": fmt.Sprintf("App-%s", []string{"A", "B", "C", "D"}[rand.Intn(4)]),
+					"app": []string{"A", "B", "C", "D"}[rand.Intn(4)],
 				},
 			},
 		}
