@@ -1061,7 +1061,7 @@ func createTestReconciler(scheme *runtime.Scheme, gvks []schema.GroupVersionKind
 //
 // To run the benchmark, run the following command:
 //
-//	go test -bench=BenchmarkGroupAppObjects
+//	go test ./pkg/controller/ -bench ^BenchmarkGroupAppObjects$
 //
 // Adjust the number of deployments or the buffer to match a given scenario.
 // Note that the local benchmark can be modified by other processes running in the background.
@@ -1070,7 +1070,6 @@ func createTestReconciler(scheme *runtime.Scheme, gvks []schema.GroupVersionKind
 func BenchmarkGroupAppObjects(b *testing.B) {
 	namespace := "test"
 	deploymentNumber := 100
-	channelBuffer := 10
 
 	// Given
 	objs := []client.Object{
@@ -1119,13 +1118,16 @@ func BenchmarkGroupAppObjects(b *testing.B) {
 
 	// Benchmark
 	for i := 0; i < b.N; i++ {
-		ch := make(chan groupOfObjects, channelBuffer)
+		ch := make(chan groupOfObjects)
 		go gr.groupAppObjects(context.Background(), namespace, ch)
 
 		for group := range ch {
 			b.Logf("Received group: %s, with %d objects", group.label, len(group.objects))
 		}
 	}
+
+	// This line reports memory consumption automatically (Bytes/operation and number of allocations/op)
+	b.ReportAllocs()
 }
 
 // generateDeployments is a helper function for benchmark to create iterative deployments
