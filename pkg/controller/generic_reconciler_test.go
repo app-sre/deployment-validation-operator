@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/rand"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	clifake "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -1045,4 +1046,105 @@ func createTestReconciler(scheme *runtime.Scheme, gvks []schema.GroupVersionKind
 	}
 	testGenericReconciler.resourceGVKs = gvks
 	return testGenericReconciler, nil
+}
+
+// BenchmarkGroupAppObjects measures the performance of grouping Kubernetes objects based on their labels.
+// The benchmark focuses on a scenario where a Reconciler needs to group different objects based on the 'app' label.
+// # Benchmark configuration:
+//
+// The benchmark is configured with the following parameters:
+// - namespace: "test" - The namespace in which the objects will be created.
+// - deploymentNumber: 100 - The number of Deployment objects to create to test.
+// - channelBuffer: 10 - The buffer size for the channel used in the grouping process.
+//
+// # How to run:
+//
+// To run the benchmark, run the following command:
+//
+//	go test ./pkg/controller/ -bench ^BenchmarkGroupAppObjects$
+//
+// Adjust the number of deployments or the buffer to match a given scenario.
+// Note that the local benchmark can be modified by other processes running in the background.
+// If the 'groupAppObjects' function is modified, run some benchmarks with before and after status
+// to compare performance improvements.
+func BenchmarkGroupAppObjects(b *testing.B) {
+	namespace := "test"
+	deploymentNumber := 100
+
+	// Given
+	objs := []client.Object{
+		&policyv1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-pdb-A-B-C", Namespace: namespace},
+			Spec: policyv1.PodDisruptionBudgetSpec{
+				Selector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key: "app", Operator: metav1.LabelSelectorOpIn,
+							Values: []string{"A", "B", "C"},
+						},
+					},
+				},
+			},
+		},
+		&policyv1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-pdb-not-in-C", Namespace: namespace},
+			Spec: policyv1.PodDisruptionBudgetSpec{
+				Selector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key: "app", Operator: metav1.LabelSelectorOpNotIn,
+							Values: []string{"C"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	objs = append(objs, generateDeployments(deploymentNumber, namespace)...)
+
+	gvks := []schema.GroupVersionKind{
+		{
+			Group: "policy", Kind: "PodDisruptionBudget", Version: "v1",
+		},
+		{
+			Group: "apps", Kind: "Deployment", Version: "v1",
+		},
+	}
+
+	// When
+	gr, err := createTestReconciler(nil, gvks, objs)
+	assert.NoError(b, err)
+
+	// Benchmark
+	for i := 0; i < b.N; i++ {
+		ch := make(chan groupOfObjects)
+		go gr.groupAppObjects(context.Background(), namespace, ch)
+
+		for group := range ch {
+			b.Logf("Received group: %s, with %d objects", group.label, len(group.objects))
+		}
+	}
+
+	// This line reports memory consumption automatically (Bytes/operation and number of allocations/op)
+	b.ReportAllocs()
+}
+
+// generateDeployments is a helper function for benchmark to create iterative deployments
+func generateDeployments(count int, namespace string) []client.Object {
+	objects := make([]client.Object, count)
+
+	for i := 0; i < count; i++ {
+		objects[i] = &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("test-deployment-%d", i),
+				Namespace: namespace,
+				Labels: map[string]string{
+					"app": []string{"A", "B", "C", "D"}[rand.Intn(4)],
+				},
+			},
+		}
+	}
+
+	return objects
 }
