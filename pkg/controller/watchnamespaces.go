@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sync"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,6 +19,7 @@ type namespace struct {
 }
 
 type watchNamespacesCache struct {
+	lock          sync.RWMutex
 	namespaces    *[]namespace
 	ignorePattern *regexp.Regexp
 }
@@ -51,6 +53,8 @@ func getFormattedNamespaces(list corev1.NamespaceList, ignorePattern *regexp.Reg
 
 // setCache is a setter for the namespaces field
 func (nsc *watchNamespacesCache) setCache(namespaces *[]namespace) {
+	nsc.lock.Lock()
+	defer nsc.lock.Unlock()
 	nsc.namespaces = namespaces
 }
 
