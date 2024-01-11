@@ -27,6 +27,7 @@ import (
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/discovery"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -191,20 +192,25 @@ func getManagerOptions(scheme *k8sruntime.Scheme, opts options.Options) (manager
 	}
 
 	mgrOpts := manager.Options{
-		Namespace:              ns,
 		HealthProbeBindAddress: opts.ProbeAddr,
-		MetricsBindAddress:     "0", // disable controller-runtime managed prometheus endpoint
 		// disable caching of everything
 		NewClient: newClient,
 		Scheme:    scheme,
 	}
 
+	// disable controller-runtime managed prometheus endpoint
+	mgrOpts.Metrics.BindAddress = "0"
+
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
 	// Note that this is not intended to be used for excluding namespaces, this is better done via a Predicate
 	// Also note that you may face performance issues when using this with a high number of namespaces.
 	// More: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/cache#MultiNamespacedCacheBuilder
-	if strings.Contains(ns, ",") {
-		mgrOpts.Cache.Namespaces = strings.Split(ns, ",")
+	if ns != "" {
+		defaultNamespaces := make(map[string]cache.Config)
+		for _, namespace := range strings.Split(ns, ",") {
+			defaultNamespaces[namespace] = cache.Config{}
+		}
+		mgrOpts.Cache.DefaultNamespaces = defaultNamespaces
 	}
 
 	return mgrOpts, nil
