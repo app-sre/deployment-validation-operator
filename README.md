@@ -137,6 +137,7 @@ metadata:
     kube-linter.io/ignore-all: "This deployment is managed by an OLM subscription"
 ```
 
+This feature is maintained by kube-linter, [more info](https://docs.kubelinter.io/#/configuring-kubelinter?id=ignoring-violations-for-specific-cases)
 
 ## Tests
 
