@@ -613,18 +613,12 @@ func TestGroupAppObjects(t *testing.T) {
 			// create testing reconciler
 			gr, err := createTestReconciler(nil, tt.gvks, tt.objs)
 			assert.NoError(t, err)
-			ch := make(chan groupOfObjects)
-			go gr.groupAppObjects(context.Background(), tt.namespace, ch)
+			relatedObjects := gr.groupAppObjects(context.Background(), tt.namespace)
 
-			resultMap := make(map[string][]string)
-			for groupOfObjects := range ch {
-				actualNames := unstructuredToNames(groupOfObjects.objects)
-				resultMap[groupOfObjects.label] = actualNames
-			}
 			for expectedLabel, expectedNames := range tt.expectedNames {
-				actualNames, ok := resultMap[expectedLabel]
+				objects, ok := relatedObjects[expectedLabel]
 				assert.True(t, ok, "can't find label %s", expectedLabel)
-				//actualNames := unstructuredToNames(objects)
+				actualNames := unstructuredToNames(objects)
 				for _, expectedName := range expectedNames {
 					assert.Contains(t, actualNames, expectedName,
 						"can't find %s for label value %s", expectedName, expectedLabel)
@@ -1118,11 +1112,10 @@ func BenchmarkGroupAppObjects(b *testing.B) {
 
 	// Benchmark
 	for i := 0; i < b.N; i++ {
-		ch := make(chan groupOfObjects)
-		go gr.groupAppObjects(context.Background(), namespace, ch)
+		relatedObjects := gr.groupAppObjects(context.Background(), namespace)
 
-		for group := range ch {
-			b.Logf("Received group: %s, with %d objects", group.label, len(group.objects))
+		for label, objects := range relatedObjects {
+			b.Logf("Received group: %s, with %d objects", label, len(objects))
 		}
 	}
 

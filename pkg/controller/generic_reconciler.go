@@ -213,16 +213,10 @@ type unstructuredWithSelector struct {
 	selector     labels.Selector
 }
 
-type groupOfObjects struct {
-	objects []*unstructured.Unstructured
-	label   string
-}
-
 // groupAppObjects iterates over provided GroupVersionKind in given namespace
 // and returns map of objects grouped by their "app" label
 func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
-	namespace string, ch chan groupOfObjects) {
-	defer close(ch)
+	namespace string) map[string][]*unstructured.Unstructured {
 	relatedObjects := make(map[string][]*unstructured.Unstructured)
 	labelToLabelSet := make(map[string]*labels.Set)
 
@@ -268,8 +262,8 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 				relatedObjects[label] = append(relatedObjects[label], o.unstructured)
 			}
 		}
-		ch <- groupOfObjects{label: label, objects: relatedObjects[label]}
 	}
+	return relatedObjects
 }
 
 func getLabelSelector(obj *unstructured.Unstructured) (labels.Selector, error) {
@@ -300,18 +294,17 @@ func (gr *GenericReconciler) processNamespacedResources(
 	for _, ns := range *namespaces {
 		namespace := ns.name
 		go func() {
-			ch := make(chan groupOfObjects)
-			go gr.groupAppObjects(ctx, namespace, ch)
+			relatedObjects := gr.groupAppObjects(ctx, namespace)
 
-			for groupOfObjects := range ch {
+			for label, objects := range relatedObjects {
 				gr.logger.Info("reconcileNamespaceResources",
-					"Reconciling group of", len(groupOfObjects.objects),
-					"objects with labels", groupOfObjects.label,
+					"Reconciling group of", len(objects),
+					"objects with labels", label,
 					"in the namespace", namespace)
-				err := gr.reconcileGroupOfObjects(ctx, groupOfObjects.objects, namespace)
+				err := gr.reconcileGroupOfObjects(ctx, objects, namespace)
 				if err != nil {
 					gr.logger.Error(err, "error reconciling group of ",
-						len(groupOfObjects.objects), "objects ", "in the namespace", namespace)
+						len(objects), "objects ", "in the namespace", namespace)
 				}
 			}
 			wg.Done()
