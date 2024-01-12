@@ -118,7 +118,7 @@ The `exclude` property can work in conjunction with `addAllBuiltIn` set to `true
 
 #### Ignore specific resources
 
-It is possible to ignore certain resources from any or all validations. This is achieved by adding annotations to the resources we want DVO to ignore.
+It is possible to exclude certain resources from any or all validations. This is achieved by adding annotations to the resources we want DVO to ignore.
 
 To ignore a specific check, the annotation will have a key like `ignore-check.kube-linter.io/check-name`. Where `check-name` can be any supported or custom check. It is recommended that the value for this annotation is a clear explanation of why the resource should be ignored.
 
