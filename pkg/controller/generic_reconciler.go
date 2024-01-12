@@ -217,7 +217,7 @@ type unstructuredWithSelector struct {
 // groupAppObjects iterates over provided GroupVersionKind in given namespace
 // and returns map of objects grouped by their "app" label
 func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
-	namespace string) map[string][]*unstructured.Unstructured {
+	namespace namespace) map[string][]*unstructured.Unstructured {
 	relatedObjects := make(map[string][]*unstructured.Unstructured)
 	labelToLabelSet := make(map[string]*labels.Set)
 
@@ -227,7 +227,28 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 		list := unstructured.UnstructuredList{}
 		listOptions := &client.ListOptions{
 			Limit:     gr.listLimit,
-			Namespace: namespace,
+			Namespace: namespace.name,
+		}
+		ok := client.ObjectKey{
+			Name: namespace.name,
+		}
+		var ns unstructured.Unstructured
+		ns.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "project.openshift.io",
+			Version: "v1",
+			Kind:    "project",
+		})
+		gr.client.Get(ctx, ok, &ns, &client.GetOptions{
+			Raw: &metav1.GetOptions{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "project",
+					APIVersion: "v1",
+				},
+			},
+		})
+		actualUID := string(ns.GetUID())
+		if namespace.uid != actualUID {
+			klog.Infof("============================== HIT THE PROBLEM %s %s", namespace.uid, actualUID)
 		}
 		list.SetGroupVersionKind(gvk)
 		for {
@@ -296,7 +317,7 @@ func (gr *GenericReconciler) processNamespacedResources(
 	for _, ns := range *namespaces {
 		namespace := ns
 		go func() {
-			relatedObjects := gr.groupAppObjects(ctx, namespace.name)
+			relatedObjects := gr.groupAppObjects(ctx, namespace)
 
 			for label, objects := range relatedObjects {
 				klog.Infof("================ GROUPING FOR %s %s\n", namespace.name, namespace.uid)
