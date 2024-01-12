@@ -116,6 +116,29 @@ The `exclude` property takes precedence over the `include` property. If a partic
 
 The `exclude` property can work in conjunction with `addAllBuiltIn` set to `true` in a blacklisting fashion. All checks will be triggered and only the checks passed in `exclude` will be ignored.
 
+#### Ignore specific resources
+
+It is possible to exclude certain resources from any or all validations. This is achieved by adding annotations to the resources we want DVO to ignore.
+
+To ignore a specific check, the annotation will have a key like `ignore-check.kube-linter.io/check-name`. Where `check-name` can be any supported or custom check. It is recommended that the value for this annotation is a clear explanation of why the resource should be ignored.
+
+To ignore all checks, the annotation key is `kube-linter.io/ignore-all`. Again, it is recommended to include a meaningful explanation in the value of the annotation.
+
+e.g. ignoring **run-as-non-root** check
+```yaml
+metadata:
+  annotations:
+    ignore-check.kube-linter.io/run-as-non-root: "This image must be run as a privileged user for it to work."
+```
+e.g. ignoring all checks
+```yaml
+metadata:
+  annotations:
+    kube-linter.io/ignore-all: "This deployment is managed by an OLM subscription"
+```
+
+This feature is maintained by kube-linter, [more info](https://docs.kubelinter.io/#/configuring-kubelinter?id=ignoring-violations-for-specific-cases)
+
 ## Tests
 
 You can run the unit tests via
