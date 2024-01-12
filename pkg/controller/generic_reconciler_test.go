@@ -613,7 +613,9 @@ func TestGroupAppObjects(t *testing.T) {
 			// create testing reconciler
 			gr, err := createTestReconciler(nil, tt.gvks, tt.objs)
 			assert.NoError(t, err)
-			relatedObjects := gr.groupAppObjects(context.Background(), tt.namespace)
+			relatedObjects := gr.groupAppObjects(context.Background(), namespace{
+				name: tt.namespace,
+			})
 
 			for expectedLabel, expectedNames := range tt.expectedNames {
 				objects, ok := relatedObjects[expectedLabel]
@@ -1062,13 +1064,13 @@ func createTestReconciler(scheme *runtime.Scheme, gvks []schema.GroupVersionKind
 // If the 'groupAppObjects' function is modified, run some benchmarks with before and after status
 // to compare performance improvements.
 func BenchmarkGroupAppObjects(b *testing.B) {
-	namespace := "test"
+	nsName := "test"
 	deploymentNumber := 100
 
 	// Given
 	objs := []client.Object{
 		&policyv1.PodDisruptionBudget{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-pdb-A-B-C", Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: "test-pdb-A-B-C", Namespace: nsName},
 			Spec: policyv1.PodDisruptionBudgetSpec{
 				Selector: &metav1.LabelSelector{
 					MatchExpressions: []metav1.LabelSelectorRequirement{
@@ -1081,7 +1083,7 @@ func BenchmarkGroupAppObjects(b *testing.B) {
 			},
 		},
 		&policyv1.PodDisruptionBudget{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-pdb-not-in-C", Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: "test-pdb-not-in-C", Namespace: nsName},
 			Spec: policyv1.PodDisruptionBudgetSpec{
 				Selector: &metav1.LabelSelector{
 					MatchExpressions: []metav1.LabelSelectorRequirement{
@@ -1095,7 +1097,7 @@ func BenchmarkGroupAppObjects(b *testing.B) {
 		},
 	}
 
-	objs = append(objs, generateDeployments(deploymentNumber, namespace)...)
+	objs = append(objs, generateDeployments(deploymentNumber, nsName)...)
 
 	gvks := []schema.GroupVersionKind{
 		{
@@ -1112,7 +1114,9 @@ func BenchmarkGroupAppObjects(b *testing.B) {
 
 	// Benchmark
 	for i := 0; i < b.N; i++ {
-		relatedObjects := gr.groupAppObjects(context.Background(), namespace)
+		relatedObjects := gr.groupAppObjects(context.Background(), namespace{
+			name: nsName,
+		})
 
 		for label, objects := range relatedObjects {
 			b.Logf("Received group: %s, with %d objects", label, len(objects))
