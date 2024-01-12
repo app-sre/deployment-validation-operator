@@ -238,7 +238,7 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 			Version: "v1",
 			Kind:    "project",
 		})
-		gr.client.Get(ctx, ok, &ns, &client.GetOptions{
+		err := gr.client.Get(ctx, ok, &ns, &client.GetOptions{
 			Raw: &metav1.GetOptions{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "project",
@@ -246,6 +246,9 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 				},
 			},
 		})
+		if err != nil {
+			klog.Info("============= ERROR getting namespace ", err)
+		}
 		actualUID := string(ns.GetUID())
 		if namespace.uid != actualUID {
 			klog.Infof("============================== HIT THE PROBLEM %s %s", namespace.uid, actualUID)
