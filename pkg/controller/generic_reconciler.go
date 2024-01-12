@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
+	"k8s.io/klog/v2"
 
 	"github.com/app-sre/deployment-validation-operator/pkg/configmap"
 	"github.com/app-sre/deployment-validation-operator/pkg/utils"
@@ -204,7 +205,7 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 	}
 
 	gr.handleResourceDeletions()
-
+	klog.Info("===================================== RECONCILE FINISHED")
 	return nil
 }
 
@@ -291,17 +292,19 @@ func (gr *GenericReconciler) processNamespacedResources(
 
 	var wg sync.WaitGroup
 	wg.Add(len(*namespaces))
+	klog.Info("========================== NAMESPACES ", namespaces)
 	for _, ns := range *namespaces {
-		namespace := ns.name
+		namespace := ns
 		go func() {
-			relatedObjects := gr.groupAppObjects(ctx, namespace)
+			relatedObjects := gr.groupAppObjects(ctx, namespace.name)
 
 			for label, objects := range relatedObjects {
+				klog.Infof("================ GROUPING FOR %s %s\n", namespace.name, namespace.uid)
 				gr.logger.Info("reconcileNamespaceResources",
 					"Reconciling group of", len(objects),
 					"objects with labels", label,
 					"in the namespace", namespace)
-				err := gr.reconcileGroupOfObjects(ctx, objects, namespace)
+				err := gr.reconcileGroupOfObjects(ctx, objects, namespace.name)
 				if err != nil {
 					gr.logger.Error(err, "error reconciling group of ",
 						len(objects), "objects ", "in the namespace", namespace)
@@ -323,6 +326,7 @@ func (gr *GenericReconciler) reconcileGroupOfObjects(ctx context.Context,
 	}
 
 	namespaceUID := gr.watchNamespaces.getNamespaceUID(namespace)
+
 	cliObjects := make([]client.Object, 0, len(objs))
 	for _, o := range objs {
 		typedClientObject, err := gr.unstructuredToTyped(o)
@@ -331,7 +335,7 @@ func (gr *GenericReconciler) reconcileGroupOfObjects(ctx context.Context,
 		}
 		cliObjects = append(cliObjects, typedClientObject)
 	}
-
+	klog.Infof("========================== IAM GOING TO VALIDATE OBJECTS WITH %s %s\n", namespace, namespaceUID)
 	outcome, err := gr.validationEngine.RunValidationsForObjects(cliObjects, namespaceUID)
 	if err != nil {
 		return fmt.Errorf("running validations: %w", err)
