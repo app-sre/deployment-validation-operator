@@ -124,12 +124,11 @@ objects:
                             name: allow-from-openshift-insights
                             namespace: openshift-deployment-validation-operator
                           spec:
-                            podSelector: {}
+                            podSelector:
+                              matchLabels:
+                                olm.catalogSource: deployment-validation-operator-catalog
                             ingress:
-                              - from:
-                                - namespaceSelector:
-                                    matchLabels:
-                                      name: openshift-insights
+                              - {}
                             policyTypes:
                               - Ingress
                       - complianceType: MustHave
