@@ -5,7 +5,7 @@ COPY . /workdir
 WORKDIR /workdir
 RUN make
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9-1108
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9-1108.1706795067
 
 ENV OPERATOR=/usr/local/bin/deployment-validation-operator \
     USER_UID=1001 \
