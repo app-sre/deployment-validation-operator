@@ -259,7 +259,7 @@ func TestRunValidationsForObjects(t *testing.T) {
 				customCheckName, metricValue, tt.initialExpectedMetricValue)
 
 			// Problem resolved
-			deployment.Spec.Replicas = &tt.updatedReplicaCount // nolint:gosec
+			deployment.Spec.Replicas = &tt.updatedReplicaCount
 			_, err = ve.RunValidationsForObjects([]client.Object{deployment}, request.NamespaceUID)
 			assert.NoError(t, err, "Error running validations")
 			// Metric with label combination should be successfully cleared because problem was resolved.
@@ -273,7 +273,7 @@ func TestRunValidationsForObjects(t *testing.T) {
 				customCheckMetricVal, tt.updatedExpectedMetricValue)
 
 			if tt.runAdditionalValidation {
-				deployment.Spec.Replicas = &tt.initialReplicaCount // nolint:gosec
+				deployment.Spec.Replicas = &tt.initialReplicaCount
 				_, err = ve.RunValidationsForObjects([]client.Object{deployment}, request.NamespaceUID)
 				assert.NoError(t, err, "Error running validations")
 
