@@ -244,7 +244,6 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 			for i := range list.Items {
 				obj := &list.Items[i]
 				unstructured.RemoveNestedField(obj.Object, "metadata", "managedFields")
-				unstructured.RemoveNestedField(obj.Object, "status")
 				processResourceLabels(obj, relatedObjects, labelToLabelSet)
 				sel, err := getLabelSelector(obj)
 				if err != nil || sel == labels.Nothing() {
