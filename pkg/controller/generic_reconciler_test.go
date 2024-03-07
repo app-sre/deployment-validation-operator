@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/rand"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	clifake "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -1040,6 +1039,9 @@ func createTestReconciler(scheme *runtime.Scheme, objects []client.Object) (*Gen
 	return NewGenericReconciler(client, cli.Discovery(), &configmap.Watcher{}, ve)
 }
 
+/* Benchmark used reverted changes in d80ec1f. Preserving it just in case the changes come back in near future.
+// TODO :: Check the usefulness of preserving this later on the road
+
 // BenchmarkGroupAppObjects measures the performance of grouping Kubernetes objects based on their labels.
 // The benchmark focuses on a scenario where a Reconciler needs to group different objects based on the 'app' label.
 // # Benchmark configuration:
@@ -1140,3 +1142,4 @@ func generateDeployments(count int, namespace string) []client.Object {
 
 	return objects
 }
+*/
