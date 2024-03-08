@@ -226,6 +226,7 @@ func (gr *GenericReconciler) groupAppObjects(ctx context.Context,
 			for i := range list.Items {
 				obj := &list.Items[i]
 				unstructured.RemoveNestedField(obj.Object, "metadata", "managedFields")
+				unstructured.RemoveNestedField(obj.Object, "status")
 				processResourceLabels(obj, relatedObjects)
 				gr.processResourceSelectors(obj, relatedObjects)
 			}
