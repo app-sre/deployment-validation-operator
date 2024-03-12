@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/rand"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	clifake "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -611,20 +610,15 @@ func TestGroupAppObjects(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// create testing reconciler
-			gr, err := createTestReconciler(nil, tt.gvks, tt.objs)
+			gr, err := createTestReconciler(nil, tt.objs)
 			assert.NoError(t, err)
-			ch := make(chan groupOfObjects)
-			go gr.groupAppObjects(context.Background(), tt.namespace, ch)
+			groupMap, err := gr.groupAppObjects(context.Background(), tt.namespace, tt.gvks)
+			assert.NoError(t, err)
 
-			resultMap := make(map[string][]string)
-			for groupOfObjects := range ch {
-				actualNames := unstructuredToNames(groupOfObjects.objects)
-				resultMap[groupOfObjects.label] = actualNames
-			}
 			for expectedLabel, expectedNames := range tt.expectedNames {
-				actualNames, ok := resultMap[expectedLabel]
+				objects, ok := groupMap[expectedLabel]
 				assert.True(t, ok, "can't find label %s", expectedLabel)
-				//actualNames := unstructuredToNames(objects)
+				actualNames := unstructuredToNames(objects)
 				for _, expectedName := range expectedNames {
 					assert.Contains(t, actualNames, expectedName,
 						"can't find %s for label value %s", expectedName, expectedLabel)
@@ -692,7 +686,7 @@ func TestUnstructuredToTyped(t *testing.T) {
 			err := v1.AddToScheme(tt.scheme)
 			assert.NoError(t, err)
 
-			gr, err := createTestReconciler(tt.scheme, nil, nil)
+			gr, err := createTestReconciler(tt.scheme, nil)
 			assert.NoError(t, err)
 			o, err := gr.unstructuredToTyped(tt.u)
 			if tt.expectedError == nil {
@@ -742,8 +736,11 @@ func TestGetNamespacedResourcesGVK(t *testing.T) {
 
 	for _, ut := range unitTests {
 		t.Run(ut.name, func(t *testing.T) {
+			// Given
+			gr := GenericReconciler{}
+
 			// When
-			test := getNamespacedResourcesGVK(ut.arg)
+			test := gr.getNamespacedResourcesGVK(ut.arg)
 
 			// Assert
 			assert.Equal(t, ut.result, test)
@@ -864,12 +861,12 @@ func TestProcessNamespacedResources(t *testing.T) {
 			err = policyv1.AddToScheme(sch)
 			assert.NoError(t, err)
 
-			testReconciler, err := createTestReconciler(sch, tt.gvks, tt.objects)
+			testReconciler, err := createTestReconciler(sch, tt.objects)
 			assert.NoError(t, err)
 
 			// set some namespaces to be watched
 			testReconciler.watchNamespaces.setCache(tt.namespaces)
-			err = testReconciler.processNamespacedResources(context.Background(), tt.namespaces)
+			err = testReconciler.processNamespacedResources(context.Background(), tt.gvks, tt.namespaces)
 			assert.NoError(t, err)
 			for _, o := range tt.objects {
 				vr, ok := testReconciler.objectValidationCache.retrieve(o)
@@ -984,9 +981,9 @@ func TestHandleResourceDeletions(t *testing.T) {
 	for _, testCase := range tests {
 		tt := testCase
 		t.Run(tt.name, func(t *testing.T) {
-			testReconciler, err := createTestReconciler(nil, nil, nil)
+			testReconciler, err := createTestReconciler(nil, nil)
 			assert.NoError(t, err)
-			testReconciler.watchNamespaces.setCache(&tt.testNamespaces) // nolint:gosec
+			testReconciler.watchNamespaces.setCache(&tt.testNamespaces)
 
 			// store the test objects in the caches
 			for _, co := range tt.testCurrentObjects {
@@ -1019,13 +1016,12 @@ func TestHandleResourceDeletions(t *testing.T) {
 
 func TestListLimit(t *testing.T) {
 	os.Setenv(EnvResorucesPerListQuery, "2")
-	testReconciler, err := createTestReconciler(runtime.NewScheme(), nil, nil)
+	testReconciler, err := createTestReconciler(runtime.NewScheme(), nil)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), testReconciler.listLimit)
 }
 
-func createTestReconciler(scheme *runtime.Scheme, gvks []schema.GroupVersionKind,
-	objects []client.Object) (*GenericReconciler, error) {
+func createTestReconciler(scheme *runtime.Scheme, objects []client.Object) (*GenericReconciler, error) {
 	cliBuilder := clifake.NewClientBuilder()
 	if scheme != nil {
 		cliBuilder.WithScheme(scheme)
@@ -1040,13 +1036,11 @@ func createTestReconciler(scheme *runtime.Scheme, gvks []schema.GroupVersionKind
 	if err != nil {
 		return nil, err
 	}
-	testGenericReconciler, err := NewGenericReconciler(client, cli.Discovery(), &configmap.Watcher{}, ve)
-	if err != nil {
-		return nil, err
-	}
-	testGenericReconciler.resourceGVKs = gvks
-	return testGenericReconciler, nil
+	return NewGenericReconciler(client, cli.Discovery(), &configmap.Watcher{}, ve)
 }
+
+/* Benchmark used reverted changes in d80ec1f. Preserving it just in case the changes come back in near future.
+// TODO :: Check the usefulness of preserving this later on the road
 
 // BenchmarkGroupAppObjects measures the performance of grouping Kubernetes objects based on their labels.
 // The benchmark focuses on a scenario where a Reconciler needs to group different objects based on the 'app' label.
@@ -1148,3 +1142,4 @@ func generateDeployments(count int, namespace string) []client.Object {
 
 	return objects
 }
+*/
