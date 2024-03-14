@@ -41,7 +41,7 @@ CONTAINER_ENGINE=$(shell command -v podman 2>/dev/null || echo docker --config=$
 endif
 
 # Generate version and tag information from inputs
-COMMIT_NUMBER=$(shell git rev-list `git rev-list --parents HEAD | egrep "^[a-f0-9]{40}$$"`..HEAD --count)
+COMMIT_NUMBER=$(shell git rev-list `git rev-list --parents HEAD | grep -E "^[a-f0-9]{40}$$"`..HEAD --count)
 CURRENT_COMMIT=$(shell git rev-parse --short=7 HEAD)
 OPERATOR_VERSION=$(VERSION_MAJOR).$(VERSION_MINOR).$(COMMIT_NUMBER)-$(CURRENT_COMMIT)
 
@@ -52,6 +52,22 @@ OPERATOR_IMAGE_URI=${IMG}
 OPERATOR_IMAGE_URI_LATEST=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):latest
 OPERATOR_DOCKERFILE ?=build/Dockerfile
 REGISTRY_IMAGE=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME)-registry
+
+ifeq ($(SUPPLEMENTARY_IMAGE_NAME),)
+# We need SUPPLEMENTARY_IMAGE to be defined for csv-generate.mk
+SUPPLEMENTARY_IMAGE=""
+else
+# If the configuration specifies a SUPPLEMENTARY_IMAGE_NAME
+# then append the image registry and generate the image URI.
+SUPPLEMENTARY_IMAGE=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(SUPPLEMENTARY_IMAGE_NAME)
+SUPPLEMENTARY_IMAGE_URI=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(SUPPLEMENTARY_IMAGE_NAME):${OPERATOR_IMAGE_TAG}
+endif
+
+ifeq ($(EnableOLMSkipRange), true)
+SKIP_RANGE_ENABLED=true
+else
+SKIP_RANGE_ENABLED=false
+endif
 
 # Consumer can optionally define ADDITIONAL_IMAGE_SPECS like:
 #     define ADDITIONAL_IMAGE_SPECS
@@ -88,13 +104,14 @@ export HOME=/tmp/home
 endif
 PWD=$(shell pwd)
 
-GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 GOFLAGS="${GOFLAGS_MOD}"
+GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=1 GOFLAGS="${GOFLAGS_MOD}"
 GOBUILDFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
 
 ifeq (${FIPS_ENABLED}, true)
 GOFLAGS_MOD+=-tags=fips_enabled
 GOFLAGS_MOD:=$(strip ${GOFLAGS_MOD})
-GOENV+=GOEXPERIMENT=boringcrypto
+$(warning Setting GOEXPERIMENT=strictfipsruntime,boringcrypto - this generally causes builds to fail unless building inside the provided Dockerfile. If building locally consider calling 'go build .')
+GOENV+=GOEXPERIMENT=strictfipsruntime,boringcrypto
 GOENV:=$(strip ${GOENV})
 endif
 
@@ -105,7 +122,7 @@ GOLANGCI_LINT_CACHE ?= /tmp/golangci-cache
 GOLANGCI_OPTIONAL_CONFIG ?=
 
 ifeq ($(origin TESTTARGETS), undefined)
-TESTTARGETS := $(shell ${GOENV} go list -e ./... | egrep -v "/(vendor)/" | egrep -v "/(osde2e)/")
+TESTTARGETS := $(shell ${GOENV} go list -e ./... | grep -E -v "/(vendor)/" | grep -E -v "/(osde2e)/")
 endif
 # ex, -v
 TESTOPTS :=
@@ -189,11 +206,13 @@ endef
 
 CONTROLLER_GEN = controller-gen
 OPENAPI_GEN = openapi-gen
+KUSTOMIZE = kustomize
+YQ = yq
 
 .PHONY: op-generate
 ## CRD v1beta1 is no longer supported.
 op-generate:
-	cd ./api; $(CONTROLLER_GEN) crd:crdVersions=v1 paths=./... output:dir=$(PWD)/deploy/crds
+	cd ./api; $(CONTROLLER_GEN) crd:crdVersions=v1,generateEmbeddedObjectMeta=true paths=./... output:dir=$(PWD)/deploy/crds
 	cd ./api; $(CONTROLLER_GEN) object paths=./...
 
 .PHONY: openapi-generate
@@ -207,8 +226,18 @@ openapi-generate:
 			-h /dev/null \
 			-r "-"
 
+.PHONY: manifests
+manifests:
+# Only use kustomize to template out manifests if the path config/default exists
+ifneq (,$(wildcard config/default))
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	$(KUSTOMIZE) build config/default | $(YQ) -s '"deploy/" + .metadata.name + "." + .kind + ".yaml"'
+else
+	$(info Did not find 'config/default' - skipping kustomize manifest generation)
+endif
+
 .PHONY: generate
-generate: op-generate go-generate openapi-generate
+generate: op-generate go-generate openapi-generate manifests
 
 ifeq (${FIPS_ENABLED}, true)
 go-build: ensure-fips
@@ -252,7 +281,7 @@ generate-check:
 
 .PHONY: yaml-validate
 yaml-validate: python-venv
-	${PYTHON} ${CONVENTION_DIR}/validate-yaml.py $(shell git ls-files | egrep -v '^(vendor|boilerplate)/' | egrep '.*\.ya?ml')
+	${PYTHON} ${CONVENTION_DIR}/validate-yaml.py $(shell git ls-files | grep -E -v '^(vendor|boilerplate)/' | grep -E '.*\.ya?ml')
 
 .PHONY: olm-deploy-yaml-validate
 olm-deploy-yaml-validate: python-venv
@@ -351,3 +380,11 @@ container-validate:
 .PHONY: container-coverage
 container-coverage:
 	${BOILERPLATE_CONTAINER_MAKE} coverage
+
+.PHONY: rvmo-bundle
+rvmo-bundle:
+	OPERATOR_NAME=$(OPERATOR_NAME) \
+	OPERATOR_VERSION=$(OPERATOR_VERSION) \
+	OPERATOR_OLM_REGISTRY_IMAGE=$(REGISTRY_IMAGE) \
+	TEMPLATE_FILE=$(abspath hack/olm-registry/olm-artifacts-template.yaml) \
+	bash ${CONVENTION_DIR}/rvmo-bundle.sh

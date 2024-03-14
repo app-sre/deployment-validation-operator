@@ -5,12 +5,12 @@
 aliases:
   srep-functional-team-aurora:
     - abyrne55
-    - bdematte
-    - boranx
+    - AlexVulaj
     - dakotalongRH
     - lnguyen1401
     - luis-falcon
     - rafael-azevedo
+    - reedcort
   srep-functional-team-fedramp:
     - tonytheleg
     - theautoroboto
@@ -18,71 +18,65 @@ aliases:
     - katherinelc321
     - robotmaxtron
     - rojasreinold
+    - hbhushan3
+    - fsferraz-rh
   srep-functional-team-hulk:
-    - mrbarge
     - a7vicky
-    - bmeng
-    - jwai7
     - rendhalver
     - ravitri
     - shitaljante
     - weherdh
+    - devppratik
   srep-functional-team-orange:
+    - bergmannf
     - bng0y
     - typeid
     - Makdaam
+    - mrWinston
     - Nikokolas3270
     - ninabauer
     - RaphaelBut
     - Tessg22
-    - thavlice
   srep-functional-team-rocket:
-    - anispate
-    - yithian
     - aliceh
-    - bdmiller3
-    - mjlshen
-    - sam-nguyen7
-    - tnierman
-  srep-functional-team-security:
-    - karthikperu7
+    - anispate
     - clcollins
+    - iamkirkbater
+    - tnierman
+    - yithian
+  srep-functional-team-security:
     - gsleeman
     - jaybeeunix
+    - sam-nguyen7
     - wshearn
+    - SamuelSidakwo
   srep-functional-team-thor:
-    - wanghaoran1988
+    - bmeng
     - MitaliBhalla
     - hectorakemp
-    - reetika-vyas
     - feichashao
-    - supreeth7
     - Tafhim
-  srep-functional-team-v1alpha1:
-    - iamkirkbater
-    - AlexVulaj
-    - T0MASD
-    - bergmannf
-    - dkeohane
-    - reedcort
-    - mrWinston
+    - samanthajayasinghe
   srep-functional-leads:
-    - mrbarge
     - rafael-azevedo
-    - wanghaoran1988
-    - sam-nguyen7
     - iamkirkbater
-    - bng0y
-    - tonytheleg
-    - karthikperu7
+    - Nikokolas3270
+    - theautoroboto
+    - bmeng
+    - mjlshen
+    - sam-nguyen7
+    - ravitri
   srep-team-leads:
-    - cblecker
-    - jharrington22
     - NautiluX
     - rogbas
-    - jewzaam
     - fahlmant
     - dustman9000
+    - wanghaoran1988
+    - bng0y
+  sre-group-leads:
+    - apahim
+    - maorfr
+    - rogbas
   srep-architects:
     - jewzaam
     - jharrington22
