@@ -295,7 +295,7 @@ func (gr *GenericReconciler) processNamespacedResources(
 			gr.logger.Info("reconcileNamespaceResources",
 				"Reconciling group of", len(objects), "objects with labels", label,
 				"in the namespace", ns.name)
-			err := gr.reconcileGroupOfObjects(ctx, objects, ns.name, ns.uid)
+			err := gr.reconcileGroupOfObjects(objects, ns.uid)
 			if err != nil {
 				return fmt.Errorf(
 					"reconciling related objects with labels '%s': %w", label, err,
@@ -307,8 +307,7 @@ func (gr *GenericReconciler) processNamespacedResources(
 	return nil
 }
 
-func (gr *GenericReconciler) reconcileGroupOfObjects(ctx context.Context,
-	objs []*unstructured.Unstructured, namespace string, namespaceUID string) error {
+func (gr *GenericReconciler) reconcileGroupOfObjects(objs []*unstructured.Unstructured, namespaceUID string) error {
 
 	if gr.allObjectsValidated(objs) {
 		gr.logger.Info("reconcileGroupOfObjects", "All objects are validated", "Nothing to do")
