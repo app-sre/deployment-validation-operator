@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -303,10 +302,6 @@ func (gr *GenericReconciler) processNamespacedResources(
 				)
 			}
 		}
-		if ns.name == "test-dvo-5" {
-			gr.logger.Info("//////                     replacing namespace with id", "id", ns.uid)
-			time.Sleep(2 * time.Minute)
-		}
 	}
 
 	return nil
@@ -383,14 +378,6 @@ func (gr *GenericReconciler) handleResourceDeletions() {
 			continue
 		}
 
-		// resets namespaces (once namespaces ID is part of the key)
-		// gr.watchNamespaces.resetCache()
-		// namespaces, err := gr.watchNamespaces.getWatchNamespaces(c, gr.client)
-		// if err != nil {
-		// 	return fmt.Errorf("getting watched namespaces: %w", err)
-		// }
-
-		nsId := gr.watchNamespaces.getNamespaceUID(k.namespace)
 		req := validations.Request{
 			Kind:         k.kind,
 			Name:         k.name,
@@ -399,9 +386,6 @@ func (gr *GenericReconciler) handleResourceDeletions() {
 			UID:          v.uid,
 		}
 
-		if k.namespace == "test-dvo-5" {
-			gr.logger.Info("////// removing metrics for resource", "resource", k.name, "namespace", k.namespace, "nsId", nsId)
-		}
 		gr.validationEngine.DeleteMetrics(req.ToPromLabels())
 
 		gr.objectValidationCache.removeKey(k)
