@@ -869,12 +869,12 @@ func TestProcessNamespacedResources(t *testing.T) {
 			err = testReconciler.processNamespacedResources(context.Background(), tt.gvks, tt.namespaces)
 			assert.NoError(t, err)
 			for _, o := range tt.objects {
-				namespaceId := testReconciler.watchNamespaces.getNamespaceUID(o.GetNamespace())
-				vr, ok := testReconciler.objectValidationCache.retrieve(o, namespaceId)
+				namespaceID := testReconciler.watchNamespaces.getNamespaceUID(o.GetNamespace())
+				vr, ok := testReconciler.objectValidationCache.retrieve(o, namespaceID)
 				assert.True(t, ok, "can't find object %v in the validation cache", o)
 				assert.Equal(t, string(o.GetUID()), vr.uid)
 
-				co, ok := testReconciler.currentObjects.retrieve(o, namespaceId)
+				co, ok := testReconciler.currentObjects.retrieve(o, namespaceID)
 				assert.True(t, ok, "can't find object %v in the current objects", o)
 				assert.Equal(t, string(o.GetUID()), co.uid)
 			}

@@ -8,7 +8,7 @@ import (
 
 type validationKey struct {
 	group, version, kind  string
-	name, namespace, nsId string
+	name, namespace, nsID string
 	uid                   types.UID
 }
 
@@ -20,7 +20,7 @@ func newResourceversionVal(str string) resourceVersion {
 
 // newValidationKey returns a unique identifier for the given
 // object suitable for hashing.
-func newValidationKey(obj client.Object, nsId string) validationKey {
+func newValidationKey(obj client.Object, nsID string) validationKey {
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	return validationKey{
 		group:     gvk.Group,
@@ -28,7 +28,7 @@ func newValidationKey(obj client.Object, nsId string) validationKey {
 		kind:      gvk.Kind,
 		name:      obj.GetName(),
 		namespace: obj.GetNamespace(),
-		nsId:      nsId,
+		nsID:      nsID,
 		uid:       obj.GetUID(),
 	}
 }
@@ -69,8 +69,8 @@ func (vc *validationCache) has(key validationKey) bool {
 // store caches a 'ValidationOutcome' for the given 'Object'.
 // constraint: cached outcomes will be updated in-place for a given object and
 // consecutive updates will not preserve previous state.
-func (vc *validationCache) store(obj client.Object, nsId string, outcome validations.ValidationOutcome) {
-	key := newValidationKey(obj, nsId)
+func (vc *validationCache) store(obj client.Object, nsID string, outcome validations.ValidationOutcome) {
+	key := newValidationKey(obj, nsID)
 	(*vc)[key] = newValidationResource(
 		newResourceversionVal(obj.GetResourceVersion()),
 		string(obj.GetUID()),
@@ -87,8 +87,8 @@ func (vc *validationCache) drain() {
 // remove uncaches the 'ValidationOutcome' for the
 // given object if it exists and performs a noop
 // if it does not.
-func (vc *validationCache) remove(obj client.Object, nsId string) {
-	key := newValidationKey(obj, nsId)
+func (vc *validationCache) remove(obj client.Object, nsID string) {
+	key := newValidationKey(obj, nsID)
 	vc.removeKey(key)
 }
 
@@ -100,8 +100,8 @@ func (vc *validationCache) removeKey(key validationKey) {
 // retrieve returns a tuple of 'validationResource' (if present)
 // and 'ok' which returns 'true' if a 'validationResource' exists
 // for the given 'Object' and 'false' otherwise.
-func (vc *validationCache) retrieve(obj client.Object, nsId string) (*validationResource, bool) {
-	key := newValidationKey(obj, nsId)
+func (vc *validationCache) retrieve(obj client.Object, nsID string) (*validationResource, bool) {
+	key := newValidationKey(obj, nsID)
 	val, exists := (*vc)[key]
 	return val, exists
 }
@@ -112,15 +112,15 @@ func (vc *validationCache) retrieve(obj client.Object, nsId string) (*validation
 // If the 'ResourceVersion' of an existing 'Object' is stale the cached
 // 'ValidationOutcome' is removed and 'false' is returned. In all other
 // cases 'false' is returned.
-func (vc *validationCache) objectAlreadyValidated(obj client.Object, nsId string) bool {
-	validationOutcome, ok := vc.retrieve(obj, nsId)
+func (vc *validationCache) objectAlreadyValidated(obj client.Object, nsID string) bool {
+	validationOutcome, ok := vc.retrieve(obj, nsID)
 	if !ok {
 		return false
 	}
 	storedResourceVersion := validationOutcome.version
 	currentResourceVersion := obj.GetResourceVersion()
 	if string(storedResourceVersion) != currentResourceVersion {
-		vc.remove(obj, nsId)
+		vc.remove(obj, nsID)
 		return false
 	}
 	return true

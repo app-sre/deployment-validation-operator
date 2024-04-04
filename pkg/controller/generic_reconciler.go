@@ -341,10 +341,10 @@ func (gr *GenericReconciler) allObjectsValidated(objs []*unstructured.Unstructur
 	// we must be sure that all objects in the given group are cached (validated)
 	// see DVO-103
 	for _, o := range objs {
-		namespaceId := gr.watchNamespaces.getNamespaceUID(o.GetNamespace())
+		namespaceID := gr.watchNamespaces.getNamespaceUID(o.GetNamespace())
 
-		gr.currentObjects.store(o, namespaceId, "")
-		if !gr.objectValidationCache.objectAlreadyValidated(o, namespaceId) {
+		gr.currentObjects.store(o, namespaceID, "")
+		if !gr.objectValidationCache.objectAlreadyValidated(o, namespaceID) {
 			allObjectsValidated = false
 		}
 	}
@@ -384,7 +384,7 @@ func (gr *GenericReconciler) handleResourceDeletions() {
 			Kind:         k.kind,
 			Name:         k.name,
 			Namespace:    k.namespace,
-			NamespaceUID: k.nsId,
+			NamespaceUID: k.nsID,
 			UID:          v.uid,
 		}
 
