@@ -309,7 +309,7 @@ func (gr *GenericReconciler) processNamespacedResources(
 
 func (gr *GenericReconciler) reconcileGroupOfObjects(objs []*unstructured.Unstructured, namespaceUID string) error {
 
-	if gr.allObjectsValidated(objs) {
+	if gr.allObjectsValidated(objs, namespaceUID) {
 		gr.logger.Info("reconcileGroupOfObjects", "All objects are validated", "Nothing to do")
 		return nil
 	}
@@ -336,13 +336,11 @@ func (gr *GenericReconciler) reconcileGroupOfObjects(objs []*unstructured.Unstru
 
 // allObjectsValidated checks whether all unstructured objects passed as argument are validated
 // and thus present in the cache
-func (gr *GenericReconciler) allObjectsValidated(objs []*unstructured.Unstructured) bool {
+func (gr *GenericReconciler) allObjectsValidated(objs []*unstructured.Unstructured, namespaceID string) bool {
 	allObjectsValidated := true
 	// we must be sure that all objects in the given group are cached (validated)
 	// see DVO-103
 	for _, o := range objs {
-		namespaceID := gr.watchNamespaces.getNamespaceUID(o.GetNamespace())
-
 		gr.currentObjects.store(o, namespaceID, "")
 		if !gr.objectValidationCache.objectAlreadyValidated(o, namespaceID) {
 			allObjectsValidated = false
