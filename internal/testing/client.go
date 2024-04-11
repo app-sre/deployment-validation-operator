@@ -27,7 +27,7 @@ func (c *TestClient) Create(ctx context.Context, obj client.Object, opts ...Requ
 	}
 }
 
-func (c *TestClient) Update(ctx context.Context, obj client.Object, opts ...RequestOption) {
+func (c *TestClient) Update(ctx context.Context, obj client.Object, _ ...RequestOption) {
 	gomega.ExpectWithOffset(1, c.client.Update(ctx, obj)).Should(gomega.Succeed())
 }
 
