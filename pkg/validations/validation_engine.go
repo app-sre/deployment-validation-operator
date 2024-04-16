@@ -13,6 +13,7 @@ import (
 
 	"github.com/app-sre/deployment-validation-operator/pkg/utils"
 	_ "github.com/app-sre/deployment-validation-operator/pkg/validations/all" // nolint:golint
+	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"golang.stackrox.io/kube-linter/pkg/checkregistry"
@@ -21,7 +22,7 @@ import (
 	"golang.stackrox.io/kube-linter/pkg/diagnostic"
 	"golang.stackrox.io/kube-linter/pkg/lintcontext"
 	"golang.stackrox.io/kube-linter/pkg/run"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	// Import and initialize all check templates from kube-linter
 	_ "golang.stackrox.io/kube-linter/pkg/templates/all" // nolint:golint
@@ -30,8 +31,6 @@ import (
 
 	"github.com/spf13/viper"
 )
-
-var log = logf.Log.WithName("validations")
 
 type ValidationOutcome string
 
@@ -64,6 +63,7 @@ type validationEngine struct {
 	enabledChecks    []string
 	registeredChecks map[string]config.Check
 	metrics          map[string]*prometheus.GaugeVec
+	logger           logr.Logger
 }
 
 // NewValidationEngine creates a new ValidationEngine instance
@@ -85,6 +85,7 @@ func NewValidationEngine(configPath string, metrics map[string]*prometheus.Gauge
 	ve := &validationEngine{
 		metrics: metrics,
 		config:  cfg,
+		logger:  ctrl.Log.WithName("validationEngine"),
 	}
 
 	err = ve.InitRegistry()
@@ -106,7 +107,7 @@ func fileExists(filename string) bool {
 
 func loadConfig(path string) (config.Config, error) {
 	if !fileExists(path) {
-		log.Info(fmt.Sprintf("config file %s does not exist. Use default configuration", path))
+		ctrl.Log.V(1).Info("Config file does not exist. Using default configuration", "path", path)
 		return config.Config{
 			Checks: GetDefaultChecks(),
 		}, nil
@@ -139,7 +140,7 @@ func (ve *validationEngine) RunValidationsForObjects(objects []client.Object,
 	}
 	result, err := run.Run(lintCtxs, ve.registry, ve.enabledChecks)
 	if err != nil {
-		log.Error(err, "error running validations")
+		ve.logger.Error(err, "error running validations")
 		return "", fmt.Errorf("error running validations: %v", err)
 	}
 
@@ -178,28 +179,32 @@ func (ve *validationEngine) processResult(result run.Result, namespaceUID string
 	for _, report := range result.Reports {
 		check, err := ve.getCheckByName(report.Check)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Failed to get check '%s' by name", report.Check))
+			ve.logger.Error(err, "Failed to get the check by name", "check", report.Check)
 			return "", fmt.Errorf("error running validations: %v", err)
 		}
-		obj := report.Object.K8sObject
-		logger := log.WithValues(
-			"request.namespace", obj.GetNamespace(),
-			"request.name", obj.GetName(),
-			"kind", obj.GetObjectKind().GroupVersionKind().Kind,
-			"validation", report.Check,
-			"check_description", check.Description,
-			"check_remediation", report.Remediation,
-			"check_failure_reason", report.Diagnostic.Message,
-		)
+
 		metric := ve.getMetric(report.Check)
 		if metric == nil {
-			log.Error(nil, "no metric found for validation", report.Check)
+			ve.logger.Error(nil, "no metric found for validation", report.Check)
+
 		} else {
+			obj := report.Object.K8sObject
+
 			req := NewRequestFromObject(obj)
 			req.NamespaceUID = namespaceUID
 			metric.With(req.ToPromLabels()).Set(1)
-			logger.Info(report.Remediation)
+
 			outcome = ObjectNeedsImprovement
+
+			ve.logger.WithValues(
+				"namespace", obj.GetNamespace(),
+				"object", obj.GetName(),
+				"kind", obj.GetObjectKind().GroupVersionKind().Kind,
+				"validation", report.Check,
+				"check_description", check.Description,
+				"check_remediation", report.Remediation,
+				"check_failure_reason", report.Diagnostic.Message,
+			).V(1).Info("New Metric has been created")
 		}
 	}
 	return outcome, nil
@@ -212,13 +217,13 @@ func (ve *validationEngine) InitRegistry() error {
 	}
 
 	if err := configresolver.LoadCustomChecksInto(&ve.config, registry); err != nil {
-		log.Error(err, "failed to load custom checks")
+		ve.logger.Error(err, "failed to load custom checks")
 		return err
 	}
 
 	enabledChecks, err := ve.getValidChecks(registry)
 	if err != nil {
-		log.Error(err, "error finding enabled validations")
+		ve.logger.Error(err, "error finding enabled validations")
 		return err
 	}
 
@@ -299,7 +304,7 @@ func (ve *validationEngine) getValidChecks(registry checkregistry.CheckRegistry)
 		re := regexp.MustCompile(`check \"([^,]*)\" not found`)
 		if matches := re.FindAllStringSubmatch(err.Error(), -1); matches != nil {
 			for i := range matches {
-				log.Info("entered ConfigMap check was not validated and is ignored",
+				ve.logger.V(1).Info("entered ConfigMap check was not validated and is ignored",
 					"validation name", matches[i][1],
 				)
 				ve.removeCheckFromConfig(matches[i][1])
