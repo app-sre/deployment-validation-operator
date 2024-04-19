@@ -63,10 +63,11 @@ func main() {
 	logf.SetLogger(zap.New(zap.UseFlagOptions(&opts.Zap)))
 
 	log := logf.Log.WithName("DeploymentValidation")
+	logVersion(log)
 
 	log.Info("Setting Up Manager")
 
-	mgr, err := setupManager(log, opts)
+	mgr, err := setupManager(log.V(1), opts)
 	if err != nil {
 		fail(log, err, "Unexpected error occurred while setting up manager")
 	}
@@ -78,26 +79,25 @@ func main() {
 	}
 }
 
-func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error) {
-	logVersion(log)
+func setupManager(logger logr.Logger, opts options.Options) (manager.Manager, error) {
 
-	log.Info("Load KubeConfig")
+	logger.Info("Load KubeConfig")
 
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, fmt.Errorf("getting config: %w", err)
 	}
 
-	log.Info("Initialize Manager")
+	logger.Info("Initialize Manager")
 
-	mgr, err := initManager(log, opts, cfg)
+	mgr, err := initManager(logger, opts, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("initializing manager: %w", err)
 	}
 
-	log.Info("Registering Components")
+	logger.Info("Registering Components")
 
-	log.Info("Initialize Prometheus Registry")
+	logger.Info("Initialize Prometheus Registry")
 
 	reg := prometheus.NewRegistry()
 	metrics, err := dvoProm.PreloadMetrics(reg)
@@ -105,7 +105,7 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 		return nil, fmt.Errorf("preloading kube-linter metrics: %w", err)
 	}
 
-	log.Info(fmt.Sprintf("Initialize Prometheus metrics endpoint on %q", opts.MetricsEndpoint()))
+	logger.Info("Initialize Prometheus metrics endpoint", "endpoint", opts.MetricsEndpoint())
 
 	srv, err := dvoProm.NewServer(reg, opts.MetricsPath, fmt.Sprintf(":%d", opts.MetricsPort))
 	if err != nil {
@@ -116,7 +116,7 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 		return nil, fmt.Errorf("adding metrics server to manager: %w", err)
 	}
 
-	log.Info("Initialize ConfigMap watcher")
+	logger.Info("Initialize ConfigMap watcher")
 
 	cmWatcher, err := configmap.NewWatcher(cfg)
 	if err != nil {
@@ -127,14 +127,14 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 		return nil, fmt.Errorf("adding configmap watcher to manager: %w", err)
 	}
 
-	log.Info("Initialize Validation Engine")
+	logger.Info("Initialize Validation Engine")
 
 	validationEngine, err := validations.NewValidationEngine(opts.ConfigFile, metrics)
 	if err != nil {
 		return nil, fmt.Errorf("initializing validation engine: %w", err)
 	}
 
-	log.Info("Initialize Reconciler")
+	logger.Info("Initialize Reconciler")
 
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
 	if err != nil {
@@ -153,16 +153,16 @@ func setupManager(log logr.Logger, opts options.Options) (manager.Manager, error
 	return mgr, nil
 }
 
-func fail(log logr.Logger, err error, msg string) {
-	log.Error(err, msg)
+func fail(logger logr.Logger, err error, msg string) {
+	logger.Error(err, msg)
 
 	os.Exit(1)
 }
 
-func logVersion(log logr.Logger) {
-	log.Info(fmt.Sprintf("Operator Version: %s", version.Version))
-	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
-	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
+func logVersion(logger logr.Logger) {
+	logger.Info(fmt.Sprintf("Operator Version: %s", version.Version))
+	logger.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
+	logger.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 }
 
 func initializeScheme() (*k8sruntime.Scheme, error) {
@@ -185,7 +185,7 @@ func initializeScheme() (*k8sruntime.Scheme, error) {
 
 var errWatchNamespaceNotSet = errors.New("'WatchNamespace' not set")
 
-func getManagerOptions(scheme *k8sruntime.Scheme, opts options.Options) (manager.Options, error) {
+func getManagerOptions(scheme *k8sruntime.Scheme, opts options.Options, logger logr.Logger) (manager.Options, error) {
 	ns, ok := opts.GetWatchNamespace()
 	if !ok {
 		return manager.Options{}, errWatchNamespaceNotSet
@@ -196,6 +196,7 @@ func getManagerOptions(scheme *k8sruntime.Scheme, opts options.Options) (manager
 		// disable caching of everything
 		NewClient: newClient,
 		Scheme:    scheme,
+		Logger:    logger,
 	}
 
 	// disable controller-runtime managed prometheus endpoint
@@ -241,15 +242,15 @@ func kubeClientQPS() (float32, error) {
 	return qps, err
 }
 
-func initManager(log logr.Logger, opts options.Options, cfg *rest.Config) (manager.Manager, error) {
-	log.Info("Initialize Scheme")
+func initManager(logger logr.Logger, opts options.Options, cfg *rest.Config) (manager.Manager, error) {
+	logger.Info("Initialize Scheme")
 	scheme, err := initializeScheme()
 	if err != nil {
 		return nil, fmt.Errorf("initializing scheme: %w", err)
 	}
 
-	log.Info("Getting Manager Options")
-	mgrOpts, err := getManagerOptions(scheme, opts)
+	logger.Info("Getting Manager Options")
+	mgrOpts, err := getManagerOptions(scheme, opts, logger)
 	if err != nil {
 		return nil, fmt.Errorf("getting manager options: %w", err)
 	}
@@ -259,7 +260,7 @@ func initManager(log logr.Logger, opts options.Options, cfg *rest.Config) (manag
 		return nil, fmt.Errorf("getting new manager: %w", err)
 	}
 
-	log.Info("Adding Healthz and Readyz checks")
+	logger.Info("Adding Healthz and Readyz checks")
 	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
 		return nil, fmt.Errorf("adding healthz check: %w", err)
 	}

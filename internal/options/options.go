@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/spf13/pflag"
+	"go.uber.org/zap/zapcore"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
@@ -39,6 +40,7 @@ func (o *Options) processFlags() {
 	// Add the zap logger flag set to the CLI. The flag set must
 	// be added before calling pflag.Parse().
 	o.Zap.BindFlags(flag.CommandLine)
+	o.Zap.Level = zapcore.Level(-1) // Set to debug to not alter current behavior. TODO: Remove when configurable.
 
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)

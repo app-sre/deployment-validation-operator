@@ -65,7 +65,7 @@ func NewGenericReconciler(
 		watchNamespaces:       newWatchNamespacesCache(),
 		objectValidationCache: newValidationCache(),
 		currentObjects:        newValidationCache(),
-		logger:                ctrl.Log.WithName("reconcile"),
+		logger:                ctrl.Log.WithName("GenericReconciler"),
 		cmWatcher:             cmw,
 		validationEngine:      validationEngine,
 	}, nil
@@ -116,6 +116,7 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 			// stop reconciling
 			return nil
 		default:
+			gr.logger.Info("Reconciliation loop has started")
 			if err := gr.reconcileEverything(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				// TODO: Improve error handling so that error can be returned to manager from here
 				// this is done to make sure errors caused by skew in k8s version on server and
@@ -124,6 +125,7 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 				// nikthoma: oct 11, 2022
 				gr.logger.Error(err, "error fetching and validating resource types")
 			}
+			gr.logger.Info("Reconciliation loop has ended")
 		}
 	}
 }
@@ -147,10 +149,11 @@ func (gr *GenericReconciler) LookForConfigUpdates(ctx context.Context) {
 			gr.objectValidationCache.drain()
 			gr.validationEngine.ResetMetrics()
 
-			gr.logger.Info(
+			gr.logger.V(1).Info(
 				"Current set of enabled checks",
 				"checks", strings.Join(gr.validationEngine.GetEnabledChecks(), ", "),
 			)
+			gr.logger.Info("The ConfigMap has been updated")
 
 		case <-ctx.Done():
 			return
@@ -169,7 +172,7 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 	})
 
 	for i, resource := range gr.apiResources {
-		gr.logger.Info("apiResource", "no", i+1, "Group", resource.Group,
+		gr.logger.V(1).Info("apiResource", "no", i+1, "Group", resource.Group,
 			"Version", resource.Version,
 			"Kind", resource.Kind)
 	}
@@ -287,15 +290,17 @@ func (gr *GenericReconciler) processNamespacedResources(
 	ctx context.Context, gvks []schema.GroupVersionKind, namespaces *[]namespace) error {
 
 	for _, ns := range *namespaces {
+		logger := gr.logger.WithValues("ns", ns.name).V(1)
+
 		relatedObjects, err := gr.groupAppObjects(ctx, ns.name, gvks)
 		if err != nil {
 			return err
 		}
 		for label, objects := range relatedObjects {
-			gr.logger.Info("reconcileNamespaceResources",
-				"Reconciling group of", len(objects), "objects with labels", label,
-				"in the namespace", ns.name)
-			err := gr.reconcileGroupOfObjects(objects, ns.uid)
+			logger.Info("Reconciling Namespace Resources",
+				"items", len(objects), "labels", label)
+
+			err := gr.reconcileGroupOfObjects(objects, ns)
 			if err != nil {
 				return fmt.Errorf(
 					"reconciling related objects with labels '%s': %w", label, err,
@@ -307,10 +312,10 @@ func (gr *GenericReconciler) processNamespacedResources(
 	return nil
 }
 
-func (gr *GenericReconciler) reconcileGroupOfObjects(objs []*unstructured.Unstructured, namespaceUID string) error {
+func (gr *GenericReconciler) reconcileGroupOfObjects(objs []*unstructured.Unstructured, ns namespace) error {
 
-	if gr.allObjectsValidated(objs, namespaceUID) {
-		gr.logger.Info("reconcileGroupOfObjects", "All objects are validated", "Nothing to do")
+	if gr.allObjectsValidated(objs, ns.uid) {
+		gr.logger.V(1).Info("All objects are validated, ending loop", "ns", ns.name)
 		return nil
 	}
 
@@ -323,12 +328,12 @@ func (gr *GenericReconciler) reconcileGroupOfObjects(objs []*unstructured.Unstru
 		cliObjects = append(cliObjects, typedClientObject)
 	}
 
-	outcome, err := gr.validationEngine.RunValidationsForObjects(cliObjects, namespaceUID)
+	outcome, err := gr.validationEngine.RunValidationsForObjects(cliObjects, ns.uid)
 	if err != nil {
 		return fmt.Errorf("running validations: %w", err)
 	}
 	for _, o := range objs {
-		gr.objectValidationCache.store(o, namespaceUID, outcome)
+		gr.objectValidationCache.store(o, ns.uid, outcome)
 	}
 
 	return nil

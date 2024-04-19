@@ -23,8 +23,7 @@ import (
 func GetKubeLinterRegistry() (checkregistry.CheckRegistry, error) {
 	registry := checkregistry.New()
 	if err := builtinchecks.LoadInto(registry); err != nil {
-		log.Error(err, "failed to load kube-linter built-in validations")
-		return nil, err
+		return nil, fmt.Errorf("failed to load kube-linter built-in validations: %w", err)
 	}
 
 	return registry, nil
@@ -49,8 +48,7 @@ func GetAllNamesFromRegistry(reg checkregistry.CheckRegistry) ([]string, error) 
 
 	checks, err := configresolver.GetEnabledChecksAndValidate(&cfg, reg)
 	if err != nil {
-		log.Error(err, "error getting enabled validations")
-		return nil, err
+		return nil, fmt.Errorf("error getting enabled validations: %w", err)
 	}
 
 	return checks, nil
