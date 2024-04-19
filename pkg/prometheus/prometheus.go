@@ -171,6 +171,7 @@ func (s *Server) Start(ctx context.Context) error {
 	errCh := make(chan error)
 	drain := func() {
 		for range errCh {
+			continue
 		}
 	}
 

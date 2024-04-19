@@ -6,7 +6,7 @@ linters:
   enable:
   - gofmt
   - goimports
-  - golint
+  - revive
   - govet
   - misspell
   - unused
@@ -18,10 +18,6 @@ linters:
   - staticcheck
 
 linters-settings:
-  golint:
-    # minimal confidence for issues, default is 0.8
-    min-confidence: 0
-
   lll:
     line-length: 120
     tab-width: 8
