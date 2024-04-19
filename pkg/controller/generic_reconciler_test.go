@@ -869,11 +869,12 @@ func TestProcessNamespacedResources(t *testing.T) {
 			err = testReconciler.processNamespacedResources(context.Background(), tt.gvks, tt.namespaces)
 			assert.NoError(t, err)
 			for _, o := range tt.objects {
-				vr, ok := testReconciler.objectValidationCache.retrieve(o)
+				namespaceID := testReconciler.watchNamespaces.getNamespaceUID(o.GetNamespace())
+				vr, ok := testReconciler.objectValidationCache.retrieve(o, namespaceID)
 				assert.True(t, ok, "can't find object %v in the validation cache", o)
 				assert.Equal(t, string(o.GetUID()), vr.uid)
 
-				co, ok := testReconciler.currentObjects.retrieve(o)
+				co, ok := testReconciler.currentObjects.retrieve(o, namespaceID)
 				assert.True(t, ok, "can't find object %v in the current objects", o)
 				assert.Equal(t, string(o.GetUID()), co.uid)
 			}
@@ -987,26 +988,33 @@ func TestHandleResourceDeletions(t *testing.T) {
 
 			// store the test objects in the caches
 			for _, co := range tt.testCurrentObjects {
-				testReconciler.currentObjects.store(co, validations.ObjectNeedsImprovement)
+				testReconciler.currentObjects.store(co,
+					testReconciler.watchNamespaces.getNamespaceUID(co.GetNamespace()),
+					validations.ObjectNeedsImprovement)
 			}
 			for _, co := range tt.testValidatedObjects {
-				testReconciler.objectValidationCache.store(co, validations.ObjectNeedsImprovement)
+				testReconciler.objectValidationCache.store(co,
+					testReconciler.watchNamespaces.getNamespaceUID(co.GetNamespace()),
+					validations.ObjectNeedsImprovement)
 			}
 			testReconciler.handleResourceDeletions()
 			// currentObjects should be always empty after calling handleResourceDeletions
 			for _, co := range tt.testCurrentObjects {
-				_, ok := testReconciler.currentObjects.retrieve(co)
+				_, ok := testReconciler.currentObjects.retrieve(co,
+					testReconciler.watchNamespaces.getNamespaceUID(co.GetNamespace()))
 				assert.False(t, ok)
 			}
 
 			if tt.expectedValidatedObjects == nil {
 				for _, vo := range tt.testValidatedObjects {
-					_, ok := testReconciler.objectValidationCache.retrieve(vo)
+					_, ok := testReconciler.objectValidationCache.retrieve(vo,
+						testReconciler.watchNamespaces.getNamespaceUID(vo.GetNamespace()))
 					assert.False(t, ok)
 				}
 			} else {
 				for _, vo := range tt.expectedValidatedObjects {
-					_, ok := testReconciler.objectValidationCache.retrieve(vo)
+					_, ok := testReconciler.objectValidationCache.retrieve(vo,
+						testReconciler.watchNamespaces.getNamespaceUID(vo.GetNamespace()))
 					assert.True(t, ok)
 				}
 			}

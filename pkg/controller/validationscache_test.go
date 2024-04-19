@@ -29,11 +29,11 @@ func TestValidationsCache(t *testing.T) {
 		}}
 
 		// When
-		mock.store(&mockClientObject, "mock_outcome")
+		mock.store(&mockClientObject, "", "mock_outcome")
 
 		// Assert
 		expected := newValidationResource(newResourceversionVal("mock_version"), "mock_uid", "mock_outcome")
-		assert.Equal(t, expected, (*mock)[newValidationKey(&mockClientObject)])
+		assert.Equal(t, expected, (*mock)[newValidationKey(&mockClientObject, "")])
 	})
 
 	t.Run("objectAlreadyValidated : key does not exist", func(t *testing.T) {
@@ -45,7 +45,7 @@ func TestValidationsCache(t *testing.T) {
 		}}
 
 		// When
-		test := mock.objectAlreadyValidated(&mockClientObject)
+		test := mock.objectAlreadyValidated(&mockClientObject, "")
 
 		// Assert
 		assert.False(t, test)
@@ -58,12 +58,12 @@ func TestValidationsCache(t *testing.T) {
 			ResourceVersion: "mock_version",
 			UID:             "mock_uid",
 		}}
-		mock.store(&mockClientObject, "mock_outcome")
-		toBeRemovedKey := newValidationKey(&mockClientObject)
+		mock.store(&mockClientObject, "", "mock_outcome")
+		toBeRemovedKey := newValidationKey(&mockClientObject, "")
 
 		// When
 		mockClientObject.ResourceVersion = "mock_new_version"
-		test := mock.objectAlreadyValidated(&mockClientObject)
+		test := mock.objectAlreadyValidated(&mockClientObject, "")
 
 		// Assert
 		assert.False(t, test)
@@ -77,10 +77,10 @@ func TestValidationsCache(t *testing.T) {
 			ResourceVersion: "mock_version",
 			UID:             "mock_uid",
 		}}
-		mock.store(&mockClientObject, "mock_outcome")
+		mock.store(&mockClientObject, "", "mock_outcome")
 
 		// When
-		test := mock.objectAlreadyValidated(&mockClientObject)
+		test := mock.objectAlreadyValidated(&mockClientObject, "")
 
 		// Assert
 		assert.True(t, test)
@@ -103,14 +103,14 @@ func TestValidationsCache(t *testing.T) {
 				UID:       "bar345",
 			},
 		}
-		testCache.store(&dep1, validations.ObjectNeedsImprovement)
-		testCache.store(&dep2, validations.ObjectValid)
+		testCache.store(&dep1, "", validations.ObjectNeedsImprovement)
+		testCache.store(&dep2, "", validations.ObjectValid)
 
-		resource1, exists := testCache.retrieve(&dep1)
+		resource1, exists := testCache.retrieve(&dep1, "")
 		assert.True(t, exists)
 		assert.Equal(t, validations.ObjectNeedsImprovement, resource1.outcome)
 
-		resource2, exists := testCache.retrieve(&dep2)
+		resource2, exists := testCache.retrieve(&dep2, "")
 		assert.True(t, exists)
 		assert.Equal(t, validations.ObjectValid, resource2.outcome)
 	})
@@ -128,19 +128,19 @@ func Benchmark_ValidationCache(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		name := fmt.Sprintf("test-%d", i)
-		vc.store(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name}}, validations.ObjectValid)
+		vc.store(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name}}, "", validations.ObjectValid)
 	}
 	printMemoryInfo(fmt.Sprintf("Memory consumption after storing %d items in the cache", b.N))
 	for i := 0; i < b.N; i++ {
 		name := fmt.Sprintf("test-%d", i)
-		vc.remove(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name}})
+		vc.remove(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name}}, "")
 	}
 	runtime.GC()
 	printMemoryInfo("Memory consumption after removing the items ")
 
 	for i := 0; i < b.N; i++ {
 		name := fmt.Sprintf("test-%d", i)
-		vc.store(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name}}, validations.ObjectValid)
+		vc.store(&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name}}, "", validations.ObjectValid)
 	}
 	printMemoryInfo(fmt.Sprintf("Memory consumption after storing %d items again", b.N))
 }

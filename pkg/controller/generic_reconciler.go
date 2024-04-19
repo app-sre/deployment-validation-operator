@@ -295,7 +295,7 @@ func (gr *GenericReconciler) processNamespacedResources(
 			gr.logger.Info("reconcileNamespaceResources",
 				"Reconciling group of", len(objects), "objects with labels", label,
 				"in the namespace", ns.name)
-			err := gr.reconcileGroupOfObjects(ctx, objects, ns.name)
+			err := gr.reconcileGroupOfObjects(objects, ns.uid)
 			if err != nil {
 				return fmt.Errorf(
 					"reconciling related objects with labels '%s': %w", label, err,
@@ -307,15 +307,13 @@ func (gr *GenericReconciler) processNamespacedResources(
 	return nil
 }
 
-func (gr *GenericReconciler) reconcileGroupOfObjects(ctx context.Context,
-	objs []*unstructured.Unstructured, namespace string) error {
+func (gr *GenericReconciler) reconcileGroupOfObjects(objs []*unstructured.Unstructured, namespaceUID string) error {
 
-	if gr.allObjectsValidated(objs) {
+	if gr.allObjectsValidated(objs, namespaceUID) {
 		gr.logger.Info("reconcileGroupOfObjects", "All objects are validated", "Nothing to do")
 		return nil
 	}
 
-	namespaceUID := gr.watchNamespaces.getNamespaceUID(namespace)
 	cliObjects := make([]client.Object, 0, len(objs))
 	for _, o := range objs {
 		typedClientObject, err := gr.unstructuredToTyped(o)
@@ -330,7 +328,7 @@ func (gr *GenericReconciler) reconcileGroupOfObjects(ctx context.Context,
 		return fmt.Errorf("running validations: %w", err)
 	}
 	for _, o := range objs {
-		gr.objectValidationCache.store(o, outcome)
+		gr.objectValidationCache.store(o, namespaceUID, outcome)
 	}
 
 	return nil
@@ -338,13 +336,13 @@ func (gr *GenericReconciler) reconcileGroupOfObjects(ctx context.Context,
 
 // allObjectsValidated checks whether all unstructured objects passed as argument are validated
 // and thus present in the cache
-func (gr *GenericReconciler) allObjectsValidated(objs []*unstructured.Unstructured) bool {
+func (gr *GenericReconciler) allObjectsValidated(objs []*unstructured.Unstructured, namespaceID string) bool {
 	allObjectsValidated := true
 	// we must be sure that all objects in the given group are cached (validated)
 	// see DVO-103
 	for _, o := range objs {
-		gr.currentObjects.store(o, "")
-		if !gr.objectValidationCache.objectAlreadyValidated(o) {
+		gr.currentObjects.store(o, namespaceID, "")
+		if !gr.objectValidationCache.objectAlreadyValidated(o, namespaceID) {
 			allObjectsValidated = false
 		}
 	}
@@ -384,7 +382,7 @@ func (gr *GenericReconciler) handleResourceDeletions() {
 			Kind:         k.kind,
 			Name:         k.name,
 			Namespace:    k.namespace,
-			NamespaceUID: gr.watchNamespaces.getNamespaceUID(k.namespace),
+			NamespaceUID: k.nsID,
 			UID:          v.uid,
 		}
 
