@@ -124,7 +124,7 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("getting watched namespaces: %w", err)
 			}
-			if namespaces == nil {
+			if namespaces == nil || len(*namespaces) == 0 {
 				time.Sleep(10 * time.Second)
 			}
 
