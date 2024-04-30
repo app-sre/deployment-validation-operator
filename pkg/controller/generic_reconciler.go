@@ -119,18 +119,15 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 		default:
 			gr.logger.Info("Reconciliation loop has started")
 
+			// Skips validation if no valid namespaces in the cluster. Avoids CPU overusage
 			gr.watchNamespaces.resetCache()
-			namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client)
-			if err != nil {
-				// return fmt.Errorf("getting watched namespaces: %w", err)
+			if namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client); err != nil {
 				gr.logger.Error(err, "getting watched namespaces")
-			}
-			if namespaces == nil || len(*namespaces) == 0 {
+
+			} else if namespaces == nil || len(*namespaces) == 0 {
 				gr.logger.Info("No namespaces to validate, skipping loop")
 				time.Sleep(10 * time.Second)
 				continue
-				//logger
-				//continue
 			}
 
 			if err := gr.reconcileEverything(ctx); err != nil && !errors.Is(err, context.Canceled) {
@@ -193,7 +190,6 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 			"Kind", resource.Kind)
 	}
 
-	//gr.watchNamespaces.resetCache()
 	namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client)
 	if err != nil {
 		return fmt.Errorf("getting watched namespaces: %w", err)
