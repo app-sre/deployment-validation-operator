@@ -123,10 +123,11 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 			gr.watchNamespaces.resetCache()
 			if namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client); err != nil {
 				gr.logger.Error(err, "getting watched namespaces")
+				continue
 
 			} else if namespaces == nil || len(*namespaces) == 0 {
 				gr.logger.Info("No namespaces to validate, skipping loop")
-				time.Sleep(10 * time.Second)
+				time.Sleep(defaultNoNamespacesElapseTime * time.Second)
 				continue
 			}
 
