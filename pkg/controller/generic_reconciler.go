@@ -122,10 +122,15 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 			gr.watchNamespaces.resetCache()
 			namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client)
 			if err != nil {
-				return fmt.Errorf("getting watched namespaces: %w", err)
+				// return fmt.Errorf("getting watched namespaces: %w", err)
+				gr.logger.Error(err, "getting watched namespaces")
 			}
 			if namespaces == nil || len(*namespaces) == 0 {
+				gr.logger.Info("No namespaces to validate, skipping loop")
 				time.Sleep(10 * time.Second)
+				continue
+				//logger
+				//continue
 			}
 
 			if err := gr.reconcileEverything(ctx); err != nil && !errors.Is(err, context.Canceled) {
