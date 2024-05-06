@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -117,6 +118,19 @@ func (gr *GenericReconciler) Start(ctx context.Context) error {
 			return nil
 		default:
 			gr.logger.Info("Reconciliation loop has started")
+
+			// Skips validation if no valid namespaces in the cluster. Avoids CPU overusage
+			gr.watchNamespaces.resetCache()
+			if namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client); err != nil {
+				gr.logger.Error(err, "getting watched namespaces")
+				continue
+
+			} else if namespaces == nil || len(*namespaces) == 0 {
+				gr.logger.Info("No namespaces to validate, skipping loop")
+				time.Sleep(defaultNoNamespacesElapseTime * time.Second)
+				continue
+			}
+
 			if err := gr.reconcileEverything(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				// TODO: Improve error handling so that error can be returned to manager from here
 				// this is done to make sure errors caused by skew in k8s version on server and
@@ -177,7 +191,6 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 			"Kind", resource.Kind)
 	}
 
-	gr.watchNamespaces.resetCache()
 	namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client)
 	if err != nil {
 		return fmt.Errorf("getting watched namespaces: %w", err)

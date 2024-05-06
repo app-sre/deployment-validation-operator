@@ -11,6 +11,10 @@ const (
 	// number of resource instances for any kubernetes resource
 	defaultListLimit = 5
 
+	// default time (in seconds) to skip the loop in the generic reconciler
+	// if there are no namespaces to validate in the cluster
+	defaultNoNamespacesElapseTime = 10
+
 	// EnvKubeClientQPS overrides defaultKubeClientQPS
 	EnvKubeClientQPS string = "KUBECLIENT_QPS"
 
