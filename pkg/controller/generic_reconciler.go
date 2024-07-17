@@ -111,26 +111,23 @@ func (gr *GenericReconciler) AddToManager(mgr manager.Manager) error {
 func (gr *GenericReconciler) Start(ctx context.Context) error {
 	go gr.LookForConfigUpdates(ctx)
 
+	interval, err := getValidationInterval()
+	if err != nil {
+		return err
+	}
+	t := time.NewTicker(interval)
+	err = gr.reconcileEverything(ctx)
+	if err != nil && !errors.Is(err, context.Canceled) {
+		gr.logger.Error(err, "error fetching and validating resource types")
+	}
 	for {
 		select {
 		case <-ctx.Done():
+			t.Stop()
 			// stop reconciling
 			return nil
-		default:
+		case <-t.C:
 			gr.logger.Info("Reconciliation loop has started")
-
-			// Skips validation if no valid namespaces in the cluster. Avoids CPU overusage
-			gr.watchNamespaces.resetCache()
-			if namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client); err != nil {
-				gr.logger.Error(err, "getting watched namespaces")
-				continue
-
-			} else if namespaces == nil || len(*namespaces) == 0 {
-				gr.logger.Info("No namespaces to validate, skipping loop")
-				time.Sleep(defaultNoNamespacesElapseTime * time.Second)
-				continue
-			}
-
 			if err := gr.reconcileEverything(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				// TODO: Improve error handling so that error can be returned to manager from here
 				// this is done to make sure errors caused by skew in k8s version on server and
@@ -191,6 +188,7 @@ func (gr *GenericReconciler) reconcileEverything(ctx context.Context) error {
 			"Kind", resource.Kind)
 	}
 
+	gr.watchNamespaces.resetCache()
 	namespaces, err := gr.watchNamespaces.getWatchNamespaces(ctx, gr.client)
 	if err != nil {
 		return fmt.Errorf("getting watched namespaces: %w", err)
@@ -422,4 +420,16 @@ func (gr GenericReconciler) getNamespacedResourcesGVK(resources []metav1.APIReso
 		}
 	}
 	return namespacedResources
+}
+
+// getValidationInterval tries to lookup the VALIDATION_CHECK_INTERVAL
+// environment variable and parse the value as the time duration.
+// If the variable lookup fails then the default duration is 2 minutes.
+func getValidationInterval() (time.Duration, error) {
+	validIntString, ok := os.LookupEnv(EnvValidationCheckInterval)
+	if !ok {
+		validIntString = "2m"
+	}
+
+	return time.ParseDuration(validIntString)
 }
