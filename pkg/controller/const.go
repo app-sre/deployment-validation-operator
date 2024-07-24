@@ -11,10 +11,6 @@ const (
 	// number of resource instances for any kubernetes resource
 	defaultListLimit = 5
 
-	// default time (in seconds) to skip the loop in the generic reconciler
-	// if there are no namespaces to validate in the cluster
-	defaultNoNamespacesElapseTime = 10
-
 	// EnvKubeClientQPS overrides defaultKubeClientQPS
 	EnvKubeClientQPS string = "KUBECLIENT_QPS"
 
@@ -24,4 +20,7 @@ const (
 	// EnvNamespaceIgnorePattern sets the pattern for ignoring namespaces from the list of namespaces
 	// that are in the validate list of this operator
 	EnvNamespaceIgnorePattern string = "NAMESPACE_IGNORE_PATTERN"
+
+	// EnvValidationCheckInterval sets the frequency of the kube-linter check validations in minutes
+	EnvValidationCheckInterval string = "VALIDATION_CHECK_INTERVAL"
 )

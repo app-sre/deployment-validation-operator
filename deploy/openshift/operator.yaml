@@ -80,7 +80,7 @@ spec:
         - name: RESOURCES_PER_LIST_QUERY
           value: "5"
         - name: VALIDATION_CHECK_INTERVAL
-          value: "2"
+          value: "2m"
         - name: POD_NAME
           valueFrom:
             fieldRef:
