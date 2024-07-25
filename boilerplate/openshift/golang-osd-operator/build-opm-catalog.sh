@@ -14,6 +14,7 @@ OLM_BUNDLE_VERSIONS_REPO_BRANCH=${OLM_BUNDLE_VERSIONS_REPO_BRANCH:-master}
 
 # Global vars
 REPO_ROOT=$(git rev-parse --show-toplevel)
+PYTHON=.venv/bin/python3
 
 function log() {
     local to_log=${1}
@@ -243,7 +244,7 @@ function check_opm_catalog() {
     log "Checking that catalog we have built returns the correct version $OPERATOR_VERSION"
 
     local free_port
-    free_port=$(python -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
+    free_port=$(${PYTHON} -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 
     log "Running $catalog_image_current_commit and exposing $free_port"
     local catalog_container_id
