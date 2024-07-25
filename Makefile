@@ -21,8 +21,9 @@ docker-test:
 e2e-test:
 	ginkgo run --tags e2e test/e2e/
 
+python-fix:
+	$(eval python := /usr/bin/python3)
+
 # We are early adopters of the OPM build/push process. Remove this
 # override once boilerplate uses that path by default.
-build-push: 
-	$(eval python := /usr/bin/python3)
-	opm-build-push ;
+build-push: python-fix opm-build-push ;
