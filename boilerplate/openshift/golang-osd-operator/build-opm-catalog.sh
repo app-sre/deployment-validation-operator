@@ -228,7 +228,7 @@ function build_opm_catalog() {
     fi
 
     # check if the previous catalog image is available
-    if [ $(${image_builder} pull ${previous_catalog_image} &> /dev/null;echo $?) -gt 0 ]; then
+    if [ $(${image_builder} pull ${OLM_CATALOG_IMAGE}:${prev_commit} &> /dev/null;echo $?) -gt 0 ]; then
         # remove the first character
         prev_commit=${prev_commit:1}
         from_arg="--from-index $OLM_CATALOG_IMAGE:$prev_commit"
