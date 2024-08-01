@@ -348,7 +348,7 @@ function main() {
 
     local bundle_image_current_commit="${OLM_BUNDLE_IMAGE}:g${CURRENT_COMMIT}"
     local bundle_image_latest="$OLM_BUNDLE_IMAGE:latest"
-    local catalog_image_current_commit="{$OLM_CATALOG_IMAGE}:g${CURRENT_COMMIT}"
+    local catalog_image_current_commit="${OLM_CATALOG_IMAGE}:g${CURRENT_COMMIT}"
     local catalog_image_latest="$OLM_CATALOG_IMAGE:latest"
 
     bundle_image_current_commit=$(build_opm_bundle "${temp_dir}" \
