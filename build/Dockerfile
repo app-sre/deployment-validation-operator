@@ -1,9 +1,10 @@
-FROM quay.io/app-sre/boilerplate:image-v5.0.1 AS builder
+# FROM quay.io/app-sre/boilerplate:image-v5.0.1 AS builder
+FROM registry.ci.openshift.org/openshift/release:rhel-8-release-golang-1.22-openshift-4.17 AS builder
 
 RUN mkdir -p /workdir
 COPY . /workdir
 WORKDIR /workdir
-RUN make
+RUN make go-build go-test
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1052.1724178568
 
