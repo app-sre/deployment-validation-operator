@@ -1,7 +1,7 @@
 IMAGE_REGISTRY ?= quay.io
 IMAGE_REPOSITORY ?= app-sre
-REGISTRY_USER = $(QUAY_USER)
-REGISTRY_TOKEN = $(QUAY_TOKEN)
+REGISTRY_USER ?= $(QUAY_USER)
+REGISTRY_TOKEN ?= $(QUAY_TOKEN)
 
 CONTAINER_ENGINE = $(shell command -v podman 2>/dev/null || echo "docker")
 CONTAINER_ENGINE_CONFIG_DIR = .docker
@@ -43,8 +43,18 @@ quay-login:
 	mkdir -p ${CONTAINER_ENGINE_CONFIG_DIR}
 	@${CONTAINER_ENGINE} login -u="${REGISTRY_USER}" -p="${REGISTRY_TOKEN}" quay.io
 
-#${CONTAINER_ENGINE} tag $(OPERATOR_IMAGE_URI):test1 $(OPERATOR_IMAGE_URI):latest
 .PHONY: docker-build
 docker-build:
 	@echo "## Building the container image..."
 	${CONTAINER_ENGINE} build --pull -f build/Dockerfile -t ${OPERATOR_IMAGE_URI}:${OPERATOR_IMAGE_TAG} .
+	${CONTAINER_ENGINE} tag $(OPERATOR_IMAGE_URI):${OPERATOR_IMAGE_TAG} $(OPERATOR_IMAGE_URI):latest
+
+.PHONY: docker-push
+docker-push:
+	@echo "## Pushing the container image..."
+	${CONTAINER_ENGINE} push ${OPERATOR_IMAGE_URI}:${OPERATOR_IMAGE_TAG}
+	${CONTAINER_ENGINE} push ${OPERATOR_IMAGE_URI}:latest
+
+## This target is run by build_tag.sh script, triggered by a Jenkins job
+.PHONY: docker-publish
+docker-publish: quay-login docker-build docker-push

@@ -3,7 +3,7 @@ GOLANGCI_LINT_CACHE =/tmp/golangci-cache
 .PHONY: go-lint
 go-lint:
 	@echo "## Running the golangci-lint tool..."
-	jenkins/get_dependencies.sh
+	build/get_dependencies.sh
 	GOLANGCI_LINT_CACHE=${GOLANGCI_LINT_CACHE} golangci-lint run -c ${GOLANGCI_OPTIONAL_CONFIG} ./...
 
 TEST_TARGETS = $(shell ${GOENV} go list -e ./... | grep -E -v "/(vendor)/")

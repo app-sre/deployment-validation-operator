@@ -4,7 +4,7 @@ FROM registry.ci.openshift.org/openshift/release:rhel-8-release-golang-1.22-open
 RUN mkdir -p /workdir
 COPY . /workdir
 WORKDIR /workdir
-RUN make go-build go-test
+RUN make go-build go-test go-lint
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1052.1724178568
 
