@@ -1,12 +1,21 @@
+OPERATOR_NAME = deployment-validation-operator
+
+REGISTRY_USER ?= ${QUAY_USER}
+REGISTRY_TOKEN ?= ${QUAY_TOKEN}
 IMAGE_REGISTRY ?= quay.io
 IMAGE_REPOSITORY ?= app-sre
-REGISTRY_USER ?= $(QUAY_USER)
-REGISTRY_TOKEN ?= $(QUAY_TOKEN)
-
+IMAGE_NAME ?= ${OPERATOR_NAME}
+OPERATOR_IMAGE = quay.io/rh_ee_ijimeno/dvo
+## Overwritten for testing OPERATOR_IMAGE = ${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}/${IMAGE_NAME}
 CONTAINER_ENGINE = $(shell command -v podman 2>/dev/null || echo "docker")
 CONTAINER_ENGINE_CONFIG_DIR = .docker
 
-OPERATOR_NAME = deployment-validation-operator
+VERSION_MAJOR ?= 0
+VERSION_MINOR ?= 1
+COMMIT_COUNT=$(shell git rev-list --count master)
+CURRENT_COMMIT=$(shell git rev-parse --short=7 HEAD)
+OPERATOR_VERSION=${VERSION_MAJOR}.${VERSION_MINOR}.${COMMIT_COUNT}-g${CURRENT_COMMIT}
+
 #OPERATOR_IMAGE_TAG ?= copy the catalog image hash
 # OPERATOR_IMAGE_URI=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):${OPERATOR_IMAGE_TAG}
 
@@ -47,7 +56,7 @@ quay-login:
 docker-build:
 	@echo "## Building the container image..."
 	${CONTAINER_ENGINE} build --pull -f build/Dockerfile -t ${OPERATOR_IMAGE_URI}:${OPERATOR_IMAGE_TAG} .
-	${CONTAINER_ENGINE} tag $(OPERATOR_IMAGE_URI):${OPERATOR_IMAGE_TAG} $(OPERATOR_IMAGE_URI):latest
+	${CONTAINER_ENGINE} tag ${OPERATOR_IMAGE_URI}:${OPERATOR_IMAGE_TAG} ${OPERATOR_IMAGE_URI}:latest
 
 .PHONY: docker-push
 docker-push:
@@ -58,3 +67,11 @@ docker-push:
 ## This target is run by build_tag.sh script, triggered by a Jenkins job
 .PHONY: docker-publish
 docker-publish: quay-login docker-build docker-push
+
+.PHONY: test_opm
+test_opm:
+	OPERATOR_NAME="${OPERATOR_NAME}" \
+	OPERATOR_VERSION="${OPERATOR_VERSION}" \
+	OPERATOR_IMAGE="${OPERATOR_IMAGE}" \
+	OPERATOR_IMAGE_TAG="${OPERATOR_IMAGE_TAG}" \
+		build/build_opm_catalog.sh
