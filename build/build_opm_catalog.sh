@@ -8,6 +8,10 @@ SCRIPT_BUNDLE_CONTENTS="$REPO_ROOT/hack/generate-operator-bundle-contents.py"
 OLM_BUNDLE_VERSIONS_REPO=${OLM_BUNDLE_VERSIONS_REPO:-gitlab.cee.redhat.com/service/saas-operator-versions.git}
 OLM_BUNDLE_VERSIONS_REPO_BRANCH=${OLM_BUNDLE_VERSIONS_REPO_BRANCH:-master}
 
+OLM_BUNDLE_IMAGE_VERSION="${OLM_BUNDLE_IMAGE}:g${CURRENT_COMMIT}"
+OLM_BUNDLE_IMAGE_LATEST="${OLM_BUNDLE_IMAGE}:latest"
+
+
 function log() {
     echo "$(date "+%Y-%m-%d %H:%M:%S") -- ${1}"
 }
@@ -49,16 +53,30 @@ function main() {
     local DIR_BUNDLE=$(mktemp -d -p "$BASE_FOLDER" bundle.XXXX)
     local DIR_MANIFESTS=$(mktemp -d -p "$DIR_BUNDLE" manifests.XXXX)
 
-    log $OPERATOR_VERSION
-
+    # move this to function
     python3 -m venv .venv
     source .venv/bin/activate
     pip install pyyaml
+
+    log "Generating patched bundle contents"
     $SCRIPT_BUNDLE_CONTENTS --name "$OPERATOR_NAME" \
                          --current-version "$OPERATOR_VERSION" \
                          --image "$OPERATOR_IMAGE" \
                          --image-tag "$OPERATOR_IMAGE_TAG" \
                          --output-dir "$DIR_MANIFESTS" \
+                        # missing args from versioning
+
+    log "Creating bundle image $OLM_BUNDLE_IMAGE_VERSION"
+    cd $DIR_BUNDLE
+    opm alpha bundle build --directory "$DIR_MANIFESTS" \
+                        --channels "$OLM_CHANNEL" \
+                        --default "$OLM_CHANNEL" \
+                        --package "$OPERATOR_NAME" \
+                        --tag "$OLM_BUNDLE_IMAGE_VERSION" \
+                        --image-builder $(basename "$CONTAINER_ENGINE" | awk '{print $1}') \
+                        --overwrite \
+                        1>&2
+    cd -
 
 }
 
