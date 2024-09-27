@@ -4,8 +4,14 @@ set -euo pipefail
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 SCRIPT_BUNDLE_CONTENTS="$REPO_ROOT/hack/generate-operator-bundle-contents.py"
+BASE_FOLDER=""
+DIR_BUNDLE=""
+DIR_MANIFESTS=""
 
 OLM_BUNDLE_VERSIONS_REPO="https://gitlab.cee.redhat.com/service/saas-operator-versions.git"
+OLM_BUNDLE_VERSIONS_REPO_FOLDER="versions_repo"
+VERSIONS_FILE="deployment-validation-operator/deployment-validation-operator-versions.txt"
+PREV_VERSION=""
 
 OLM_BUNDLE_IMAGE_VERSION="${OLM_BUNDLE_IMAGE}:g${CURRENT_COMMIT}"
 OLM_BUNDLE_IMAGE_LATEST="${OLM_BUNDLE_IMAGE}:latest"
@@ -15,11 +21,30 @@ function log() {
     echo "$(date "+%Y-%m-%d %H:%M:%S") -- ${1}"
 }
 
+function prepare_temporary_folders() {
+    log "Generating temporary folders to contain artifacts"
+    BASE_FOLDER=$(mktemp -d --suffix "-$(basename "$0")")
+    DIR_BUNDLE=$(mktemp -d -p "$BASE_FOLDER" bundle.XXXX)
+    DIR_MANIFESTS=$(mktemp -d -p "$DIR_BUNDLE" manifests.XXXX)
+    log "  base path: $BASE_FOLDER"
+}
+
 function clone_versions_repo() {
     log "Cloning $OLM_BUNDLE_VERSIONS_REPO"
-    local folder="$BASE_FOLDER/versions_repo"
+    local folder="$BASE_FOLDER/$OLM_BUNDLE_VERSIONS_REPO_FOLDER"
     git clone $OLM_BUNDLE_VERSIONS_REPO $folder --quiet
     log "  path: $folder"
+}
+
+function set_previous_operator_version() {
+    log "Determining previous operator version checking $VERSIONS_FILE file"
+    local filename="$BASE_FOLDER/$OLM_BUNDLE_VERSIONS_REPO_FOLDER/$VERSIONS_FILE"
+    if [[ ! -a "$filename" ]]; then
+        log "No file $VERSIONS_FILE exist. Exiting."
+        exit 1
+    fi
+    PREV_VERSION=$(tail -n 1 "$filename" | awk '{print $1}')
+    log "  previous version: $PREV_VERSION"
 }
 
 function main() {
@@ -33,18 +58,10 @@ function main() {
         return 1
     fi
 
-    # check versioning with this awful function
-    # get_prev_operator_version
-
-    log "Generating temporary folder to contain artifacts"
-    BASE_FOLDER=$(mktemp -d --suffix "-$(basename "$0")")
-    log "  path: $BASE_FOLDER"
-
-    local DIR_BUNDLE=$(mktemp -d -p "$BASE_FOLDER" bundle.XXXX)
-    local DIR_MANIFESTS=$(mktemp -d -p "$DIR_BUNDLE" manifests.XXXX)
-
-    
+    prepare_temporary_folders
     clone_versions_repo
+    set_previous_operator_version
+    
 
     # move this to function
     python3 -m venv .venv
