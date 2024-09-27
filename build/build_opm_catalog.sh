@@ -16,6 +16,7 @@ PREV_VERSION=""
 OLM_BUNDLE_IMAGE_VERSION="${OLM_BUNDLE_IMAGE}:g${CURRENT_COMMIT}"
 OLM_BUNDLE_IMAGE_LATEST="${OLM_BUNDLE_IMAGE}:latest"
 
+OLM_CATALOG_IMAGE_LATEST="${OLM_CATALOG_IMAGE}:latest"
 
 function log() {
     echo "$(date "+%Y-%m-%d %H:%M:%S") -- ${1}"
@@ -72,6 +73,15 @@ function build_opm_bundle() {
     cd -
 }
 
+function validate_opm_bundle() {
+    log "Pushing bundle image $OLM_BUNDLE_IMAGE_VERSION"
+    $CONTAINER_ENGINE push "$OLM_BUNDLE_IMAGE_VERSION"
+
+    log "Validating bundle $OLM_BUNDLE_IMAGE_VERSION"
+    opm alpha bundle validate --tag "$OLM_BUNDLE_IMAGE_VERSION" \
+                            --image-builder $(basename "$CONTAINER_ENGINE" | awk '{print $1}')
+}
+
 function main() {
     # guess the env vars
     #log "Building $OPERATOR_NAME version $OPERATOR_VERSION"
@@ -86,9 +96,12 @@ function main() {
     prepare_temporary_folders
     clone_versions_repo
     set_previous_operator_version
+
     build_opm_bundle
+    validate_opm_bundle
 
-
+    log "Tagging bundle image $OLM_BUNDLE_IMAGE_VERSION as $OLM_BUNDLE_IMAGE_LATEST"
+    $CONTAINER_ENGINE tag "$OLM_BUNDLE_IMAGE_VERSION" "$OLM_BUNDLE_IMAGE_LATEST"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
