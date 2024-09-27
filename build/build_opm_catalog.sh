@@ -47,6 +47,31 @@ function set_previous_operator_version() {
     log "  previous version: $PREV_VERSION"
 }
 
+function build_opm_bundle() {
+    # set venv with needed dependencies
+    python3 -m venv .venv; source .venv/bin/activate; pip install pyyaml
+
+    log "Generating patched bundle contents"
+    $SCRIPT_BUNDLE_CONTENTS --name "$OPERATOR_NAME" \
+                         --current-version "$OPERATOR_VERSION" \
+                         --image "$OPERATOR_IMAGE" \
+                         --image-tag "$OPERATOR_IMAGE_TAG" \
+                         --output-dir "$DIR_MANIFESTS" \
+                         --replaces "$PREV_VERSION"
+
+    log "Creating bundle image $OLM_BUNDLE_IMAGE_VERSION"
+    cd $DIR_BUNDLE
+    opm alpha bundle build --directory "$DIR_MANIFESTS" \
+                        --channels "$OLM_CHANNEL" \
+                        --default "$OLM_CHANNEL" \
+                        --package "$OPERATOR_NAME" \
+                        --tag "$OLM_BUNDLE_IMAGE_VERSION" \
+                        --image-builder $(basename "$CONTAINER_ENGINE" | awk '{print $1}') \
+                        --overwrite \
+                        1>&2
+    cd -
+}
+
 function main() {
     # guess the env vars
     #log "Building $OPERATOR_NAME version $OPERATOR_VERSION"
@@ -61,32 +86,8 @@ function main() {
     prepare_temporary_folders
     clone_versions_repo
     set_previous_operator_version
-    
+    build_opm_bundle
 
-    # move this to function
-    python3 -m venv .venv
-    source .venv/bin/activate
-    pip install pyyaml
-
-    log "Generating patched bundle contents"
-    $SCRIPT_BUNDLE_CONTENTS --name "$OPERATOR_NAME" \
-                         --current-version "$OPERATOR_VERSION" \
-                         --image "$OPERATOR_IMAGE" \
-                         --image-tag "$OPERATOR_IMAGE_TAG" \
-                         --output-dir "$DIR_MANIFESTS" \
-                        # missing args from versioning
-
-    log "Creating bundle image $OLM_BUNDLE_IMAGE_VERSION"
-    cd $DIR_BUNDLE
-    opm alpha bundle build --directory "$DIR_MANIFESTS" \
-                        --channels "$OLM_CHANNEL" \
-                        --default "$OLM_CHANNEL" \
-                        --package "$OPERATOR_NAME" \
-                        --tag "$OLM_BUNDLE_IMAGE_VERSION" \
-                        --image-builder $(basename "$CONTAINER_ENGINE" | awk '{print $1}') \
-                        --overwrite \
-                        1>&2
-    cd -
 
 }
 
