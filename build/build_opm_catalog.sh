@@ -16,6 +16,7 @@ PREV_VERSION=""
 OLM_BUNDLE_IMAGE_VERSION="${OLM_BUNDLE_IMAGE}:g${CURRENT_COMMIT}"
 OLM_BUNDLE_IMAGE_LATEST="${OLM_BUNDLE_IMAGE}:latest"
 
+OLM_CATALOG_IMAGE_VERSION="${OLM_CATALOG_IMAGE}:${CURRENT_COMMIT}"
 OLM_CATALOG_IMAGE_LATEST="${OLM_CATALOG_IMAGE}:latest"
 
 function log() {
@@ -82,9 +83,51 @@ function validate_opm_bundle() {
                             --image-builder $(basename "$CONTAINER_ENGINE" | awk '{print $1}')
 }
 
+function build_opm_catalog() {
+    local FROM_INDEX=""
+    local PREV_COMMIT=${PREV_VERSION#*g} # remove versioning and the g commit hash prefix
+    # check if the previous catalog image is available
+    if [ $(${CONTAINER_ENGINE} pull ${OLM_CATALOG_IMAGE}:${PREV_COMMIT} &> /dev/null; echo $?) -eq 0 ]; then
+        FROM_INDEX="--from-index ${OLM_CATALOG_IMAGE}:${PREV_COMMIT}"
+        log "Index argument is $FROM_INDEX"
+    fi
+
+    log "Creating catalog image $OLM_CATALOG_IMAGE_VERSION using opm"
+
+    opm index add --bundles "$OLM_BUNDLE_IMAGE_VERSION" \
+                --tag "$OLM_CATALOG_IMAGE_VERSION" \
+                --build-tool $(basename "$CONTAINER_ENGINE" | awk '{print $1}') \
+                $FROM_INDEX
+}
+
+function validate_opm_catalog() {
+    log "Checking that catalog we have built returns the correct version $OPERATOR_VERSION"
+
+    local FREE_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
+
+    log "Running $OLM_CATALOG_IMAGE_VERSION and exposing $FREE_PORT"
+    local CONTAINER_ID=$(${CONTAINER_ENGINE} run -d -p "$FREE_PORT:50051" "$OLM_CATALOG_IMAGE_VERSION")
+
+    log "Getting current version from running catalog"
+    local CATALOG_CURRENT_VERSION=$(
+        grpcurl -plaintext -d '{"name": "'"$OPERATOR_NAME"'"}' \
+            "localhost:$FREE_PORT" api.Registry/GetPackage | \
+                jq -r '.channels[] | select(.name=="'"$OLM_CHANNEL"'") | .csvName' | \
+                sed "s/$OPERATOR_NAME\.//"
+    )
+    log "  catalog version: $CATALOG_CURRENT_VERSION"
+
+    log "Removing docker container $CONTAINER_ID"
+    ${CONTAINER_ENGINE} rm -f "$CONTAINER_ID"
+
+    if [[ "$CATALOG_CURRENT_VERSION" != "v$OPERATOR_VERSION" ]]; then
+        log "Version from catalog $CATALOG_CURRENT_VERSION != v$OPERATOR_VERSION"
+        return 1
+    fi
+}
+
 function main() {
-    # guess the env vars
-    #log "Building $OPERATOR_NAME version $OPERATOR_VERSION"
+    log "Building $OPERATOR_NAME version $OPERATOR_VERSION"
 
     # research if this is worthy when we know all env vars we need
     #check_required_environment || return 1
@@ -99,6 +142,9 @@ function main() {
 
     build_opm_bundle
     validate_opm_bundle
+
+    build_opm_catalog
+    validate_opm_catalog
 
     log "Tagging bundle image $OLM_BUNDLE_IMAGE_VERSION as $OLM_BUNDLE_IMAGE_LATEST"
     $CONTAINER_ENGINE tag "$OLM_BUNDLE_IMAGE_VERSION" "$OLM_BUNDLE_IMAGE_LATEST"
