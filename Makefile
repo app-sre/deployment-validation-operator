@@ -17,7 +17,7 @@ OLM_CATALOG_IMAGE = ${OPERATOR_IMAGE}-catalog
 
 VERSION_MAJOR ?= 0
 VERSION_MINOR ?= 1
-COMMIT_COUNT=$(shell git rev-list --count master)
+COMMIT_COUNT=$(shell git rev-list --count HEAD)
 CURRENT_COMMIT=$(shell git rev-parse --short=7 HEAD)
 OPERATOR_VERSION=${VERSION_MAJOR}.${VERSION_MINOR}.${COMMIT_COUNT}-g${CURRENT_COMMIT}
 OPERATOR_IMAGE_TAG ?= ${OPERATOR_VERSION}
@@ -74,7 +74,6 @@ docker-publish: quay-login docker-build docker-push
 
 .PHONY: test_opm
 test_opm: quay-login
-	build/get_opm.sh
 	CONTAINER_ENGINE="${CONTAINER_ENGINE}" \
 	CURRENT_COMMIT="${CURRENT_COMMIT}" \
 	OLM_BUNDLE_IMAGE="${OLM_BUNDLE_IMAGE}" \

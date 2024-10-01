@@ -6,7 +6,14 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 SCRIPT_BUNDLE_CONTENTS="$REPO_ROOT/hack/generate-operator-bundle-contents.py"
 BASE_FOLDER=""
 DIR_BUNDLE=""
+DIR_EXEC=""
 DIR_MANIFESTS=""
+
+GOOS=$(go env GOOS)
+OPM_VERSION="v1.23.2"
+COMMAND_OPM=""
+GRPCURL_VERSION="1.7.0"
+COMMAND_GRPCURL=""
 
 OLM_BUNDLE_VERSIONS_REPO="gitlab.cee.redhat.com/ijimeno/saas-operator-versions.git"
 OLM_BUNDLE_VERSIONS_REPO_FOLDER="versions_repo"
@@ -28,7 +35,24 @@ function prepare_temporary_folders() {
     BASE_FOLDER=$(mktemp -d --suffix "-$(basename "$0")")
     DIR_BUNDLE=$(mktemp -d -p "$BASE_FOLDER" bundle.XXXX)
     DIR_MANIFESTS=$(mktemp -d -p "$DIR_BUNDLE" manifests.XXXX)
+    DIR_EXEC=$(mktemp -d -p "$BASE_FOLDER" bin.XXXX)
     log "  base path: $BASE_FOLDER"
+}
+
+function download_dependencies() {
+    cd $DIR_EXEC
+
+    local opm_url="https://github.com/operator-framework/operator-registry/releases/download/$OPM_VERSION/$GOOS-amd64-opm"
+    curl -sfL "${opm_url}" -o opm
+    chmod +x opm
+    COMMAND_OPM="$DIR_EXEC/opm"
+
+    local grpcurl_url="https://github.com/fullstorydev/grpcurl/releases/download/v$GRPCURL_VERSION/grpcurl_${GRPCURL_VERSION}_${GOOS}_x86_64.tar.gz"
+    curl -sfL "$grpcurl_url" | tar -xzf - -O grpcurl > grpcurl
+    chmod +x grpcurl
+    COMMAND_GRPCURL="$DIR_EXEC/grpcurl"
+
+    cd ~-
 }
 
 function clone_versions_repo() {
@@ -69,7 +93,7 @@ function build_opm_bundle() {
 
     log "Creating bundle image $OLM_BUNDLE_IMAGE_VERSION"
     cd $DIR_BUNDLE
-    opm alpha bundle build --directory "$DIR_MANIFESTS" \
+    ${COMMAND_OPM} alpha bundle build --directory "$DIR_MANIFESTS" \
                         --channels "$OLM_CHANNEL" \
                         --default "$OLM_CHANNEL" \
                         --package "$OPERATOR_NAME" \
@@ -77,7 +101,7 @@ function build_opm_bundle() {
                         --image-builder $(basename "$CONTAINER_ENGINE" | awk '{print $1}') \
                         --overwrite \
                         1>&2
-    cd -
+    cd ~-
 }
 
 function validate_opm_bundle() {
@@ -85,7 +109,7 @@ function validate_opm_bundle() {
     $CONTAINER_ENGINE push "$OLM_BUNDLE_IMAGE_VERSION"
 
     log "Validating bundle $OLM_BUNDLE_IMAGE_VERSION"
-    opm alpha bundle validate --tag "$OLM_BUNDLE_IMAGE_VERSION" \
+    ${COMMAND_OPM} alpha bundle validate --tag "$OLM_BUNDLE_IMAGE_VERSION" \
                             --image-builder $(basename "$CONTAINER_ENGINE" | awk '{print $1}')
 }
 
@@ -100,7 +124,7 @@ function build_opm_catalog() {
 
     log "Creating catalog image $OLM_CATALOG_IMAGE_VERSION using opm"
 
-    opm index add --bundles "$OLM_BUNDLE_IMAGE_VERSION" \
+    ${COMMAND_OPM} index add --bundles "$OLM_BUNDLE_IMAGE_VERSION" \
                 --tag "$OLM_CATALOG_IMAGE_VERSION" \
                 --build-tool $(basename "$CONTAINER_ENGINE" | awk '{print $1}') \
                 $FROM_INDEX
@@ -116,7 +140,7 @@ function validate_opm_catalog() {
 
     log "Getting current version from running catalog"
     local CATALOG_CURRENT_VERSION=$(
-        grpcurl -plaintext -d '{"name": "'"$OPERATOR_NAME"'"}' \
+        ${COMMAND_GRPCURL} -plaintext -d '{"name": "'"$OPERATOR_NAME"'"}' \
             "localhost:$FREE_PORT" api.Registry/GetPackage | \
                 jq -r '.channels[] | select(.name=="'"$OLM_CHANNEL"'") | .csvName' | \
                 sed "s/$OPERATOR_NAME\.//"
@@ -147,7 +171,7 @@ function update_versions_repo() {
 
     log "Pushing the repository changes to $OLM_BUNDLE_VERSIONS_REPO into master branch"
     git push origin master
-    cd -
+    cd ~-
 }
 
 function tag_and_push_images() {
@@ -178,6 +202,7 @@ function main() {
     fi
 
     prepare_temporary_folders
+    download_dependencies
     clone_versions_repo
     set_previous_operator_version
 
