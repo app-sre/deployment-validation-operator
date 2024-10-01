@@ -132,6 +132,41 @@ function validate_opm_catalog() {
     fi
 }
 
+function update_versions_repo() {
+    log "Adding the current version $OPERATOR_VERSION to the bundle versions file in $OLM_BUNDLE_VERSIONS_REPO"
+    local folder="$BASE_FOLDER/$OLM_BUNDLE_VERSIONS_REPO_FOLDER"
+    
+    cd $folder
+    
+    echo "$OPERATOR_VERSION" >> "$VERSIONS_FILE"
+    git add .
+    message="add version $OPERATOR_VERSION
+
+    replaces $PREV_VERSION"
+    git commit -m "$message"
+
+    log "Pushing the repository changes to $OLM_BUNDLE_VERSIONS_REPO into master branch"
+    git push origin master
+    cd -
+}
+
+function tag_and_push_images() {
+    log "Tagging bundle image $OLM_BUNDLE_IMAGE_VERSION as $OLM_BUNDLE_IMAGE_LATEST"
+    ${CONTAINER_ENGINE} tag "$OLM_BUNDLE_IMAGE_VERSION" "$OLM_BUNDLE_IMAGE_LATEST"
+
+    log "Tagging catalog image $OLM_CATALOG_IMAGE_VERSION as $OLM_CATALOG_IMAGE_LATEST"
+    ${CONTAINER_ENGINE} tag "$OLM_CATALOG_IMAGE_VERSION" "$OLM_CATALOG_IMAGE_LATEST"
+
+    log "Pushing catalog image $OLM_CATALOG_IMAGE_VERSION"
+    ${CONTAINER_ENGINE} push "$OLM_CATALOG_IMAGE_VERSION"
+
+    log "Pushing bundle image $OLM_CATALOG_IMAGE_LATEST"
+    ${CONTAINER_ENGINE} push "$OLM_CATALOG_IMAGE_LATEST"
+
+    log "Pushing bundle image $OLM_BUNDLE_IMAGE_LATEST"
+    ${CONTAINER_ENGINE} push "$OLM_BUNDLE_IMAGE_LATEST"
+}
+
 function main() {
     log "Building $OPERATOR_NAME version $OPERATOR_VERSION"
 
@@ -158,8 +193,7 @@ function main() {
         log "APP_SRE_BOT_PUSH_TOKEN credentials were not found"
         log "it will be necessary to manually update $OLM_BUNDLE_VERSIONS_REPO repo"
     fi
-    log "Tagging bundle image $OLM_BUNDLE_IMAGE_VERSION as $OLM_BUNDLE_IMAGE_LATEST"
-    $CONTAINER_ENGINE tag "$OLM_BUNDLE_IMAGE_VERSION" "$OLM_BUNDLE_IMAGE_LATEST"
+    tag_and_push_images
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
