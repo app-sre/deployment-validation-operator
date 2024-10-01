@@ -8,7 +8,7 @@ BASE_FOLDER=""
 DIR_BUNDLE=""
 DIR_MANIFESTS=""
 
-OLM_BUNDLE_VERSIONS_REPO="https://gitlab.cee.redhat.com/service/saas-operator-versions.git"
+OLM_BUNDLE_VERSIONS_REPO="gitlab.cee.redhat.com/ijimeno/saas-operator-versions.git"
 OLM_BUNDLE_VERSIONS_REPO_FOLDER="versions_repo"
 VERSIONS_FILE="deployment-validation-operator/deployment-validation-operator-versions.txt"
 PREV_VERSION=""
@@ -32,9 +32,15 @@ function prepare_temporary_folders() {
 }
 
 function clone_versions_repo() {
+    local bundle_versions_repo_url
     log "Cloning $OLM_BUNDLE_VERSIONS_REPO"
     local folder="$BASE_FOLDER/$OLM_BUNDLE_VERSIONS_REPO_FOLDER"
-    git clone $OLM_BUNDLE_VERSIONS_REPO $folder --quiet
+    if [[ -n "${APP_SRE_BOT_PUSH_TOKEN:-}" ]]; then
+        log "Using APP_SRE_BOT_PUSH_TOKEN credentials to authenticate"
+        git clone "https://app:${APP_SRE_BOT_PUSH_TOKEN}@$OLM_BUNDLE_VERSIONS_REPO" $folder --quiet
+    else
+        git clone "https://$OLM_BUNDLE_VERSIONS_REPO" $folder --quiet
+    fi
     log "  path: $folder"
 }
 
@@ -59,7 +65,7 @@ function build_opm_bundle() {
                          --image "$OPERATOR_IMAGE" \
                          --image-tag "$OPERATOR_IMAGE_TAG" \
                          --output-dir "$DIR_MANIFESTS" \
-                         --replaces "$PREV_VERSION"
+                         #--replaces "$PREV_VERSION"
 
     log "Creating bundle image $OLM_BUNDLE_IMAGE_VERSION"
     cd $DIR_BUNDLE
@@ -146,6 +152,12 @@ function main() {
     build_opm_catalog
     validate_opm_catalog
 
+    if [[ -n "${APP_SRE_BOT_PUSH_TOKEN:-}" ]]; then
+        update_versions_repo
+    else
+        log "APP_SRE_BOT_PUSH_TOKEN credentials were not found"
+        log "it will be necessary to manually update $OLM_BUNDLE_VERSIONS_REPO repo"
+    fi
     log "Tagging bundle image $OLM_BUNDLE_IMAGE_VERSION as $OLM_BUNDLE_IMAGE_LATEST"
     $CONTAINER_ENGINE tag "$OLM_BUNDLE_IMAGE_VERSION" "$OLM_BUNDLE_IMAGE_LATEST"
 }
