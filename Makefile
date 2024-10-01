@@ -1,10 +1,14 @@
 OPERATOR_NAME = deployment-validation-operator
 # Image repository vars
-REGISTRY_USER ?= ${QUAY_USER}
-REGISTRY_TOKEN ?= ${QUAY_TOKEN}
+## Overwritten for testing REGISTRY_USER ?= ${QUAY_USER}
+REGISTRY_USER = rh_ee_ijimeno+dvojenkins01
+## Overwritten for testing REGISTRY_TOKEN ?= ${QUAY_TOKEN}
+REGISTRY_TOKEN = 61BOGU7XW2AKL15TI3UR56YPX7BG73TUGYYBLPQ55POR70J0L5KR4J15SEH108DG
 IMAGE_REGISTRY ?= quay.io
-IMAGE_REPOSITORY ?= app-sre
-IMAGE_NAME ?= ${OPERATOR_NAME}
+## Overwritten for testing IMAGE_REPOSITORY ?= app-sre
+IMAGE_REPOSITORY ?= rh_ee_ijimeno
+## Overwritten for testing IMAGE_NAME ?= ${OPERATOR_NAME}
+IMAGE_NAME ?= dvo
 OPERATOR_IMAGE = quay.io/rh_ee_ijimeno/dvo
 ## Overwritten for testing OPERATOR_IMAGE = ${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}/${IMAGE_NAME}
 OLM_CHANNEL ?= alpha
@@ -16,16 +20,12 @@ VERSION_MINOR ?= 1
 COMMIT_COUNT=$(shell git rev-list --count master)
 CURRENT_COMMIT=$(shell git rev-parse --short=7 HEAD)
 OPERATOR_VERSION=${VERSION_MAJOR}.${VERSION_MINOR}.${COMMIT_COUNT}-g${CURRENT_COMMIT}
+OPERATOR_IMAGE_TAG ?= ${OPERATOR_VERSION}
+OPERATOR_IMAGE_URI=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):${OPERATOR_IMAGE_TAG}
 
 CONTAINER_ENGINE = $(shell command -v podman 2>/dev/null || echo "docker")
 CONTAINER_ENGINE_CONFIG_DIR = .docker
 
-#OPERATOR_IMAGE_TAG ?= copy the catalog image hash
-# OPERATOR_IMAGE_URI=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):${OPERATOR_IMAGE_TAG}
-
-# Temporary hardcode for testing, DO NOT MERGE to master
-OPERATOR_IMAGE_URI = quay.io/rh_ee_ijimeno/dvo
-OPERATOR_IMAGE_TAG ?= dev
 
 # This include must go below the above definitions
 # include boilerplate/generated-includes.mk
@@ -73,7 +73,7 @@ docker-push:
 docker-publish: quay-login docker-build docker-push
 
 .PHONY: test_opm
-test_opm:
+test_opm: quay-login
 	build/get_opm.sh
 	CONTAINER_ENGINE="${CONTAINER_ENGINE}" \
 	CURRENT_COMMIT="${CURRENT_COMMIT}" \
