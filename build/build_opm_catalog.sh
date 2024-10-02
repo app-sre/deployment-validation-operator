@@ -15,6 +15,8 @@ COMMAND_OPM=""
 GRPCURL_VERSION="1.7.0"
 COMMAND_GRPCURL=""
 
+REGISTRY_AUTH_FILE=${CONTAINER_ENGINE_CONFIG_DIR}/config.json
+
 OLM_BUNDLE_VERSIONS_REPO="gitlab.cee.redhat.com/ijimeno/saas-operator-versions.git"
 OLM_BUNDLE_VERSIONS_REPO_FOLDER="versions_repo"
 VERSIONS_FILE="deployment-validation-operator/deployment-validation-operator-versions.txt"
@@ -193,7 +195,7 @@ function tag_and_push_images() {
 
 function main() {
     log "Building $OPERATOR_NAME version $OPERATOR_VERSION"
-
+    
     # research if this is worthy when we know all env vars we need
     #check_required_environment || return 1
     if [[ ! -x "$SCRIPT_BUNDLE_CONTENTS" ]]; then
