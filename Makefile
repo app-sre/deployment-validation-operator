@@ -74,7 +74,7 @@ docker-publish: quay-login docker-build docker-push
 
 .PHONY: test_opm
 test_opm: quay-login
-	CONTAINER_ENGINE="${CONTAINER_ENGINE}" \
+	CONTAINER_ENGINE="${CONTAINER_ENGINE} --config=${CONTAINER_ENGINE_CONFIG_DIR}" \
 	CURRENT_COMMIT="${CURRENT_COMMIT}" \
 	OLM_BUNDLE_IMAGE="${OLM_BUNDLE_IMAGE}" \
 	OLM_CATALOG_IMAGE="${OLM_CATALOG_IMAGE}" \
