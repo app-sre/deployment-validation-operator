@@ -1,9 +1,9 @@
 OPERATOR_NAME = deployment-validation-operator
 # Image repository vars
 ## Overwritten for testing REGISTRY_USER ?= ${QUAY_USER}
-REGISTRY_USER = rh_ee_ijimeno+dvojenkins01
+ALT_REGISTRY_USER = rh_ee_ijimeno+dvojenkins01
 ## Overwritten for testing REGISTRY_TOKEN ?= ${QUAY_TOKEN}
-REGISTRY_TOKEN = 61BOGU7XW2AKL15TI3UR56YPX7BG73TUGYYBLPQ55POR70J0L5KR4J15SEH108DG
+ALT_REGISTRY_TOKEN = 61BOGU7XW2AKL15TI3UR56YPX7BG73TUGYYBLPQ55POR70J0L5KR4J15SEH108DG
 IMAGE_REGISTRY ?= quay.io
 ## Overwritten for testing IMAGE_REPOSITORY ?= app-sre
 IMAGE_REPOSITORY ?= rh_ee_ijimeno
@@ -54,8 +54,7 @@ quay-login:
 	@echo "## Login to quay.io..."
 	mkdir -p ${CONTAINER_ENGINE_CONFIG_DIR}
 	export REGISTRY_AUTH_FILE=${CONTAINER_ENGINE_CONFIG_DIR}/config.json
-	echo ${REGISTRY_USER}
-	@${CONTAINER_ENGINE} login -u="${REGISTRY_USER}" -p="${REGISTRY_TOKEN}" quay.io
+	@${CONTAINER_ENGINE} login -u="${ALT_REGISTRY_USER}" -p="${ALT_REGISTRY_TOKEN}" quay.io
 
 .PHONY: docker-build
 docker-build:
