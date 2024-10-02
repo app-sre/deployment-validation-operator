@@ -25,7 +25,6 @@ OPERATOR_IMAGE_URI=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):${OPERATO
 
 CONTAINER_ENGINE_CONFIG_DIR = .docker
 CONTAINER_ENGINE = $(shell command -v podman 2>/dev/null || echo docker --config=$(CONTAINER_ENGINE_CONFIG_DIR))
-export REGISTRY_AUTH_FILE=${CONTAINER_ENGINE_CONFIG_DIR}/config.json
 
 # This include must go below the above definitions
 # include boilerplate/generated-includes.mk
@@ -53,7 +52,8 @@ build-push: opm-build-push ;
 .PHONY: quay-login
 quay-login:
 	@echo "## Login to quay.io..."
-	mkdir -p ${CONTAINER_ENGINE_CONFIG_DIR}	
+	mkdir -p ${CONTAINER_ENGINE_CONFIG_DIR}
+	export REGISTRY_AUTH_FILE=${CONTAINER_ENGINE_CONFIG_DIR}/config.json
 	@${CONTAINER_ENGINE} login -u="${REGISTRY_USER}" -p="${REGISTRY_TOKEN}" quay.io
 
 .PHONY: docker-build
@@ -72,6 +72,7 @@ docker-push:
 .PHONY: docker-publish
 docker-publish: quay-login docker-build docker-push
 
+# tbd : quay-login -> docker-publish
 .PHONY: test_opm
 test_opm: quay-login
 	CONTAINER_ENGINE="${CONTAINER_ENGINE}" \
