@@ -23,9 +23,9 @@ OPERATOR_VERSION=${VERSION_MAJOR}.${VERSION_MINOR}.${COMMIT_COUNT}-g${CURRENT_CO
 OPERATOR_IMAGE_TAG ?= ${OPERATOR_VERSION}
 OPERATOR_IMAGE_URI=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):${OPERATOR_IMAGE_TAG}
 
-CONTAINER_ENGINE = $(shell command -v podman 2>/dev/null || echo "docker")
 CONTAINER_ENGINE_CONFIG_DIR = .docker
-
+CONTAINER_ENGINE = $(shell command -v podman 2>/dev/null || echo docker --config=$(CONTAINER_ENGINE_CONFIG_DIR))
+export REGISTRY_AUTH_FILE=${CONTAINER_ENGINE_CONFIG_DIR}/config.json
 
 # This include must go below the above definitions
 # include boilerplate/generated-includes.mk
@@ -53,7 +53,7 @@ build-push: opm-build-push ;
 .PHONY: quay-login
 quay-login:
 	@echo "## Login to quay.io..."
-	mkdir -p ${CONTAINER_ENGINE_CONFIG_DIR}
+	mkdir -p ${CONTAINER_ENGINE_CONFIG_DIR}	
 	@${CONTAINER_ENGINE} login -u="${REGISTRY_USER}" -p="${REGISTRY_TOKEN}" quay.io
 
 .PHONY: docker-build
@@ -74,7 +74,7 @@ docker-publish: quay-login docker-build docker-push
 
 .PHONY: test_opm
 test_opm: quay-login
-	CONTAINER_ENGINE="${CONTAINER_ENGINE} --config=${CONTAINER_ENGINE_CONFIG_DIR}" \
+	CONTAINER_ENGINE="${CONTAINER_ENGINE}" \
 	CURRENT_COMMIT="${CURRENT_COMMIT}" \
 	OLM_BUNDLE_IMAGE="${OLM_BUNDLE_IMAGE}" \
 	OLM_CATALOG_IMAGE="${OLM_CATALOG_IMAGE}" \
