@@ -55,6 +55,8 @@ quay-login:
 	mkdir -p ${CONTAINER_ENGINE_CONFIG_DIR}
 	export REGISTRY_AUTH_FILE=${CONTAINER_ENGINE_CONFIG_DIR}/config.json
 	@${CONTAINER_ENGINE} login -u="${ALT_REGISTRY_USER}" -p="${ALT_REGISTRY_TOKEN}" quay.io
+	@echo ${ALT_REGISTRY_USER}
+	podman pull quay.io/rh_ee_ijimeno/dvo-catalog:5ff90fd
 
 .PHONY: docker-build
 docker-build:
