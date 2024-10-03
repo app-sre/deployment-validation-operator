@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+ALT_REGISTRY_USER=rh_ee_ijimeno+dvojenkins01
+ALT_REGISTRY_TOKEN=61BOGU7XW2AKL15TI3UR56YPX7BG73TUGYYBLPQ55POR70J0L5KR4J15SEH108DG
+
 REPO_ROOT=$(git rev-parse --show-toplevel)
 SCRIPT_BUNDLE_CONTENTS="$REPO_ROOT/hack/generate-operator-bundle-contents.py"
 BASE_FOLDER=""
@@ -202,6 +205,9 @@ function main() {
         log "The script $SCRIPT_BUNDLE_CONTENTS cannot be run. Exiting."
         return 1
     fi
+
+    ## temporary login using robot account
+    ${CONTAINER_ENGINE} login -u="${ALT_REGISTRY_USER}" -p="${ALT_REGISTRY_TOKEN}" quay.io
 
     prepare_temporary_folders
     download_dependencies
