@@ -74,7 +74,7 @@ docker-publish: quay-login docker-build docker-push
 
 # tbd : quay-login -> docker-publish
 .PHONY: test_opm
-test_opm: quay-login
+test_opm: docker-publish
 	CONTAINER_ENGINE="${CONTAINER_ENGINE}" \
 	CONTAINER_ENGINE_CONFIG_DIR="${CONTAINER_ENGINE_CONFIG_DIR}" \
 	CURRENT_COMMIT="${CURRENT_COMMIT}" \
