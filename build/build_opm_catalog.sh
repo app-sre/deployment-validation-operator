@@ -35,6 +35,14 @@ function log() {
     echo "$(date "+%Y-%m-%d %H:%M:%S") -- ${1}"
 }
 
+function precheck_required_files() {
+    if [[ ! -x "$SCRIPT_BUNDLE_CONTENTS" ]]; then
+        log "The script $SCRIPT_BUNDLE_CONTENTS cannot be run. Exiting."
+        return 1
+    fi
+    return 0
+}
+
 function prepare_temporary_folders() {
     log "Generating temporary folders to contain artifacts"
     BASE_FOLDER=$(mktemp -d --suffix "-$(basename "$0")")
@@ -199,12 +207,7 @@ function tag_and_push_images() {
 function main() {
     log "Building $OPERATOR_NAME version $OPERATOR_VERSION"
     
-    # research if this is worthy when we know all env vars we need
-    #check_required_environment || return 1
-    if [[ ! -x "$SCRIPT_BUNDLE_CONTENTS" ]]; then
-        log "The script $SCRIPT_BUNDLE_CONTENTS cannot be run. Exiting."
-        return 1
-    fi
+    precheck_required_files || return 1
 
     ## temporary login using robot account
     ${CONTAINER_ENGINE} login -u="${ALT_REGISTRY_USER}" -p="${ALT_REGISTRY_TOKEN}" quay.io
