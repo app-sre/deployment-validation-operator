@@ -44,16 +44,14 @@ function precheck_required_files() {
 }
 
 function prepare_temporary_folders() {
-    log "Generating temporary folders to contain artifacts"
     BASE_FOLDER=$(mktemp -d --suffix "-$(basename "$0")")
     DIR_BUNDLE=$(mktemp -d -p "$BASE_FOLDER" bundle.XXXX)
     DIR_MANIFESTS=$(mktemp -d -p "$DIR_BUNDLE" manifests.XXXX)
     DIR_EXEC=$(mktemp -d -p "$BASE_FOLDER" bin.XXXX)
-    log "  base path: $BASE_FOLDER"
 }
 
 function download_dependencies() {
-    cd $DIR_EXEC
+    cd "$DIR_EXEC"
 
     local opm_url="https://github.com/operator-framework/operator-registry/releases/download/$OPM_VERSION/$GOOS-amd64-opm"
     curl -sfL "${opm_url}" -o opm
@@ -61,34 +59,50 @@ function download_dependencies() {
     COMMAND_OPM="$DIR_EXEC/opm"
 
     local grpcurl_url="https://github.com/fullstorydev/grpcurl/releases/download/v$GRPCURL_VERSION/grpcurl_${GRPCURL_VERSION}_${GOOS}_x86_64.tar.gz"
-    curl -sfL "$grpcurl_url" | tar -xzf - -O grpcurl > grpcurl
+    curl -sfL "$grpcurl_url" | tar -xz -O grpcurl > "grpcurl"
     chmod +x grpcurl
     COMMAND_GRPCURL="$DIR_EXEC/grpcurl"
 
     cd ~-
 }
 
+
 function clone_versions_repo() {
-    local bundle_versions_repo_url
-    log "Cloning $OLM_BUNDLE_VERSIONS_REPO"
     local folder="$BASE_FOLDER/$OLM_BUNDLE_VERSIONS_REPO_FOLDER"
+    log "  path: $folder"
+
     if [[ -n "${APP_SRE_BOT_PUSH_TOKEN:-}" ]]; then
         log "Using APP_SRE_BOT_PUSH_TOKEN credentials to authenticate"
-        git clone "https://app:${APP_SRE_BOT_PUSH_TOKEN}@$OLM_BUNDLE_VERSIONS_REPO" $folder --quiet
+        git clone "https://app:${APP_SRE_BOT_PUSH_TOKEN}@$OLM_BUNDLE_VERSIONS_REPO" "$folder" --quiet
     else
-        git clone "https://$OLM_BUNDLE_VERSIONS_REPO" $folder --quiet
+        git clone "https://$OLM_BUNDLE_VERSIONS_REPO" "$folder" --quiet
     fi
-    log "  path: $folder"
 }
 
 function set_previous_operator_version() {
-    log "Determining previous operator version checking $VERSIONS_FILE file"
     local filename="$BASE_FOLDER/$OLM_BUNDLE_VERSIONS_REPO_FOLDER/$VERSIONS_FILE"
+
     if [[ ! -a "$filename" ]]; then
         log "No file $VERSIONS_FILE exist. Exiting."
         exit 1
     fi
     PREV_VERSION=$(tail -n 1 "$filename" | awk '{print $1}')
+}
+
+function setup_environment() {
+    log "Generating temporary folders to contain artifacts"
+    prepare_temporary_folders
+    log "  base path: $BASE_FOLDER"
+
+    log "Downloading needed commands: opm and grpcurl"
+    download_dependencies
+    log "  path: $DIR_EXEC"
+
+    log "Cloning $OLM_BUNDLE_VERSIONS_REPO"
+    clone_versions_repo
+
+    log "Determining previous operator version checking $VERSIONS_FILE file"
+    set_previous_operator_version
     log "  previous version: $PREV_VERSION"
 }
 
@@ -212,10 +226,7 @@ function main() {
     ## temporary login using robot account
     ${CONTAINER_ENGINE} login -u="${ALT_REGISTRY_USER}" -p="${ALT_REGISTRY_TOKEN}" quay.io
 
-    prepare_temporary_folders
-    download_dependencies
-    clone_versions_repo
-    set_previous_operator_version
+    setup_environment
 
     build_opm_bundle
     validate_opm_bundle
