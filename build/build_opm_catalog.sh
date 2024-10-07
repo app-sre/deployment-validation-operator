@@ -119,13 +119,13 @@ function build_opm_bundle() {
                          #--replaces "$PREV_VERSION"
 
     log "Creating bundle image $OLM_BUNDLE_IMAGE_VERSION"
-    cd $DIR_BUNDLE
+    cd "$DIR_BUNDLE"
     ${COMMAND_OPM} alpha bundle build --directory "$DIR_MANIFESTS" \
                         --channels "$OLM_CHANNEL" \
                         --default "$OLM_CHANNEL" \
                         --package "$OPERATOR_NAME" \
                         --tag "$OLM_BUNDLE_IMAGE_VERSION" \
-                        --image-builder $(basename "$CONTAINER_ENGINE" | awk '{print $1}') \
+                        --image-builder "$(basename "$CONTAINER_ENGINE" | awk '{print $1}')" \
                         --overwrite \
                         1>&2
     cd ~-
@@ -137,14 +137,14 @@ function validate_opm_bundle() {
 
     log "Validating bundle $OLM_BUNDLE_IMAGE_VERSION"
     ${COMMAND_OPM} alpha bundle validate --tag "$OLM_BUNDLE_IMAGE_VERSION" \
-                            --image-builder $(basename "$CONTAINER_ENGINE" | awk '{print $1}')
+                            --image-builder "$(basename "$CONTAINER_ENGINE" | awk '{print $1}')"
 }
 
 function build_opm_catalog() {
     local FROM_INDEX=""
     local PREV_COMMIT=${PREV_VERSION#*g} # remove versioning and the g commit hash prefix
     # check if the previous catalog image is available
-    if [ $(${CONTAINER_ENGINE} pull ${OLM_CATALOG_IMAGE}:${PREV_COMMIT} &> /dev/null; echo $?) -eq 0 ]; then
+    if [ "$(${CONTAINER_ENGINE} pull "${OLM_CATALOG_IMAGE}":"${PREV_COMMIT}" &> /dev/null; echo $?)" -eq 0 ]; then
         FROM_INDEX="--from-index ${OLM_CATALOG_IMAGE}:${PREV_COMMIT}"
         log "Index argument is $FROM_INDEX"
     fi
@@ -153,32 +153,36 @@ function build_opm_catalog() {
 
     ${COMMAND_OPM} index add --bundles "$OLM_BUNDLE_IMAGE_VERSION" \
                 --tag "$OLM_CATALOG_IMAGE_VERSION" \
-                --build-tool $(basename "$CONTAINER_ENGINE" | awk '{print $1}') \
-                $FROM_INDEX
+                --build-tool "$(basename "$CONTAINER_ENGINE" | awk '{print $1}')" \
+                "$FROM_INDEX"
 }
 
 function validate_opm_catalog() {
     log "Checking that catalog we have built returns the correct version $OPERATOR_VERSION"
 
-    local FREE_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
+    local free_port=""
+    local container_id=""
+    local catalog_current_version=""
 
-    log "Running $OLM_CATALOG_IMAGE_VERSION and exposing $FREE_PORT"
-    local CONTAINER_ID=$(${CONTAINER_ENGINE} run -d -p "$FREE_PORT:50051" "$OLM_CATALOG_IMAGE_VERSION")
+    free_port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
+
+    log "Running $OLM_CATALOG_IMAGE_VERSION and exposing $free_port"
+    container_id=$(${CONTAINER_ENGINE} run -d -p "$free_port:50051" "$OLM_CATALOG_IMAGE_VERSION")
 
     log "Getting current version from running catalog"
-    local CATALOG_CURRENT_VERSION=$(
+    catalog_current_version=$(
         ${COMMAND_GRPCURL} -plaintext -d '{"name": "'"$OPERATOR_NAME"'"}' \
-            "localhost:$FREE_PORT" api.Registry/GetPackage | \
+            "localhost:$free_port" api.Registry/GetPackage | \
                 jq -r '.channels[] | select(.name=="'"$OLM_CHANNEL"'") | .csvName' | \
                 sed "s/$OPERATOR_NAME\.//"
     )
-    log "  catalog version: $CATALOG_CURRENT_VERSION"
+    log "  catalog version: $catalog_current_version"
 
-    log "Removing docker container $CONTAINER_ID"
-    ${CONTAINER_ENGINE} rm -f "$CONTAINER_ID"
+    log "Removing docker container $container_id"
+    ${CONTAINER_ENGINE} rm -f "$container_id"
 
-    if [[ "$CATALOG_CURRENT_VERSION" != "v$OPERATOR_VERSION" ]]; then
-        log "Version from catalog $CATALOG_CURRENT_VERSION != v$OPERATOR_VERSION"
+    if [[ "$catalog_current_version" != "v$OPERATOR_VERSION" ]]; then
+        log "Version from catalog $catalog_current_version != v$OPERATOR_VERSION"
         return 1
     fi
 }
@@ -187,7 +191,7 @@ function update_versions_repo() {
     log "Adding the current version $OPERATOR_VERSION to the bundle versions file in $OLM_BUNDLE_VERSIONS_REPO"
     local folder="$BASE_FOLDER/$OLM_BUNDLE_VERSIONS_REPO_FOLDER"
     
-    cd $folder
+    cd "$folder"
     
     echo "$OPERATOR_VERSION" >> "$VERSIONS_FILE"
     git add .
@@ -224,7 +228,7 @@ function main() {
     precheck_required_files || return 1
 
     ## temporary login using robot account
-    ${CONTAINER_ENGINE} login -u="${ALT_REGISTRY_USER}" -p="${ALT_REGISTRY_TOKEN}" quay.io
+    #${CONTAINER_ENGINE} login -u="${ALT_REGISTRY_USER}" -p="${ALT_REGISTRY_TOKEN}" quay.io
 
     setup_environment
 
