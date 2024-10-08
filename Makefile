@@ -48,6 +48,7 @@ docker-push:
 .PHONY: docker-publish
 docker-publish: quay-login docker-build docker-push
 
+## This target is run by the master branch Jenkins Job
 .PHONY: build-push
 build-push: docker-publish
 	CONTAINER_ENGINE="${CONTAINER_ENGINE}" \
