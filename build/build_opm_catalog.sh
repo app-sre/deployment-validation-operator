@@ -2,9 +2,6 @@
 
 set -euo pipefail
 
-ALT_REGISTRY_USER=rh_ee_ijimeno+dvojenkins01
-ALT_REGISTRY_TOKEN=--
-
 REPO_ROOT=$(git rev-parse --show-toplevel)
 SCRIPT_BUNDLE_CONTENTS="$REPO_ROOT/hack/generate-operator-bundle-contents.py"
 BASE_FOLDER=""
@@ -154,7 +151,7 @@ function build_opm_catalog() {
     ${COMMAND_OPM} index add --bundles "$OLM_BUNDLE_IMAGE_VERSION" \
                 --tag "$OLM_CATALOG_IMAGE_VERSION" \
                 --build-tool "$(basename "$CONTAINER_ENGINE" | awk '{print $1}')" \
-                "$FROM_INDEX"
+                $FROM_INDEX
 }
 
 function validate_opm_catalog() {
@@ -226,9 +223,6 @@ function main() {
     log "Building $OPERATOR_NAME version $OPERATOR_VERSION"
     
     precheck_required_files || return 1
-
-    ## temporary login using robot account
-    #${CONTAINER_ENGINE} login -u="${ALT_REGISTRY_USER}" -p="${ALT_REGISTRY_TOKEN}" quay.io
 
     setup_environment
 

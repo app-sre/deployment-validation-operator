@@ -1,14 +1,10 @@
 OPERATOR_NAME = deployment-validation-operator
 # Image repository vars
-## Overwritten for testing REGISTRY_USER ?= ${QUAY_USER}
-ALT_REGISTRY_USER = rh_ee_ijimeno+dvojenkins01
-## Overwritten for testing REGISTRY_TOKEN ?= ${QUAY_TOKEN}
-ALT_REGISTRY_TOKEN = --
+REGISTRY_USER ?= ${QUAY_USER}
+REGISTRY_TOKEN ?= ${QUAY_TOKEN}
 IMAGE_REGISTRY ?= quay.io
-## Overwritten for testing IMAGE_REPOSITORY ?= app-sre
-IMAGE_REPOSITORY ?= rh_ee_ijimeno
-## Overwritten for testing IMAGE_NAME ?= ${OPERATOR_NAME}
-IMAGE_NAME ?= dvo
+IMAGE_REPOSITORY ?= app-sre
+IMAGE_NAME ?= ${OPERATOR_NAME}
 OPERATOR_IMAGE = ${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}/${IMAGE_NAME}
 
 OLM_CHANNEL ?= alpha
@@ -28,25 +24,6 @@ CONTAINER_ENGINE = $(shell command -v podman 2>/dev/null || echo docker --config
 # This include must go below the above definitions
 # include boilerplate/generated-includes.mk
 include build/golang.mk
-
-OPERATOR_IMAGE_URI_TEST = $(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):test
-
-.PHONY: boilerplate-update
-boilerplate-update:
-	@boilerplate/update
-
-.PHONY: docker-test
-docker-test:
-	${CONTAINER_ENGINE} build . -f $(OPERATOR_DOCKERFILE).test -t $(OPERATOR_IMAGE_URI_TEST)
-	${CONTAINER_ENGINE} run -t $(OPERATOR_IMAGE_URI_TEST)
-
-.PHONY: e2e-test
-e2e-test:
-	ginkgo run --tags e2e test/e2e/
-
-# We are early adopters of the OPM build/push process. Remove this
-# override once boilerplate uses that path by default.
-build-push: opm-build-push ;
 
 .PHONY: quay-login
 quay-login:
@@ -71,9 +48,8 @@ docker-push:
 .PHONY: docker-publish
 docker-publish: quay-login docker-build docker-push
 
-# tbd : quay-login -> docker-publish
-.PHONY: test_opm
-test_opm: docker-publish
+.PHONY: build-push
+build-push: docker-publish
 	CONTAINER_ENGINE="${CONTAINER_ENGINE}" \
 	CONTAINER_ENGINE_CONFIG_DIR="${CONTAINER_ENGINE_CONFIG_DIR}" \
 	CURRENT_COMMIT="${CURRENT_COMMIT}" \
