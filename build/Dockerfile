@@ -1,4 +1,4 @@
-FROM registry.ci.openshift.org/openshift/release:rhel-8-release-golang-1.22-openshift-4.17 AS builder
+FROM quay.io/app-sre/boilerplate:image-v5.0.1 AS builder
 
 RUN mkdir -p /workdir
 COPY . /workdir

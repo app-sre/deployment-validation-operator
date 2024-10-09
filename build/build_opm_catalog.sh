@@ -17,7 +17,7 @@ COMMAND_GRPCURL=""
 
 export REGISTRY_AUTH_FILE=${CONTAINER_ENGINE_CONFIG_DIR}/config.json
 
-OLM_BUNDLE_VERSIONS_REPO="gitlab.cee.redhat.com/ijimeno/saas-operator-versions.git"
+OLM_BUNDLE_VERSIONS_REPO="gitlab.cee.redhat.com/service/saas-operator-versions.git"
 OLM_BUNDLE_VERSIONS_REPO_FOLDER="versions_repo"
 VERSIONS_FILE="deployment-validation-operator/deployment-validation-operator-versions.txt"
 PREV_VERSION=""
@@ -113,7 +113,7 @@ function build_opm_bundle() {
                          --image "$OPERATOR_IMAGE" \
                          --image-tag "$OPERATOR_IMAGE_TAG" \
                          --output-dir "$DIR_MANIFESTS" \
-                         #--replaces "$PREV_VERSION"
+                         --replaces "$PREV_VERSION"
 
     log "Creating bundle image $OLM_BUNDLE_IMAGE_VERSION"
     cd "$DIR_BUNDLE"
