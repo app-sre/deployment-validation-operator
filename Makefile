@@ -21,9 +21,14 @@ OPERATOR_IMAGE_TAG ?= ${OPERATOR_VERSION}
 CONTAINER_ENGINE_CONFIG_DIR = .docker
 CONTAINER_ENGINE = $(shell command -v podman 2>/dev/null || echo docker --config=$(CONTAINER_ENGINE_CONFIG_DIR))
 
-# This include must go below the above definitions
-# include boilerplate/generated-includes.mk
-include build/golang.mk
+GOOS ?= linux
+GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=1
+GOBUILDFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
+.PHONY: go-build
+go-build:
+	@echo "## Building the binary..."
+	go mod vendor
+	${GOENV} go build ${GOBUILDFLAGS} -o build/_output/bin/$(OPERATOR_NAME) .
 
 .PHONY: quay-login
 quay-login:
