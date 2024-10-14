@@ -49,7 +49,7 @@ quay-login:
 	@echo "## Login to quay.io..."
 	mkdir -p ${CONTAINER_ENGINE_CONFIG_DIR}
 	export REGISTRY_AUTH_FILE=${CONTAINER_ENGINE_CONFIG_DIR}/config.json
-	@${CONTAINER_ENGINE} login -u="${ALT_REGISTRY_USER}" -p="${ALT_REGISTRY_TOKEN}" quay.io
+	@${CONTAINER_ENGINE} login -u="${REGISTRY_USER}" -p="${REGISTRY_TOKEN}" quay.io
 
 .PHONY: docker-build
 docker-build:
