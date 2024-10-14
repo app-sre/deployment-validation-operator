@@ -30,6 +30,20 @@ go-build:
 	go mod vendor
 	${GOENV} go build ${GOBUILDFLAGS} -o build/_output/bin/$(OPERATOR_NAME) .
 
+GOLANGCI_OPTIONAL_CONFIG = .golangci.yml
+GOLANGCI_LINT_CACHE =/tmp/golangci-cache
+.PHONY: lint
+go-lint:
+	@echo "## Running the golangci-lint tool..."
+	build/get_dependencies.sh
+	GOLANGCI_LINT_CACHE=${GOLANGCI_LINT_CACHE} golangci-lint run -c ${GOLANGCI_OPTIONAL_CONFIG} ./...
+
+TEST_TARGETS = $(shell ${GOENV} go list -e ./... | grep -E -v "/(vendor)/")
+.PHONY: test
+go-test:
+	@echo "## Running the code unit tests..."
+	${GOENV} go test ${TEST_TARGETS}
+
 .PHONY: quay-login
 quay-login:
 	@echo "## Login to quay.io..."
