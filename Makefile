@@ -21,6 +21,10 @@ OPERATOR_IMAGE_TAG ?= ${OPERATOR_VERSION}
 CONTAINER_ENGINE_CONFIG_DIR = .docker
 CONTAINER_ENGINE = $(shell command -v podman 2>/dev/null || echo docker --config=$(CONTAINER_ENGINE_CONFIG_DIR))
 
+.PHONY: go-mod-update
+go-mod-update:
+	go mod vendor
+
 GOOS ?= linux
 GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=1
 GOBUILDFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
@@ -33,13 +37,13 @@ go-build:
 GOLANGCI_OPTIONAL_CONFIG = .golangci.yml
 GOLANGCI_LINT_CACHE =/tmp/golangci-cache
 .PHONY: lint
-lint:
+lint: go-mod-update
 	@echo "## Running the golangci-lint tool..."
 	GOLANGCI_LINT_CACHE=${GOLANGCI_LINT_CACHE} golangci-lint run -c ${GOLANGCI_OPTIONAL_CONFIG} ./...
 
 TEST_TARGETS = $(shell ${GOENV} go list -e ./... | grep -E -v "/(vendor)/")
 .PHONY: test
-test:
+test: go-mod-update
 	@echo "## Running the code unit tests..."
 	${GOENV} go test ${TEST_TARGETS}
 
@@ -51,7 +55,7 @@ coverage:
 
 TESTOPTS :=
 .PHONY: test-coverage
-coverage-test:
+test-coverage: go-mod-update
 	@echo "## Running the code unit tests with coverage..."
 	${GOENV} go test ${TESTOPTS} ${TEST_TARGETS}
 
