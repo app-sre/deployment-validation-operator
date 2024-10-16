@@ -33,16 +33,27 @@ go-build:
 GOLANGCI_OPTIONAL_CONFIG = .golangci.yml
 GOLANGCI_LINT_CACHE =/tmp/golangci-cache
 .PHONY: lint
-go-lint:
+lint:
 	@echo "## Running the golangci-lint tool..."
-	build/get_dependencies.sh
 	GOLANGCI_LINT_CACHE=${GOLANGCI_LINT_CACHE} golangci-lint run -c ${GOLANGCI_OPTIONAL_CONFIG} ./...
 
 TEST_TARGETS = $(shell ${GOENV} go list -e ./... | grep -E -v "/(vendor)/")
 .PHONY: test
-go-test:
+test:
 	@echo "## Running the code unit tests..."
 	${GOENV} go test ${TEST_TARGETS}
+
+## These targets: coverage and test-coverage; are used by the CI pipeline ci/prow/coverage
+.PHONY: coverage
+coverage:
+	@echo "## Running code coverage..."
+	ci/codecov.sh
+
+TESTOPTS :=
+.PHONY: test-coverage
+coverage-test:
+	@echo "## Running the code unit tests with coverage..."
+	${GOENV} go test ${TESTOPTS} ${TEST_TARGETS}
 
 .PHONY: quay-login
 quay-login:
