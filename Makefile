@@ -29,11 +29,11 @@ GOOS ?= linux
 GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=1
 GOBUILDFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
 .PHONY: go-build
-go-build:
+go-build: go-mod-update
 	@echo "## Building the binary..."
-	go mod vendor
 	${GOENV} go build ${GOBUILDFLAGS} -o build/_output/bin/$(OPERATOR_NAME) .
 
+## Used by CI pipeline ci/prow/lint
 GOLANGCI_OPTIONAL_CONFIG = .golangci.yml
 GOLANGCI_LINT_CACHE =/tmp/golangci-cache
 .PHONY: lint
@@ -41,6 +41,7 @@ lint: go-mod-update
 	@echo "## Running the golangci-lint tool..."
 	GOLANGCI_LINT_CACHE=${GOLANGCI_LINT_CACHE} golangci-lint run -c ${GOLANGCI_OPTIONAL_CONFIG} ./...
 
+## Used by CI pipeline ci/prow/test
 TEST_TARGETS = $(shell ${GOENV} go list -e ./... | grep -E -v "/(vendor)/")
 .PHONY: test
 test: go-mod-update
@@ -58,6 +59,11 @@ TESTOPTS :=
 test-coverage: go-mod-update
 	@echo "## Running the code unit tests with coverage..."
 	${GOENV} go test ${TESTOPTS} ${TEST_TARGETS}
+
+## Used by CI pipeline ci/prow/validate
+.PHONY: validate
+validate:
+	test 0 -eq $$(git status --porcelain | wc -l) || (echo "Base folder contains unknown artifacts" >&2 && git --no-pager diff && exit 1)
 
 .PHONY: quay-login
 quay-login:
