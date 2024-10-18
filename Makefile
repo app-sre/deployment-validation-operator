@@ -63,6 +63,7 @@ test-coverage: go-mod-update
 ## Used by CI pipeline ci/prow/validate
 .PHONY: validate
 validate:
+	@echo "## Perform validation that the folder does not contain extra artifacts..."
 	test 0 -eq $$(git status --porcelain | wc -l) || (echo "Base folder contains unknown artifacts" >&2 && git --no-pager diff && exit 1)
 
 .PHONY: quay-login
