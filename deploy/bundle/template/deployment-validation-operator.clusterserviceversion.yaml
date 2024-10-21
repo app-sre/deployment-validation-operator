@@ -16,9 +16,7 @@ metadata:
       The deployment validation operator
   # name: deployment-validation-operator.v${VERSION}
 spec:
-  description: 'The Deployment Validation Operator for Kubernetes monitors workloads
-    on a cluster a provides suggestions for best practices.
-    '
+  description: 'The Deployment Validation Operator (DVO) checks deployments and other resources against a curated collection of best practices. These best practices focus mainly on ensuring that the applications are fault-tolerant. DVO reports failed validations via Prometheus metrics. If the best-practice check has failed, the metrics will report `1`.'
   displayName: Deployment Validation Operator
   install:
     spec:
