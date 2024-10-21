@@ -92,7 +92,8 @@ docker-publish: quay-login docker-build docker-push
 ## This target is run by the master branch Jenkins Job
 .PHONY: build-push
 build-push: docker-publish
-	CONTAINER_ENGINE="${CONTAINER_ENGINE}" \
+	@echo "## Building bundle and catalog images..."
+	@(CONTAINER_ENGINE="${CONTAINER_ENGINE}" \
 	CONTAINER_ENGINE_CONFIG_DIR="${CONTAINER_ENGINE_CONFIG_DIR}" \
 	CURRENT_COMMIT="${CURRENT_COMMIT}" \
 	OLM_BUNDLE_IMAGE="${OLM_BUNDLE_IMAGE}" \
@@ -102,4 +103,7 @@ build-push: docker-publish
 	OPERATOR_VERSION="${OPERATOR_VERSION}" \
 	OPERATOR_IMAGE="${OPERATOR_IMAGE}" \
 	OPERATOR_IMAGE_TAG="${OPERATOR_IMAGE_TAG}" \
-		build/build_opm_catalog.sh
+	IMAGE_REGISTRY=${IMAGE_REGISTRY} \
+	REGISTRY_USER="${REGISTRY_USER}" \
+	REGISTRY_TOKEN="${REGISTRY_TOKEN}" \
+		build/build_opm_catalog.sh)

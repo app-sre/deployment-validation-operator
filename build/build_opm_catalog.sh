@@ -40,6 +40,10 @@ function precheck_required_files() {
     return 0
 }
 
+function login_image_registry() {
+    ${CONTAINER_ENGINE} login -u="${REGISTRY_USER}" -p="${REGISTRY_TOKEN}" ${IMAGE_REGISTRY}
+}
+
 function prepare_temporary_folders() {
     BASE_FOLDER=$(mktemp -d --suffix "-$(basename "$0")")
     DIR_BUNDLE=$(mktemp -d -p "$BASE_FOLDER" bundle.XXXX)
@@ -87,6 +91,10 @@ function set_previous_operator_version() {
 }
 
 function setup_environment() {
+    log "Login Image registry"
+    login_image_registry
+    log "  Successfully login to $IMAGE_REGISTRY"
+
     log "Generating temporary folders to contain artifacts"
     prepare_temporary_folders
     log "  base path: $BASE_FOLDER"
@@ -221,7 +229,7 @@ function tag_and_push_images() {
 
 function main() {
     log "Building $OPERATOR_NAME version $OPERATOR_VERSION"
-    
+
     precheck_required_files || return 1
 
     setup_environment
