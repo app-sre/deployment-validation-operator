@@ -1,9 +1,0 @@
-# Manually keep this in sync with Dockerfile until boilerplate supports it
-FROM quay.io/app-sre/boilerplate:image-v0.2.0 AS builder
-
-RUN mkdir -p /workdir
-COPY . /workdir
-WORKDIR /workdir
-
-ENTRYPOINT  ["make"]
-CMD ["go-check", "test"]
