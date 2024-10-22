@@ -48,7 +48,7 @@ There are manifests to install the operator under the [`deploy/openshift`](deplo
     * If deploying to a namespace other than `deployment-validation-operator`, there are commented lines you must change in `deploy/openshift/cluster-role-binding.yaml` and `deploy/openshift/role-binding.yaml` first
 * Create the service, service account, configmap, roles and role bindings
 * Create the operator deployment
-    * **Note that the `nodeAffinity` attribute by default requires a node with the `node-role.kubernetes.io/infra` selector. In common (self-managed) clusters there is usually no such node, so you can remove the `nodeAffinity` attribtue when deploying to those environments.**
+    * **Note that the `nodeAffinity` attribute by default requires a node with the `node-role.kubernetes.io/infra` selector. In common (self-managed) clusters there is usually no such node, so you can remove the `nodeAffinity` attribute when deploying to those environments.**
 
 ```
 oc new-project deployment-validation-operator
@@ -158,8 +158,6 @@ The end-to-end tests depend on [`ginkgo`](https://onsi.github.io/ginkgo/#install
 ```
 make e2e-test
 ```
-
-We use [openshift boilerplate](https://github.com/openshift/boilerplate) to manage our make targets. See this [doc](https://github.com/openshift/boilerplate/blob/master/boilerplate/openshift/golang-osd-operator/README.md) for further information.
 
 The OCP e2e PR checks exist in the [deployment-validation-operator-tests](https://gitlab.cee.redhat.com/ccx/deployment-validation-operator-tests) repository.
 Tests are developed there and once a new build is done, the image is pushed onto [quay.io](https://quay.io/repository/redhatqe/deployment-validation-operator-tests).
