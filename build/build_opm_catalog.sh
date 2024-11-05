@@ -12,8 +12,6 @@ DIR_MANIFESTS=""
 GOOS=$(go env GOOS)
 OPM_VERSION="v1.23.2"
 COMMAND_OPM=""
-GRPCURL_VERSION="1.7.0"
-COMMAND_GRPCURL=""
 
 export REGISTRY_AUTH_FILE=${CONTAINER_ENGINE_CONFIG_DIR}/config.json
 
@@ -58,11 +56,6 @@ function download_dependencies() {
     curl -sfL "${opm_url}" -o opm
     chmod +x opm
     COMMAND_OPM="$DIR_EXEC/opm"
-
-    local grpcurl_url="https://github.com/fullstorydev/grpcurl/releases/download/v$GRPCURL_VERSION/grpcurl_${GRPCURL_VERSION}_${GOOS}_x86_64.tar.gz"
-    curl -sfL "$grpcurl_url" | tar -xz -O grpcurl > "grpcurl"
-    chmod +x grpcurl
-    COMMAND_GRPCURL="$DIR_EXEC/grpcurl"
 
     cd ~-
 }
@@ -146,50 +139,41 @@ function validate_opm_bundle() {
 }
 
 function build_opm_catalog() {
-    local FROM_INDEX=""
-    local PREV_COMMIT=${PREV_VERSION#*g} # remove versioning and the g commit hash prefix
-    # check if the previous catalog image is available
-    if [ "$(${CONTAINER_ENGINE} pull "${OLM_CATALOG_IMAGE}":"${PREV_COMMIT}" &> /dev/null; echo $?)" -eq 0 ]; then
-        FROM_INDEX="--from-index ${OLM_CATALOG_IMAGE}:${PREV_COMMIT}"
-        log "Index argument is $FROM_INDEX"
-    fi
+    log "Updating the catalog index"
+    cat << EOF > olm/deployment-validation-operator-index/catalog.yaml
+---
+defaultChannel: alpha
+name: deployment-validation-operator
+schema: olm.package
+---
+schema: olm.channel
+package: deployment-validation-operator
+name: alpha
+entries:
+- name: deployment-validation-operator.${OPERATOR_VERSION}
+  skipRange: ">=0.0.1 <${OPERATOR_VERSION}"
+---
+image: ${OLM_BUNDLE_IMAGE_VERSION}
+name: deployment-validation-operator.${OPERATOR_VERSION}
+package: deployment-validation-operator
+properties:
+- type: olm.package
+  value:
+    packageName: deployment-validation-operator
+    version: ${OPERATOR_VERSION}
+relatedImages:
+- image: quay.io/app-sre/deployment-validation-operator:${OPERATOR_VERSION}
+  name: ""
+schema: olm.bundle
+EOF
 
-    log "Creating catalog image $OLM_CATALOG_IMAGE_VERSION using opm"
+    cat olm/deployment-validation-operator-index/catalog.yaml
+        
+    log "Validating the catalog"
+    ${COMMAND_OPM} validate olm/deployment-validation-operator-index
 
-    ${COMMAND_OPM} index add --bundles "$OLM_BUNDLE_IMAGE_VERSION" \
-                --tag "$OLM_CATALOG_IMAGE_VERSION" \
-                --build-tool "$(basename "$CONTAINER_ENGINE" | awk '{print $1}')" \
-                $FROM_INDEX
-}
-
-function validate_opm_catalog() {
-    log "Checking that catalog we have built returns the correct version $OPERATOR_VERSION"
-
-    local free_port=""
-    local container_id=""
-    local catalog_current_version=""
-
-    free_port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
-
-    log "Running $OLM_CATALOG_IMAGE_VERSION and exposing $free_port"
-    container_id=$(${CONTAINER_ENGINE} run -d -p "$free_port:50051" "$OLM_CATALOG_IMAGE_VERSION")
-
-    log "Getting current version from running catalog"
-    catalog_current_version=$(
-        ${COMMAND_GRPCURL} -plaintext -d '{"name": "'"$OPERATOR_NAME"'"}' \
-            "localhost:$free_port" api.Registry/GetPackage | \
-                jq -r '.channels[] | select(.name=="'"$OLM_CHANNEL"'") | .csvName' | \
-                sed "s/$OPERATOR_NAME\.//"
-    )
-    log "  catalog version: $catalog_current_version"
-
-    log "Removing docker container $container_id"
-    ${CONTAINER_ENGINE} rm -f "$container_id"
-
-    if [[ "$catalog_current_version" != "v$OPERATOR_VERSION" ]]; then
-        log "Version from catalog $catalog_current_version != v$OPERATOR_VERSION"
-        return 1
-    fi
+    log "Building the catalog image"
+    ${CONTAINER_ENGINE} build -f olm/catalog.Dockerfile -t ${OLM_CATALOG_IMAGE_VERSION}
 }
 
 function update_versions_repo() {
@@ -238,7 +222,6 @@ function main() {
     validate_opm_bundle
 
     build_opm_catalog
-    validate_opm_catalog
 
     if [[ -n "${APP_SRE_BOT_PUSH_TOKEN:-}" ]]; then
         update_versions_repo
