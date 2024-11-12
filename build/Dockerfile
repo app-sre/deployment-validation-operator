@@ -5,7 +5,7 @@ COPY . /workdir
 WORKDIR /workdir
 RUN make go-build
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1086
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1130
 
 ENV OPERATOR=/usr/local/bin/deployment-validation-operator \
     USER_UID=1001 \
