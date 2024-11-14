@@ -156,7 +156,7 @@ function build_opm_catalog() {
     ${COMMAND_OPM} validate olm/deployment-validation-operator-index/
 
     log "Building the catalog image"
-    ${CONTAINER_ENGINE} build -f olm/catalog.Dockerfile -t $(OLM_CATALOG_IMAGE_VERSION)
+    ${CONTAINER_ENGINE} build -f olm/catalog.Dockerfile -t ${OLM_CATALOG_IMAGE_VERSION}
 }
 
 function update_versions_repo() {
