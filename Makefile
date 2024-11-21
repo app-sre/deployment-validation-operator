@@ -21,8 +21,7 @@ OPERATOR_IMAGE_TAG ?= ${OPERATOR_VERSION}
 CONTAINER_ENGINE_CONFIG_DIR = .docker
 CONTAINER_ENGINE = $(shell command -v podman 2>/dev/null || echo docker --config=$(CONTAINER_ENGINE_CONFIG_DIR))
 
-# ifeq (${FIPS_ENABLED}, "true")
-ifdef _ENABLED
+ifdef FIPS_ENABLED
 FIPSENV=GOFLAGS="-tags=fips_enabled" GOEXPERIMENT=strictfipsruntime,boringcrypto
 endif
 
