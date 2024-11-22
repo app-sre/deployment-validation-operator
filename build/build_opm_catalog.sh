@@ -140,6 +140,7 @@ function validate_opm_bundle() {
 
 function build_opm_catalog() {
     log "Updating the catalog index"
+    mkdir olm/deployment-validation-operator-index
     cat << EOF > olm/deployment-validation-operator-index/catalog.yaml
 ---
 defaultChannel: alpha
@@ -162,7 +163,7 @@ properties:
     packageName: deployment-validation-operator
     version: ${OPERATOR_VERSION}
 relatedImages:
-- image: quay.io/app-sre/deployment-validation-operator:${OPERATOR_VERSION}
+- image: ${OPERATOR_IMAGE}:${OPERATOR_IMAGE_TAG}
   name: ""
 schema: olm.bundle
 EOF
