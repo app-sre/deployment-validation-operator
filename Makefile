@@ -21,12 +21,16 @@ OPERATOR_IMAGE_TAG ?= ${OPERATOR_VERSION}
 CONTAINER_ENGINE_CONFIG_DIR = .docker
 CONTAINER_ENGINE = $(shell command -v podman 2>/dev/null || echo docker --config=$(CONTAINER_ENGINE_CONFIG_DIR))
 
+ifdef FIPS_ENABLED
+FIPSENV=GOFLAGS="-tags=fips_enabled" GOEXPERIMENT=strictfipsruntime,boringcrypto
+endif
+
 .PHONY: go-mod-update
 go-mod-update:
 	go mod vendor
 
 GOOS ?= linux
-GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=1
+GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=1 ${FIPSENV}
 GOBUILDFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
 .PHONY: go-build
 go-build: go-mod-update
