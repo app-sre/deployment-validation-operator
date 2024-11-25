@@ -141,7 +141,10 @@ function validate_opm_bundle() {
 function build_opm_catalog() {
     log "Updating the catalog index"
     mkdir olm/deployment-validation-operator-index
-    cat << EOF > olm/deployment-validation-operator-index/catalog.yaml
+
+    ${COMMAND_OPM} render ${OLM_BUNDLE_IMAGE_VERSION} -o yaml >> olm/deployment-validation-operator-index/catalog.yaml
+
+    cat << EOF >> olm/deployment-validation-operator-index/catalog.yaml
 ---
 defaultChannel: alpha
 name: deployment-validation-operator
@@ -151,21 +154,8 @@ schema: olm.channel
 package: deployment-validation-operator
 name: alpha
 entries:
-- name: deployment-validation-operator.${OPERATOR_VERSION}
+- name: deployment-validation-operator.v${OPERATOR_VERSION}
   skipRange: ">=0.0.1 <${OPERATOR_VERSION}"
----
-image: ${OLM_BUNDLE_IMAGE_VERSION}
-name: deployment-validation-operator.${OPERATOR_VERSION}
-package: deployment-validation-operator
-properties:
-- type: olm.package
-  value:
-    packageName: deployment-validation-operator
-    version: ${OPERATOR_VERSION}
-relatedImages:
-- image: ${OPERATOR_IMAGE}:${OPERATOR_IMAGE_TAG}
-  name: ""
-schema: olm.bundle
 EOF
 
     cat olm/deployment-validation-operator-index/catalog.yaml
