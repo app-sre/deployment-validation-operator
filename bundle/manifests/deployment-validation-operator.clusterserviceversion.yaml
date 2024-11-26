@@ -161,12 +161,13 @@ spec:
   keywords:
   - deployment-validation-operator
   links:
-  - name: repository
-    url: https://github.com/app-sre/deployment-validation-operator
+  - name: Deployment Validation Operator
+    url: https://deployment-validation-operator.domain
   maintainers:
-  - name: Red Hat
-    email: dvo-owners@redhat.com
+  - email: your@email.com
+    name: Maintainer Name
   maturity: alpha
   provider:
-    name: Red Hat
-  version: 0.7.8
+    name: Provider Name
+    url: https://your.domain
+  version: 0.0.0
