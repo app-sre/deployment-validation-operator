@@ -140,12 +140,11 @@ function validate_opm_bundle() {
 
 function build_opm_catalog() {
     log "Updating the catalog index"
-    mkdir -p olm/catalog
+    mkdir olm/catalog
 
-    ${COMMAND_OPM} generate dockerfile olm/catalog
-    ${COMMAND_OPM} render ${OLM_BUNDLE_IMAGE_VERSION} -o yaml >> olm/catalog/index.yaml
+    ${COMMAND_OPM} render ${OLM_BUNDLE_IMAGE_VERSION} -o yaml >> olm/deployment-validation-operator-index/catalog.yaml
 
-    cat << EOF >> olm/catalog/index.yaml
+    cat << EOF >> olm/deployment-validation-operator-index/catalog.yaml
 ---
 defaultChannel: alpha
 name: deployment-validation-operator
@@ -159,10 +158,10 @@ entries:
   skipRange: ">=0.0.1 <${OPERATOR_VERSION}"
 EOF
 
-    cat olm/catalog/index.yaml
+    cat olm/deployment-validation-operator-index/catalog.yaml
         
     log "Validating the catalog"
-    ${COMMAND_OPM} validate olm/catalog
+    ${COMMAND_OPM} validate olm/deployment-validation-operator-index
 
     log "Building the catalog image"
     ${CONTAINER_ENGINE} build -f olm/catalog.Dockerfile -t ${OLM_CATALOG_IMAGE_VERSION}
