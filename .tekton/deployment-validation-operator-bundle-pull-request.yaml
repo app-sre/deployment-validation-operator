@@ -8,8 +8,8 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
-      == "master" && ( "bundle/***".pathChanged() || ".tekton/deployment-validation-operator-bundle-pull-request.yaml".pathChanged()
-      || "bundle/Dockerfile.bundle".pathChanged() )
+      == "master" && ( "konflux-ci/bundle/***".pathChanged() || ".tekton/deployment-validation-operator-bundle-pull-request.yaml".pathChanged()
+      || "konflux-ci/bundle/bundle.Dockerfile".pathChanged() )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: deployment-validation-operator
@@ -28,9 +28,9 @@ spec:
   - name: image-expires-after
     value: 5d
   - name: dockerfile
-    value: bundle/Dockerfile.bundle
+    value: konflux-ci/bundle/bundle.Dockerfile
   - name: path-context
-    value: bundle
+    value: konflux-ci/bundle
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
@@ -185,7 +185,7 @@ spec:
         - name: name
           value: prefetch-dependencies-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies-oci-ta:0.1@sha256:30c903144e8c8d8c65fb6ec40dd3ff737091609f96fa9f326c047f71242dade4
+          value: quay.io/konflux-ci/tekton-catalog/task-prefetch-dependencies-oci-ta:0.1@sha256:b1ac9124ad909a8d7dbac01b1a02ef9a973d448d4c94efcf3d1b29e2a5c9e76f
         - name: kind
           value: task
         resolver: bundles
@@ -226,7 +226,7 @@ spec:
         - name: name
           value: buildah-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-buildah-oci-ta:0.2@sha256:2d99cd4a5ecec47ba3b4c0a9ad071ca2aa01864906ebcdcfc9686cdc60323e0f
+          value: quay.io/konflux-ci/tekton-catalog/task-buildah-oci-ta:0.2@sha256:ea5f13f235f98e9f0da599439f0b62b729901a5b6ad8d673daf3821f3f9cb66f
         - name: kind
           value: task
         resolver: bundles
@@ -373,7 +373,7 @@ spec:
         - name: name
           value: sast-snyk-check-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-sast-snyk-check-oci-ta:0.3@sha256:65a213322ea7c64159e37071d369d74b6378b23403150e29537865cada90f022
+          value: quay.io/konflux-ci/tekton-catalog/task-sast-snyk-check-oci-ta:0.2@sha256:22ca2db8d94c689dba03d2c257733743cd118759d7af9a68fb08f54a27fd8460
         - name: kind
           value: task
         resolver: bundles
