@@ -140,7 +140,7 @@ function validate_opm_bundle() {
 
 function build_opm_catalog() {
     log "Updating the catalog index"
-    mkdir olm/catalog
+    mkdir -p olm/catalog
 
     ${COMMAND_OPM} generate dockerfile olm/catalog
     ${COMMAND_OPM} render ${OLM_BUNDLE_IMAGE_VERSION} -o yaml >> olm/catalog/index.yaml
