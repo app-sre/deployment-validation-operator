@@ -123,7 +123,7 @@ objects:
               - from:
                 - namespaceSelector:
                     matchLabels:
-                      name: openshift-operator-lifecycle-manager
+                      kubernetes.io/metadata.name: openshift-operator-lifecycle-manager
           policyTypes:
             - Ingress
         - apiVersion: v1
