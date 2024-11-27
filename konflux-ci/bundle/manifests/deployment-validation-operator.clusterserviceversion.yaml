@@ -4,11 +4,17 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-    createdAt: "2023-09-12T14:13:09Z"
+    categories: Application Runtime, Monitoring, Security
+    certified: "false"
+    containerImage: quay.io/deployment-validation-operator/dv-operator:0.7.8
+    createdAt: 2024-11-27T00:00:00Z
+    description: The deployment validation operator
     operators.operatorframework.io/builder: operator-sdk-v1.31.0+git
     operators.operatorframework.io/project_layout: unknown
-  name: deployment-validation-operator
-  namespace: placeholder
+    repository: https://github.com/app-sre/deployment-validation-operator
+    support: Best Effort
+    ignore-check.kube-linter.io/minimum-three-replicas: "This deployment uses 1 pod as currently replicating does not replicate metric data causing installation issues"
+  name: deployment-validation-operator.v0.7.8
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions: {}
@@ -73,7 +79,7 @@ spec:
                 - name: OPERATOR_NAME
                   value: deployment-validation-operator
                 - name: NAMESPACE_IGNORE_PATTERN
-                  value: openshift.*|kube-.+|open-cluster-management-.*|default|dedicated-admin
+                  value: "^(openshift.*|kube-.*|open-cluster-management-.*|default|dedicated-admin|redhat-.*|acm|addon-dba-operator|codeready-.*|prow)$"
                 - name: RESOURCES_PER_LIST_QUERY
                   value: "5"
                 - name: VALIDATION_CHECK_INTERVAL
@@ -86,23 +92,13 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-                image: quay.io/deployment-validation-operator/dv-operator:latest
+                image: quay.io/deployment-validation-operator/dv-operator:0.7.8
                 imagePullPolicy: Always
-                livenessProbe:
-                  httpGet:
-                    path: /healthz
-                    port: 8081
-                  initialDelaySeconds: 30
-                  periodSeconds: 10
-                  timeoutSeconds: 3
                 name: deployment-validation-operator
-                readinessProbe:
-                  httpGet:
-                    path: /readyz
-                    port: 8081
-                  initialDelaySeconds: 5
-                  periodSeconds: 10
-                  timeoutSeconds: 3
+                ports:
+                - containerPort: 8383
+                  name: http-metrics
+                  protocol: TCP
                 resources:
                   limits:
                     memory: 400Mi
@@ -112,20 +108,16 @@ spec:
                 securityContext:
                   readOnlyRootFilesystem: true
                 volumeMounts:
-                - mountPath: /config
-                  name: dvo-config
+                - name: dvo-config
+                  mountPath: /config
               restartPolicy: Always
               serviceAccountName: deployment-validation-operator
               terminationGracePeriodSeconds: 30
-              tolerations:
-              - effect: NoSchedule
-                key: node-role.kubernetes.io/infra
-                operator: Exists
               volumes:
-              - configMap:
+              - name: dvo-config
+                configMap:
                   name: deployment-validation-operator-config
                   optional: true
-                name: dvo-config
       permissions:
       - rules:
         - apiGroups:
@@ -150,23 +142,34 @@ spec:
         serviceAccountName: deployment-validation-operator
     strategy: deployment
   installModes:
-  - supported: false
+  - supported: true
     type: OwnNamespace
-  - supported: false
+  - supported: true
     type: SingleNamespace
-  - supported: false
-    type: MultiNamespace
   - supported: true
     type: AllNamespaces
+  - supported: false
+    type: MultiNamespace
   keywords:
-  - deployment-validation-operator
+  - dvo
+  labels:
+    alm-owner-dvo: deployment-validation-operator
+    operated-by: deployment-validation-operator
   links:
   - name: repository
     url: https://github.com/app-sre/deployment-validation-operator
+  - name: containerImage
+    url: https://quay.io/deployment-validation-operator/dv-operator:0.7.8
   maintainers:
   - name: Red Hat
     email: dvo-owners@redhat.com
   maturity: alpha
   provider:
     name: Red Hat
+  selector:
+    matchLabels:
+      alm-owner-dvo: deployment-validation-operator
+      operated-by: deployment-validation-operator
+  replaces: deployment-validation-operator.v0.7.7
+  skipRange: ">=0.0.10 <0.7.8"
   version: 0.7.8
