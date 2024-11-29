@@ -3,6 +3,7 @@ FROM quay.io/app-sre/boilerplate:image-v5.0.1 AS builder
 RUN mkdir -p /workdir
 COPY . /workdir
 WORKDIR /workdir
+ENV FIPS_ENABLED=1
 RUN make go-build
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1130
