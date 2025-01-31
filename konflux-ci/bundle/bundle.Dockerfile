@@ -9,6 +9,7 @@ LABEL com.redhat.component="deployment-validation-operator-bundle-container" \
       summary="Deployment Validation Operator for OpenShift" \
       io.openshift.expose-services="" \
       io.k8s.display-name="Deployment Validation Operator Bundle" \
+      io.k8s.description="Deployment Validation Operator Bundle for OpenShift" \
       maintainer="['dvo-owners@redhat.com']" \
       description="Deployment Validation Operator for OpenShift" \
       com.redhat.delivery.operator.bundle=true \
