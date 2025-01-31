@@ -18,6 +18,7 @@ COPY --from=builder /workdir/build/_output/bin/deployment-validation-operator ${
 COPY build/bin /usr/local/bin
 RUN  /usr/local/bin/user_setup
 
+# These labels are needed in order to release on Konflux
 LABEL name="deployment-validation-operator" \
       summary="Deployment Validation Operator for OpenShift" \
       description="Deployment Validation Operator for OpenShift" \
