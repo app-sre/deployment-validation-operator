@@ -24,7 +24,7 @@ LABEL name="deployment-validation-operator" \
       com.redhat.component="deployment-validation-operator-container" \
       io.k8s.display-name="Deployment Validation Operator" \
       io.k8s.description="Deployment Validation Operator for OpenShift" \
-      io.openshift.tags = "dvo,deployment-validation-operator"
+      io.openshift.tags="dvo,deployment-validation-operator"
 
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
 
