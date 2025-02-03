@@ -85,6 +85,8 @@ objects:
                             image: ${REGISTRY_IMG}@${IMAGE_DIGEST}
                             displayName: Deployment Validation Operator
                             publisher: Red Hat
+                            grpcPodConfig:
+                              securityContextConfig: restricted
                       - complianceType: MustHave
                         objectDefinition:
                           apiVersion: operators.coreos.com/v1
