@@ -1,4 +1,6 @@
-FROM quay.io/app-sre/boilerplate:image-v5.0.1 AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.22.9 AS builder
+
+USER root
 
 RUN mkdir -p /workdir
 COPY . /workdir
