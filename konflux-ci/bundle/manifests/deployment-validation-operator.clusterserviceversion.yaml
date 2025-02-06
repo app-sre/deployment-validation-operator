@@ -14,7 +14,7 @@ metadata:
     repository: https://github.com/app-sre/deployment-validation-operator
     support: Best Effort
     ignore-check.kube-linter.io/minimum-three-replicas: "This deployment uses 1 pod as currently replicating does not replicate metric data causing installation issues"
-    features.operators.openshift.io/cni: false
+    features.operators.openshift.io/cni: "false"
   name: deployment-validation-operator.v0.7.8
 spec:
   description: |
