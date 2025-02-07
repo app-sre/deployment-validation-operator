@@ -1,0 +1,33 @@
+# Applying this manifest will create a snapshot in Konflux with specific images for the operator and the bundle
+# Since images could be built in different PRs there could be some misalignment between the bundle and the operator images
+# Retrieve the specific images SHA and last revision:
+#   * from the Konflux UI:
+#     in the Application > Components > [component]
+#       Latest build > Build container image
+#       Latest image > image label
+#   * from the CLI:
+#     $ oc get component deployment-validation-operator -o yaml | yq .status.lastPromotedImage
+#     $ oc get component deployment-validation-operator -o yaml | yq .status.lastBuiltCommit
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Snapshot
+metadata:
+  name: manual-release-snapshot
+  namespace: dvo-obsint-tenant
+  labels:
+    test.appstudio.openshift.io/type: override 
+spec:
+  application: deployment-validation-operator
+  components:
+    - name: deployment-validation-operator
+      containerImage: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator@sha256:0e312d3edc28b931b721eb5ddc59feea4f9141707925224f6b936401b479b4b1
+      source:
+        git:
+          url: https://github.com/app-sre/deployment-validation-operator
+          revision: b861deee00c1afc3ba91ffac56932d24870358c9
+    - name: deployment-validation-operator-bundle
+      containerImage: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator-bundle@sha256:a96eb0ba48f11f163d243cead0519dd58de726e64963ed5e5ddcc19f253ba201
+      source:
+        git:
+          url: https://github.com/app-sre/deployment-validation-operator
+          revision: b861deee00c1afc3ba91ffac56932d24870358c9
