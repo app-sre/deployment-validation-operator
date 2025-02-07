@@ -18,6 +18,15 @@ COPY --from=builder /workdir/build/_output/bin/deployment-validation-operator ${
 COPY build/bin /usr/local/bin
 RUN  /usr/local/bin/user_setup
 
+# These labels are needed in order to release on Konflux
+LABEL name="deployment-validation-operator" \
+      summary="Deployment Validation Operator for OpenShift" \
+      description="Deployment Validation Operator for OpenShift" \
+      com.redhat.component="deployment-validation-operator-container" \
+      io.k8s.display-name="Deployment Validation Operator" \
+      io.k8s.description="Deployment Validation Operator for OpenShift" \
+      io.openshift.tags="dvo,deployment-validation-operator"
+
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
 
 USER ${USER_UID}

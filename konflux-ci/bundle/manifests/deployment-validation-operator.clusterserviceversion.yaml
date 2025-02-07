@@ -6,7 +6,7 @@ metadata:
     capabilities: Basic Install
     categories: Application Runtime, Monitoring, Security
     certified: "false"
-    containerImage: quay.io/deployment-validation-operator/dv-operator:0.7.8
+    containerImage: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator
     createdAt: 2024-11-27T00:00:00Z
     description: The deployment validation operator
     operators.operatorframework.io/builder: operator-sdk-v1.31.0+git
@@ -14,6 +14,16 @@ metadata:
     repository: https://github.com/app-sre/deployment-validation-operator
     support: Best Effort
     ignore-check.kube-linter.io/minimum-three-replicas: "This deployment uses 1 pod as currently replicating does not replicate metric data causing installation issues"
+    features.operators.openshift.io/cnf: "false"
+    features.operators.openshift.io/cni: "false"
+    features.operators.openshift.io/csi: "false"
+    features.operators.openshift.io/disconnected: "true"
+    features.operators.openshift.io/fips-compliant: "true"
+    features.operators.openshift.io/proxy-aware: "true"
+    features.operators.openshift.io/tls-profiles: "false"
+    features.operators.openshift.io/token-auth-aws: "false"
+    features.operators.openshift.io/token-auth-azure: "false"
+    features.operators.openshift.io/token-auth-gcp: "false"
   name: deployment-validation-operator.v0.7.8
 spec:
   description: |
@@ -93,7 +103,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-                image: quay.io/deployment-validation-operator/dv-operator:0.7.8
+                image: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator@sha256:0e312d3edc28b931b721eb5ddc59feea4f9141707925224f6b936401b479b4b1
                 imagePullPolicy: Always
                 name: deployment-validation-operator
                 ports:
@@ -160,7 +170,7 @@ spec:
   - name: repository
     url: https://github.com/app-sre/deployment-validation-operator
   - name: containerImage
-    url: https://quay.io/deployment-validation-operator/dv-operator:0.7.8
+    url: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator
   maintainers:
   - name: Red Hat
     email: dvo-owners@redhat.com
