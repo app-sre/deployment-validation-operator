@@ -30,7 +30,7 @@ go-mod-update:
 	go mod vendor
 
 GOOS ?= linux
-GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 ${FIPSENV}
+GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=1 ${FIPSENV}
 GOBUILDFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
 .PHONY: go-build
 go-build: go-mod-update
