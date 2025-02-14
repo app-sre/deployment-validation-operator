@@ -5,7 +5,11 @@ COPY ./metadata /metadata
 
 LABEL com.redhat.component="deployment-validation-operator-bundle-container" \
       name="app-sre/deployment-validation-operator-bundle" \
-      version="1" \
+      version="0.7" \
+      release="9" \
+      distribution-scope="private" \
+      vendor="Red Hat Inc." \
+      url="github.com/app-sre/deployment-validation-operator/" \
       summary="Deployment Validation Operator for OpenShift" \
       io.openshift.expose-services="" \
       io.k8s.display-name="Deployment Validation Operator Bundle" \
