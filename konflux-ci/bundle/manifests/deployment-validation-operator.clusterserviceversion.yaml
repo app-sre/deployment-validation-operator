@@ -9,6 +9,7 @@ metadata:
     containerImage: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator
     createdAt: 2024-11-27T00:00:00Z
     description: The deployment validation operator
+    operators.openshift.io/valid-subscription: "[\"OpenShift Container Platform\", \"OpenShift Platform Plus\"]"
     operators.operatorframework.io/builder: operator-sdk-v1.31.0+git
     operators.operatorframework.io/project_layout: unknown
     repository: https://github.com/app-sre/deployment-validation-operator
