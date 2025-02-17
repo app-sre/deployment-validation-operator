@@ -5,7 +5,7 @@ go 1.22.4
 toolchain go1.22.5
 
 require (
-	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
+	github.com/ghodss/yaml v1.0.1-0.20220118164431-d8423dcdf344
 	github.com/go-logr/logr v1.4.2
 	github.com/mcuadros/go-defaults v1.2.0
 	github.com/openshift/api v0.0.0-20230406152840-ce21e3fe5da2
