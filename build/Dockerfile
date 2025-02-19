@@ -10,6 +10,10 @@ RUN make go-build
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5-1738816775
 
+# update glibc libraries in case it is needed
+RUN microdnf update -y && \
+    microdnf install glibc-static -y
+
 ENV OPERATOR=/usr/local/bin/deployment-validation-operator \
     USER_UID=1001 \
     USER_NAME=deployment-validation-operator
