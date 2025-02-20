@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/go-toolset:1.22.9 AS builder
+FROM registry.access.redhat.com/ubi8/go-toolset:1.22.9 AS builder
 
 USER root
 
@@ -8,11 +8,8 @@ WORKDIR /workdir
 ENV FIPS_ENABLED=1
 RUN make go-build
 
-FROM registry.access.redhat.com/ubi9:9.5-1739751568
-
-# update glibc libraries in case it is needed
-RUN dnf update -y \
-    && dnf install glibc-static -y
+# This image has to match RHEL version from the CI or will cause some side-effects on glibc (and possibly others)
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1179
 
 ENV OPERATOR=/usr/local/bin/deployment-validation-operator \
     USER_UID=1001 \
