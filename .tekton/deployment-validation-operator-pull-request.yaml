@@ -29,6 +29,8 @@ spec:
     value: build/Dockerfile
   - name: path-context
     value: .
+  - name: HERMETIC
+    value: 'true'
   pipelineSpec:
     finally:
     - name: show-sbom
