@@ -32,7 +32,7 @@ spec:
   - name: hermetic
     value: 'true'
   - name: prefetch-input
-    value: '[{"type": "gomod", "path": "./.vendor"}]'
+    value: '[{"type": "gomod", "path": "./"}]'
   pipelineSpec:
     finally:
     - name: show-sbom
