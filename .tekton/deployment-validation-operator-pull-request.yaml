@@ -29,7 +29,7 @@ spec:
     value: build/Dockerfile
   - name: path-context
     value: .
-  - name: HERMETIC
+  - name: hermetic
     value: 'true'
   pipelineSpec:
     finally:

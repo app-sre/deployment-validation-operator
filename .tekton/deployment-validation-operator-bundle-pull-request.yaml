@@ -31,7 +31,7 @@ spec:
     value: konflux-ci/bundle/bundle.Dockerfile
   - name: path-context
     value: konflux-ci/bundle
-  - name: HERMETIC
+  - name: hermetic
     value: 'true'
   pipelineSpec:
     description: |
