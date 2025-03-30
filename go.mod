@@ -8,7 +8,7 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20220118164431-d8423dcdf344
 	github.com/go-logr/logr v1.4.2
 	github.com/mcuadros/go-defaults v1.2.0
-	github.com/openshift/api v0.0.0-20230406152840-ce21e3fe5da2
+	github.com/openshift/api 4521905c611e
 	github.com/prometheus/client_golang v1.21.0
 	github.com/prometheus/client_model v0.6.1
 	github.com/spf13/pflag v1.0.6
