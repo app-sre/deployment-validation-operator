@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/go-toolset:1.22.9-2.1740072407 AS builder
+FROM registry.access.redhat.com/ubi8/go-toolset:1.22.9-3.1742991062 AS builder
 
 USER root
 
@@ -9,7 +9,7 @@ ENV FIPS_ENABLED=1
 RUN make go-build
 
 # This image has to match RHEL version from the CI or will cause some side-effects on glibc (and possibly others)
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1179.1739286367
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1179.1741863533
 
 ENV OPERATOR=/usr/local/bin/deployment-validation-operator \
     USER_UID=1001 \
