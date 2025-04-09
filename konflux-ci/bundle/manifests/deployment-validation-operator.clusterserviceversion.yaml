@@ -104,7 +104,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-                image: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator@sha256:0e312d3edc28b931b721eb5ddc59feea4f9141707925224f6b936401b479b4b1
+                image: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator@sha256:cb4a68ebedba10bbd504fb271b3b7cc52d01ed13557dcb9604059f1ba98717d1
                 imagePullPolicy: Always
                 name: deployment-validation-operator
                 ports:
