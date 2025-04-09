@@ -29,6 +29,10 @@ endif
 go-mod-update:
 	go mod vendor
 
+.PHONY: ensure-golangci
+ensure-golangci:
+	./ci/golangci-lint.sh
+
 GOOS ?= linux
 GOENV=GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=1 ${FIPSENV}
 GOBUILDFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
@@ -41,7 +45,7 @@ go-build: go-mod-update
 GOLANGCI_OPTIONAL_CONFIG = .golangci.yml
 GOLANGCI_LINT_CACHE =/tmp/golangci-cache
 .PHONY: lint
-lint: go-mod-update
+lint: go-mod-update ensure-golangci
 	@echo "## Running the golangci-lint tool..."
 	GOLANGCI_LINT_CACHE=${GOLANGCI_LINT_CACHE} golangci-lint run -c ${GOLANGCI_OPTIONAL_CONFIG} ./...
 
