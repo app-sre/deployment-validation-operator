@@ -27,6 +27,10 @@ spec:
     value: konflux-ci/bundle/bundle.Dockerfile
   - name: path-context
     value: konflux-ci/bundle
+  - name: hermetic
+    value: 'true'
+  - name: build-source-image
+    value: 'true'
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
