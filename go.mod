@@ -1,7 +1,8 @@
 module github.com/app-sre/deployment-validation-operator
 
-go 1.22.9
-toolchain go1.24.1
+go 1.23.0
+
+toolchain go1.24.2
 
 require (
 	github.com/ghodss/yaml v1.0.1-0.20220118164431-d8423dcdf344
