@@ -28,7 +28,6 @@ endif
 .PHONY: go-mod-update
 go-mod-update:
 	go mod vendor
-	go mod tidy
 
 .PHONY: ensure-golangci
 ensure-golangci:
