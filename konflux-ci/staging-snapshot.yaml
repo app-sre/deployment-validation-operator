@@ -12,7 +12,7 @@
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Snapshot
 metadata:
-  name: manual-release-snapshot
+  name: staging-snapshot-0425-01
   namespace: dvo-obsint-tenant
   labels:
     test.appstudio.openshift.io/type: override 
@@ -20,14 +20,14 @@ spec:
   application: deployment-validation-operator
   components:
     - name: deployment-validation-operator
-      containerImage: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator@sha256:0e312d3edc28b931b721eb5ddc59feea4f9141707925224f6b936401b479b4b1
+      containerImage: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator@sha256:63883be503162382f850c20dd3f034b69ea6ab6eb04c497e4254e17a09e99587
       source:
         git:
           url: https://github.com/app-sre/deployment-validation-operator
-          revision: b861deee00c1afc3ba91ffac56932d24870358c9
+          revision: ea6bc934725a0653d6460cee294e98d66ed146cb
     - name: deployment-validation-operator-bundle
-      containerImage: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator-bundle@sha256:a96eb0ba48f11f163d243cead0519dd58de726e64963ed5e5ddcc19f253ba201
+      containerImage: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator-bundle@sha256:05fcd25a14821f3259f7940874e5a78e62404603ea7910a5c379a726fbed91ea
       source:
         git:
           url: https://github.com/app-sre/deployment-validation-operator
-          revision: b861deee00c1afc3ba91ffac56932d24870358c9
+          revision: ea6bc934725a0653d6460cee294e98d66ed146cb
