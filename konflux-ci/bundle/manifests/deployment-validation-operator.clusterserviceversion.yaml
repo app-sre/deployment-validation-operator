@@ -6,7 +6,7 @@ metadata:
     capabilities: Basic Install
     categories: Application Runtime, Monitoring, Security
     certified: "false"
-    containerImage: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator
+    containerImage: registry.stage.redhat.io/dvo/deployment-validation-rhel8-operator
     createdAt: 2024-11-27T00:00:00Z
     description: The deployment validation operator
     operators.openshift.io/valid-subscription: "[\"OpenShift Container Platform\", \"OpenShift Platform Plus\"]"
@@ -104,7 +104,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-                image: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator@sha256:cb4a68ebedba10bbd504fb271b3b7cc52d01ed13557dcb9604059f1ba98717d1
+                image: registry.stage.redhat.io/dvo/deployment-validation-rhel8-operator
                 imagePullPolicy: Always
                 name: deployment-validation-operator
                 ports:

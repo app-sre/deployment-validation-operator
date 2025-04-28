@@ -1,0 +1,10 @@
+---
+apiVersion: operator.openshift.io/v1alpha1
+kind: ImageDigestMirrorSet
+metadata:
+  name: staging-mirror-set
+spec:
+  imageDigestMirrors:
+    - mirrors:
+        - quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator@sha256:cb4a68ebedba10bbd504fb271b3b7cc52d01ed13557dcb9604059f1ba98717d1
+      source: registry.stage.redhat.io/dvo/deployment-validation-rhel8-operator
