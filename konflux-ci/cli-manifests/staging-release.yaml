@@ -16,4 +16,4 @@ spec:
    synopsis: Test to debug Release process
    description: Test to debug Release process
    solution: ""
-   references: ""
+   references: []
