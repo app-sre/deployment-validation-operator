@@ -25,7 +25,7 @@ metadata:
     features.operators.openshift.io/token-auth-aws: "false"
     features.operators.openshift.io/token-auth-azure: "false"
     features.operators.openshift.io/token-auth-gcp: "false"
-  name: deployment-validation-operator.v0.7.8
+  name: deployment-validation-operator.v0.7.10
 spec:
   description: |
     The Deployment Validation Operator (DVO) checks deployments and other resources against a curated collection of best practices.
@@ -182,6 +182,6 @@ spec:
     matchLabels:
       alm-owner-dvo: deployment-validation-operator
       operated-by: deployment-validation-operator
-  replaces: deployment-validation-operator.v0.7.7
-  skipRange: ">=0.0.10 <0.7.8"
-  version: 0.7.8
+  replaces: deployment-validation-operator.v0.7.9
+  skipRange: ">=0.0.10 <0.7.10"
+  version: 0.7.10
