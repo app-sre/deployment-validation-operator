@@ -255,7 +255,7 @@ spec:
         - name: name
           value: fbc-fips-check
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-fbc-fips-check:0.1@sha256:06188f437bce08c25ce7471bbbe634287fb64f8948ff64b04d3384fe1677a585
+          value: quay.io/konflux-ci/tekton-catalog/task-fbc-fips-check:0.1@sha256:46fc958a3352f0faa3782a0df7b1c0a5d9047647d66000ebf1caf6ad0c56b7d5
         - name: kind
           value: task
         resolver: bundles
@@ -280,7 +280,7 @@ spec:
         - name: name
           value: deprecated-image-check
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-deprecated-image-check:0.5@sha256:eb8136b543147b4a3e88ca3cc661ca6a11e303f35f0db44059f69151beea8496
+          value: quay.io/konflux-ci/tekton-catalog/task-deprecated-image-check:0.5@sha256:ecd33669676b3a193ff4c2c6223cb912cc1b0cf5cc36e080eaec7718500272cf
         - name: kind
           value: task
         resolver: bundles
