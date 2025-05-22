@@ -16,6 +16,7 @@ metadata:
   namespace: dvo-obsint-tenant
   labels:
     test.appstudio.openshift.io/type: override 
+    appstudio.openshift.io/application: deployment-validation-operator
 spec:
   application: deployment-validation-operator
   components:

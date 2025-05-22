@@ -12,7 +12,7 @@ spec:
 apiVersion: operator.openshift.io/v1alpha1
 kind: ImageDigestMirrorSet
 metadata:
-  name: staging-mirror-set
+  name: prod-mirror-set
 spec:
   imageDigestMirrors:
     - mirrors:
