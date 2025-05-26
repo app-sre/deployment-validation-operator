@@ -1,0 +1,18 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  name: prod-release-snapshot-0515-rc3
+  namespace: dvo-obsint-tenant
+spec:
+ releasePlan: release-plan-prod
+ snapshot: prod-snapshot-0515-rc3
+ data:
+  releaseNotes:
+    topic: Deployment Validation Operator 0.7.10
+    synopsis: Maintenance update
+    description: |
+      This release resolves issues with outdated libraries and vulnerabilities present in the 0.7.9 release.
+    solution: |
+      Before applying this update, make sure all previously released errata relevant to your system have been applied. For details on how to apply this update, refer to: https://access.redhat.com/articles/11258
+    references: []
