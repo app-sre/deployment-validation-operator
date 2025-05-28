@@ -29,6 +29,8 @@ LABEL name="deployment-validation-operator" \
       io.k8s.display-name="Deployment Validation Operator" \
       io.k8s.description="Deployment Validation Operator for OpenShift" \
       io.openshift.tags="dvo,deployment-validation-operator"
+      version="0.7" \
+      release="10" \
 
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
 
