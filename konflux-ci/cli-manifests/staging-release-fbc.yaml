@@ -1,0 +1,19 @@
+# Applying this manifest will trigger a new release of the FBC.
+# Temporary or automatic konflux snapshots may deliver a failed release
+# To check the process and logs, connect to the UI and navigate to Application > Releases > [release-name] > PipelineRun
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+ name: staging-release-fbc-snapshot-0605-01
+ namespace: dvo-obsint-tenant
+spec:
+ releasePlan: release-plan-fbc-staging
+ snapshot: deployment-validation-operator-fbc-tqxc5
+ data:
+  releaseNotes:
+   topic: Test FBC index Release
+   synopsis: Test to debug Release process
+   description: Test to debug Release process
+   solution: ""
+   references: []
