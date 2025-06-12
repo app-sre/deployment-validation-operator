@@ -1,12 +1,12 @@
 # The builder image is expected to contain
 # /bin/opm (with serve subcommand)
-FROM registry.redhat.io/openshift4/ose-operator-registry:v4.13-1747313384 as builder
+FROM registry.redhat.io/openshift4/ose-operator-registry as builder
 
 # Copy FBC root into image at /configs and pre-populate serve cache
 ADD catalog /configs
 RUN ["/bin/opm", "serve", "/configs", "--cache-dir=/tmp/cache", "--cache-only"]
 
-FROM quay.io/operator-framework/opm:latest
+FROM registry.redhat.io/openshift4/ose-operator-registry
 # The base image is expected to contain
 # /bin/opm (with serve subcommand) and /bin/grpc_health_probe
 
