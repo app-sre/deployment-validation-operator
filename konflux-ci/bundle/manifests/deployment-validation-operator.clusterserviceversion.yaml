@@ -183,5 +183,5 @@ spec:
       alm-owner-dvo: deployment-validation-operator
       operated-by: deployment-validation-operator
   replaces: deployment-validation-operator.v0.7.9
-  skipRange: ">=0.0.10 <0.7.10"
+  skipRange: ">=0.0.10 <0.7.5"
   version: 0.7.10
