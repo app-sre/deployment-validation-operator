@@ -1,5 +1,5 @@
 ARG OCP_V=latest
-ARG CAT_TYPE=bundle.object
+ARG CAT_TYPE=csv.metadata
 
 # The builder image is expected to contain
 # /bin/opm (with serve subcommand)
