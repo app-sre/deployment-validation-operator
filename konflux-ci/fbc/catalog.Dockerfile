@@ -1,11 +1,13 @@
 ARG OCP_V=latest
+ARG CAT_TYPE=bundle.object
 
 # The builder image is expected to contain
 # /bin/opm (with serve subcommand)
 FROM registry.redhat.io/openshift4/ose-operator-registry-rhel9:$OCP_V as builder
 
 # Copy FBC root into image at /configs and pre-populate serve cache
-ADD catalog /configs
+ARG CAT_TYPE
+ADD $CAT_TYPE/catalog /configs
 RUN ["/bin/opm", "serve", "/configs", "--cache-dir=/tmp/cache", "--cache-only"]
 
 ARG OCP_V
