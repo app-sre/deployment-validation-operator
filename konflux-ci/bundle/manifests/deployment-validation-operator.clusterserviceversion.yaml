@@ -6,7 +6,7 @@ metadata:
     capabilities: Basic Install
     categories: Application Runtime, Monitoring, Security
     certified: "false"
-    containerImage: registry.stage.redhat.io/dvo/deployment-validation-rhel8-operator
+    containerImage: registry.redhat.io/dvo/deployment-validation-rhel8-operator:0.7.11
     createdAt: 2024-11-27T00:00:00Z
     description: The deployment validation operator
     operators.openshift.io/valid-subscription: "[\"OpenShift Container Platform\", \"OpenShift Platform Plus\"]"
@@ -25,7 +25,7 @@ metadata:
     features.operators.openshift.io/token-auth-aws: "false"
     features.operators.openshift.io/token-auth-azure: "false"
     features.operators.openshift.io/token-auth-gcp: "false"
-  name: deployment-validation-operator.v0.7.10
+  name: deployment-validation-operator.v0.7.11
 spec:
   description: |
     The Deployment Validation Operator (DVO) checks deployments and other resources against a curated collection of best practices.
@@ -104,7 +104,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-                image: registry.stage.redhat.io/dvo/deployment-validation-rhel8-operator
+                image: registry.redhat.io/dvo/deployment-validation-rhel8-operator:0.7.11
                 imagePullPolicy: Always
                 name: deployment-validation-operator
                 ports:
@@ -171,7 +171,7 @@ spec:
   - name: repository
     url: https://github.com/app-sre/deployment-validation-operator
   - name: containerImage
-    url: quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator
+    url: registry.redhat.io/dvo/deployment-validation-rhel8-operator
   maintainers:
   - name: Red Hat
     email: dvo-owners@redhat.com
@@ -184,4 +184,4 @@ spec:
       operated-by: deployment-validation-operator
   replaces: deployment-validation-operator.v0.7.9
   skipRange: ">=0.0.10 <0.7.5"
-  version: 0.7.10
+  version: 0.7.11
