@@ -6,7 +6,7 @@ metadata:
     capabilities: Basic Install
     categories: Application Runtime, Monitoring, Security
     certified: "false"
-    containerImage: registry.redhat.io/dvo/deployment-validation-rhel8-operator:0.7.11
+    containerImage: registry.redhat.io/dvo/deployment-validation-rhel8-operator
     createdAt: 2024-11-27T00:00:00Z
     description: The deployment validation operator
     operators.openshift.io/valid-subscription: "[\"OpenShift Container Platform\", \"OpenShift Platform Plus\"]"
