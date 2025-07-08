@@ -13,7 +13,7 @@ entries:
   replaces: deployment-validation-operator.0.7.5
 - name: deployment-validation-operator.0.7.9
   replaces: deployment-validation-operator.0.7.8
-- name: deployment-validation-operator.0.7.11
+- name: deployment-validation-operator.v0.7.11
   replaces: deployment-validation-operator.0.7.9
 ---
 image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:05ceef5812635579b19d20ec44ca016100c4c05abc93ba5533ec5f5f111decec
