@@ -1,0 +1,18 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+ name: prod-release-fbc-4-18-20250707-01
+ namespace: dvo-obsint-tenant
+spec:
+ releasePlan: release-plan-fbc-prod-4-18
+ snapshot: fbc-ocp4-18-bnmbv
+ data:
+  releaseNotes:
+    topic: Deployment Validation Operator FBC for Openshift v4.18
+    synopsis: FBC update
+    description: |
+      This release includes catalog fragments until DVO 0.7.9
+    solution: |
+      Before applying this update, make sure all previously released errata relevant to your system have been applied. For details on how to apply this update, refer to: https://access.redhat.com/articles/11258
+    references: []
