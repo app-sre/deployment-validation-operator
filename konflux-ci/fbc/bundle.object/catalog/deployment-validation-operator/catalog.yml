@@ -108,6 +108,6 @@ properties:
 relatedImages:
 - image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:1a232ef8e9eb8136474f05a04baf26892ca90a71810c2216aacec4e911d4b909
   name: ""
-- image: registry.redhat.io/dvo/deployment-validation-rhel8-operator
+- image: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:adc04c0dfe8f18a34d3f7631b58979bd244c52b9aca17d7547aca7ba90de2557
   name: ""
 schema: olm.bundle
