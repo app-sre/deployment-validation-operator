@@ -218,7 +218,7 @@ properties:
       capabilities: Basic Install
       categories: Application Runtime, Monitoring, Security
       certified: "false"
-      containerImage: registry.redhat.io/dvo/deployment-validation-rhel8-operator
+      containerImage: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:adc04c0dfe8f18a34d3f7631b58979bd244c52b9aca17d7547aca7ba90de2557
       createdAt: "2024-11-27T00:00:00Z"
       description: The deployment validation operator
       features.operators.openshift.io/cnf: "false"
@@ -262,7 +262,7 @@ properties:
     - name: repository
       url: https://github.com/app-sre/deployment-validation-operator
     - name: containerImage
-      url: registry.redhat.io/dvo/deployment-validation-rhel8-operator
+      url: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:adc04c0dfe8f18a34d3f7631b58979bd244c52b9aca17d7547aca7ba90de2557
     maintainers:
     - email: dvo-owners@redhat.com
       name: Red Hat
