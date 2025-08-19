@@ -167,6 +167,8 @@ spec:
   labels:
     alm-owner-dvo: deployment-validation-operator
     operated-by: deployment-validation-operator
+    operatorframework.io/arch.amd64: supported
+    operatorframework.io/arch.arm64: supported
   links:
   - name: repository
     url: https://github.com/app-sre/deployment-validation-operator
