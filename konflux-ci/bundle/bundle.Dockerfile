@@ -6,7 +6,7 @@ COPY ./metadata /metadata
 LABEL com.redhat.component="deployment-validation-operator-bundle-container" \
       name="app-sre/deployment-validation-operator-bundle" \
       version="0.7" \
-      release="11" \
+      release="12" \
       distribution-scope="private" \
       vendor="Red Hat, Inc." \
       url="github.com/app-sre/deployment-validation-operator/" \

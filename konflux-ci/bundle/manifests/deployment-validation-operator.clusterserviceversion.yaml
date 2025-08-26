@@ -6,7 +6,7 @@ metadata:
     capabilities: Basic Install
     categories: Application Runtime, Monitoring, Security
     certified: "false"
-    containerImage: registry.redhat.io/dvo/deployment-validation-rhel8-operator
+    containerImage: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:cea717212b60d860eeabb63d96e8b9c47faceaeb4c2f0fcb879d486a19c37b3d
     createdAt: 2024-11-27T00:00:00Z
     description: The deployment validation operator
     operators.openshift.io/valid-subscription: "[\"OpenShift Container Platform\", \"OpenShift Platform Plus\"]"
@@ -25,7 +25,7 @@ metadata:
     features.operators.openshift.io/token-auth-aws: "false"
     features.operators.openshift.io/token-auth-azure: "false"
     features.operators.openshift.io/token-auth-gcp: "false"
-  name: deployment-validation-operator.v0.7.11
+  name: deployment-validation-operator.v0.7.12
 spec:
   description: |
     The Deployment Validation Operator (DVO) checks deployments and other resources against a curated collection of best practices.
@@ -104,7 +104,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-                image: registry.redhat.io/dvo/deployment-validation-rhel8-operator
+                image: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:cea717212b60d860eeabb63d96e8b9c47faceaeb4c2f0fcb879d486a19c37b3d
                 imagePullPolicy: Always
                 name: deployment-validation-operator
                 ports:
@@ -173,7 +173,7 @@ spec:
   - name: repository
     url: https://github.com/app-sre/deployment-validation-operator
   - name: containerImage
-    url: registry.redhat.io/dvo/deployment-validation-rhel8-operator
+    url: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:cea717212b60d860eeabb63d96e8b9c47faceaeb4c2f0fcb879d486a19c37b3d
   maintainers:
   - name: Red Hat
     email: dvo-owners@redhat.com
@@ -184,6 +184,6 @@ spec:
     matchLabels:
       alm-owner-dvo: deployment-validation-operator
       operated-by: deployment-validation-operator
-  replaces: deployment-validation-operator.v0.7.9
+  replaces: deployment-validation-operator.v0.7.11
   skipRange: ">=0.0.10 <0.7.5"
-  version: 0.7.11
+  version: 0.7.12
