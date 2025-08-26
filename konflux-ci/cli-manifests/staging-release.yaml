@@ -5,11 +5,11 @@
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Release
 metadata:
- name: staging-release-snapshot-0425-01
+ name: staging-release-snapshot-0826-01-rc1
  namespace: dvo-obsint-tenant
 spec:
  releasePlan: release-plan-staging
- snapshot: staging-snapshot-0425-01
+ snapshot: deployment-validation-operator-klczl
  data:
   releaseNotes:
    topic: Test Release
