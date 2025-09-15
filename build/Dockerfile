@@ -22,13 +22,14 @@ COPY build/bin /usr/local/bin
 RUN  /usr/local/bin/user_setup
 
 # These labels are needed in order to release on Konflux
-LABEL name="deployment-validation-operator" \
+LABEL name="dvo/deployment-validation-rhel8-operator" \
       summary="Deployment Validation Operator for OpenShift" \
       description="Deployment Validation Operator for OpenShift" \
       com.redhat.component="deployment-validation-operator-container" \
       io.k8s.display-name="Deployment Validation Operator" \
       io.k8s.description="Deployment Validation Operator for OpenShift" \
       io.openshift.tags="dvo,deployment-validation-operator" \
+      cpe="cpe:/a:redhat:deployment_validator_operator:0.7::el8" \
       version="0.7" \
       release="12"
 
