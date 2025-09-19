@@ -65,6 +65,8 @@ func main() {
 	log := logf.Log.WithName("DeploymentValidation")
 	logVersion(log)
 
+	log.Info("This is a testing comment")
+
 	log.Info("Setting Up Manager")
 
 	mgr, err := setupManager(log.V(1), opts)
