@@ -4,7 +4,8 @@ COPY ./manifests /manifests
 COPY ./metadata /metadata
 
 LABEL com.redhat.component="deployment-validation-operator-bundle-container" \
-      name="app-sre/deployment-validation-operator-bundle" \
+      name="dvo/deployment-validation-operator-bundle" \
+      cpe="cpe:/a:redhat:deployment_validator_operator:0.7::el8" \
       version="0.7" \
       release="12" \
       distribution-scope="private" \
