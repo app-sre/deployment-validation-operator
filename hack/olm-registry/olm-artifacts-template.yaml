@@ -151,18 +151,33 @@ objects:
           data:
             deployment-validation-operator-config.yaml: |-
               checks:
-                doNotAutoAddDefaults: true
-                addAllBuiltIn: false
-                include:
-                - "host-ipc"
-                - "host-network"
-                - "host-pid"
-                - "non-isolated-pod"
-                - "pdb-max-unavailable"
-                - "pdb-min-available"
-                - "privilege-escalation-container"
-                - "privileged-container"
-                - "run-as-non-root"
-                - "unsafe-sysctls"
-                - "unset-cpu-requirements"
-                - "unset-memory-requirements"
+                doNotAutoAddDefaults: false
+                addAllBuiltIn: true
+
+                exclude:
+                - "access-to-create-pods"
+                - "access-to-secrets"
+                - "cluster-admin-role-binding"
+                - "default-service-account"
+                - "deprecated-service-account-field"
+                - "docker-sock"
+                - "drop-net-raw-capability"
+                - "env-var-secret"
+                - "exposed-services"
+                - "latest-tag"
+                - "mismatching-selector"
+                - "no-extensions-v1beta"
+                - "no-liveness-probe"
+                - "no-read-only-root-fs"
+                - "no-readiness-probe"
+                - "no-rolling-update-strategy"
+                - "privileged-ports"
+                - "read-secret-from-env-var"
+                - "required-annotation-email"
+                - "required-label-owner"
+                - "sensitive-host-mounts"
+                - "ssh-port"
+                - "unsafe-proc-mount"
+                - "use-namespace"
+                - "wildcard-in-rules"
+                - "writable-host-mount"
