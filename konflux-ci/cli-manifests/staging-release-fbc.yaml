@@ -5,11 +5,11 @@
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Release
 metadata:
- name: staging-release-fbc-snapshot-0605-01
+ name: staging-release-fbc-snapshot-1117-02
  namespace: dvo-obsint-tenant
 spec:
- releasePlan: release-plan-fbc-staging
- snapshot: deployment-validation-operator-fbc-tqxc5
+ releasePlan: release-plan-fbc-staging-4-15
+ snapshot: fbc-ocp4-15-47b94
  data:
   releaseNotes:
    topic: Test FBC index Release
