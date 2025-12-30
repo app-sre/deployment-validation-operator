@@ -87,6 +87,8 @@ objects:
                             publisher: Red Hat
                             grpcPodConfig:
                               securityContextConfig: restricted
+                              nodeSelector:
+                                kubernetes.io/arch: amd64
                       - complianceType: MustHave
                         objectDefinition:
                           apiVersion: operators.coreos.com/v1
@@ -110,6 +112,8 @@ objects:
                           spec:
                             channel: ${CHANNEL}
                             config:
+                              nodeSelector:
+                                kubernetes.io/arch: amd64
                               affinity:
                                 nodeAffinity: {}
                               env:
