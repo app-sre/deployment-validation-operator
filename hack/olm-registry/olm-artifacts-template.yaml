@@ -66,6 +66,7 @@ objects:
               securityContextConfig: restricted
               nodeSelector:
                 node-role.kubernetes.io: infra
+                kubernetes.io/arch: amd64
               tolerations:
               - effect: NoSchedule
                 key: node-role.kubernetes.io/infra
@@ -92,6 +93,8 @@ objects:
           spec:
             channel: ${CHANNEL}
             config:
+              nodeSelector:
+                kubernetes.io/arch: amd64
               env:
               - name: "NAMESPACE_IGNORE_PATTERN"
                 value: "^(openshift.*|kube-.*|open-cluster-management-.*|default|dedicated-admin|redhat-.*|acm|addon-dba-operator|codeready-.*|prow)$"

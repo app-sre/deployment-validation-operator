@@ -7,6 +7,8 @@ metadata:
     createdAt: "2023-09-12T14:13:09Z"
     operators.operatorframework.io/builder: operator-sdk-v1.31.0+git
     operators.operatorframework.io/project_layout: unknown
+  labels:
+    operatorframework.io/arch.amd64: supported
   name: deployment-validation-operator.v0.0.0
   namespace: placeholder
 spec:
@@ -50,6 +52,8 @@ spec:
                 app: deployment-validation-operator
                 name: deployment-validation-operator
             spec:
+              nodeSelector:
+                kubernetes.io/arch: amd64
               affinity:
                 podAntiAffinity:
                   preferredDuringSchedulingIgnoredDuringExecution:
