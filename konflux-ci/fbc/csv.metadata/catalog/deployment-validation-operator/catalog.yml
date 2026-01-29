@@ -19,6 +19,8 @@ entries:
   replaces: deployment-validation-operator.v0.7.11
 - name: deployment-validation-operator.v0.7.13
   replaces: deployment-validation-operator.v0.7.12
+- name: deployment-validation-operator.v0.7.14
+  replaces: deployment-validation-operator.v0.7.13
 ---
 image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:05ceef5812635579b19d20ec44ca016100c4c05abc93ba5533ec5f5f111decec
 name: deployment-validation-operator.0.7.5
@@ -423,5 +425,78 @@ relatedImages:
 - image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:0af47b9fbb72853decb462c6e99a95e88f7e63c1a49eb18a3e7da9622a8ff23a
   name: ""
 - image: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:74728420bb74a5a9a8040b48413da48f506e42b333df53c2067f53f614a2342d
+  name: ""
+schema: olm.bundle
+---
+image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:870f13b5c54dac8c7efcfe92a05fde084b169835d6cf7aefe2d01d61d6e2eaaf
+name: deployment-validation-operator.v0.7.14
+package: deployment-validation-operator
+properties:
+- type: olm.package
+  value:
+    packageName: deployment-validation-operator
+    version: 0.7.14
+- type: olm.csv.metadata
+  value:
+    annotations:
+      alm-examples: '[]'
+      capabilities: Basic Install
+      categories: Application Runtime, Monitoring, Security
+      certified: "false"
+      containerImage: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:cd780af5bafe6eebf282b23f01dd0fc2320d249769a1567539a5e678c3a752bc
+      createdAt: "2024-11-27T00:00:00Z"
+      description: The deployment validation operator
+      features.operators.openshift.io/cnf: "false"
+      features.operators.openshift.io/cni: "false"
+      features.operators.openshift.io/csi: "false"
+      features.operators.openshift.io/disconnected: "true"
+      features.operators.openshift.io/fips-compliant: "true"
+      features.operators.openshift.io/proxy-aware: "true"
+      features.operators.openshift.io/tls-profiles: "false"
+      features.operators.openshift.io/token-auth-aws: "false"
+      features.operators.openshift.io/token-auth-azure: "false"
+      features.operators.openshift.io/token-auth-gcp: "false"
+      ignore-check.kube-linter.io/minimum-three-replicas: This deployment uses 1 pod
+        as currently replicating does not replicate metric data causing installation
+        issues
+      operators.openshift.io/valid-subscription: '["OpenShift Container Platform",
+        "OpenShift Platform Plus"]'
+      operators.operatorframework.io/builder: operator-sdk-v1.31.0+git
+      operators.operatorframework.io/project_layout: unknown
+      repository: https://github.com/app-sre/deployment-validation-operator
+      support: Best Effort
+    apiServiceDefinitions: {}
+    crdDescriptions: {}
+    description: |
+      The Deployment Validation Operator (DVO) checks deployments and other resources against a curated collection of best practices.
+      These best practices focus mainly on ensuring that the applications are fault-tolerant. DVO reports failed validations via Prometheus metrics.
+      If the best-practice check has failed, the metrics will report `1`.
+    displayName: Deployment Validation Operator
+    installModes:
+    - supported: true
+      type: OwnNamespace
+    - supported: true
+      type: SingleNamespace
+    - supported: true
+      type: AllNamespaces
+    - supported: false
+      type: MultiNamespace
+    keywords:
+    - dvo
+    links:
+    - name: repository
+      url: https://github.com/app-sre/deployment-validation-operator
+    - name: containerImage
+      url: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:cd780af5bafe6eebf282b23f01dd0fc2320d249769a1567539a5e678c3a752bc
+    maintainers:
+    - email: dvo-owners@redhat.com
+      name: Red Hat
+    maturity: alpha
+    provider:
+      name: Red Hat
+relatedImages:
+- image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:870f13b5c54dac8c7efcfe92a05fde084b169835d6cf7aefe2d01d61d6e2eaaf
+  name: ""
+- image: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:cd780af5bafe6eebf282b23f01dd0fc2320d249769a1567539a5e678c3a752bc
   name: ""
 schema: olm.bundle
