@@ -2,11 +2,11 @@
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Release
 metadata:
-  name: prod-release-v0-7-14-rc2-2026-01-28
+  name: prod-release-v0-7-14-rc3-2026-02-05
   namespace: dvo-obsint-tenant
 spec:
  releasePlan: release-plan-prod
- snapshot: prod-custom-snapshot-v0-7-14-rc2-2026-01-28
+ snapshot: deployment-validation-operator-20260205-142747-000
  data:
   releaseNotes:
     topic: Deployment Validation Operator 0.7.14
