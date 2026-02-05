@@ -6,7 +6,7 @@ metadata:
     capabilities: Basic Install
     categories: Application Runtime, Monitoring, Security
     certified: "false"
-    containerImage: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:cd780af5bafe6eebf282b23f01dd0fc2320d249769a1567539a5e678c3a752bc
+    containerImage: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:9b7dc41f779c51c44ab83bdc184b03b75db5f31c141f7b67d028842560edbaca
     createdAt: 2024-11-27T00:00:00Z
     description: The deployment validation operator
     operators.openshift.io/valid-subscription: "[\"OpenShift Container Platform\", \"OpenShift Platform Plus\"]"
@@ -104,7 +104,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-                image: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:cd780af5bafe6eebf282b23f01dd0fc2320d249769a1567539a5e678c3a752bc
+                image: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:9b7dc41f779c51c44ab83bdc184b03b75db5f31c141f7b67d028842560edbaca
                 imagePullPolicy: Always
                 name: deployment-validation-operator
                 ports:
@@ -173,7 +173,7 @@ spec:
   - name: repository
     url: https://github.com/app-sre/deployment-validation-operator
   - name: containerImage
-    url: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:cd780af5bafe6eebf282b23f01dd0fc2320d249769a1567539a5e678c3a752bc
+    url: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:9b7dc41f779c51c44ab83bdc184b03b75db5f31c141f7b67d028842560edbaca
   maintainers:
   - name: Red Hat
     email: dvo-owners@redhat.com
