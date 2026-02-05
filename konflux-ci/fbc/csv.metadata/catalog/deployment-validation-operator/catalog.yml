@@ -428,7 +428,7 @@ relatedImages:
   name: ""
 schema: olm.bundle
 ---
-image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:870f13b5c54dac8c7efcfe92a05fde084b169835d6cf7aefe2d01d61d6e2eaaf
+image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:1726be3707f0608689d5c3d1f4d15c80335911bfc474b616d722543d5c56ccdc
 name: deployment-validation-operator.v0.7.14
 package: deployment-validation-operator
 properties:
@@ -443,7 +443,7 @@ properties:
       capabilities: Basic Install
       categories: Application Runtime, Monitoring, Security
       certified: "false"
-      containerImage: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:cd780af5bafe6eebf282b23f01dd0fc2320d249769a1567539a5e678c3a752bc
+      containerImage: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:9b7dc41f779c51c44ab83bdc184b03b75db5f31c141f7b67d028842560edbaca
       createdAt: "2024-11-27T00:00:00Z"
       description: The deployment validation operator
       features.operators.openshift.io/cnf: "false"
@@ -487,7 +487,7 @@ properties:
     - name: repository
       url: https://github.com/app-sre/deployment-validation-operator
     - name: containerImage
-      url: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:cd780af5bafe6eebf282b23f01dd0fc2320d249769a1567539a5e678c3a752bc
+      url: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:9b7dc41f779c51c44ab83bdc184b03b75db5f31c141f7b67d028842560edbaca
     maintainers:
     - email: dvo-owners@redhat.com
       name: Red Hat
@@ -495,8 +495,8 @@ properties:
     provider:
       name: Red Hat
 relatedImages:
-- image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:870f13b5c54dac8c7efcfe92a05fde084b169835d6cf7aefe2d01d61d6e2eaaf
+- image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:1726be3707f0608689d5c3d1f4d15c80335911bfc474b616d722543d5c56ccdc
   name: ""
-- image: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:cd780af5bafe6eebf282b23f01dd0fc2320d249769a1567539a5e678c3a752bc
+- image: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:9b7dc41f779c51c44ab83bdc184b03b75db5f31c141f7b67d028842560edbaca
   name: ""
 schema: olm.bundle
