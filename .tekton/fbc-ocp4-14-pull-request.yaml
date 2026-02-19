@@ -31,6 +31,7 @@ spec:
   - name: build-platforms
     value:
     - linux/x86_64
+    - linux/arm64
   - name: dockerfile
     value: catalog.Dockerfile
   - name: path-context
@@ -90,7 +91,7 @@ spec:
     - default: "false"
       description: Enable cache proxy configuration
       name: enable-cache-proxy
-    - default: []
+    - default: ["OCP_V=v4.15", "CAT_TYPE=bundle.object"]
       description: Array of --build-arg values ("arg=value" strings) for buildah
       name: build-args
       type: array
