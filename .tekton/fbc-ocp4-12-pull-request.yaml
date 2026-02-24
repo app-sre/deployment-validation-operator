@@ -33,7 +33,7 @@ spec:
     - linux/x86_64
     - linux/arm64
   - name: dockerfile
-    value: catalog.Dockerfile
+    value: catalog.old.Dockerfile
   - name: path-context
     value: konflux-ci/fbc
   pipelineSpec:
@@ -91,7 +91,7 @@ spec:
     - default: "false"
       description: Enable cache proxy configuration
       name: enable-cache-proxy
-    - default: ["OCP_V=v4.12", "CAT_TYPE=bundle.object", "RHEL_V=rhel8"]
+    - default: ["OCP_V=v4.12"]
       description: Array of --build-arg values ("arg=value" strings) for buildah
       name: build-args
       type: array
