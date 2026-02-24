@@ -1,10 +1,9 @@
 ARG OCP_V=latest
-ARG RHEL_V=rhel9
 ARG CAT_TYPE=csv.metadata
 
 # The builder image is expected to contain
 # /bin/opm (with serve subcommand)
-FROM registry.redhat.io/openshift4/ose-operator-registry-$RHEL_V:$OCP_V as builder
+FROM registry.redhat.io/openshift4/ose-operator-registry-rhel9:$OCP_V as builder
 
 # Copy FBC root into image at /configs and pre-populate serve cache
 ARG CAT_TYPE
@@ -12,10 +11,9 @@ ADD $CAT_TYPE/catalog /configs
 RUN ["/bin/opm", "serve", "/configs", "--cache-dir=/tmp/cache", "--cache-only"]
 
 ARG OCP_V
-ARG RHEL_V
 # The base image is expected to contain
 # /bin/opm (with serve subcommand) and /bin/grpc_health_probe
-FROM registry.redhat.io/openshift4/ose-operator-registry-$RHEL_V:$OCP_V
+FROM registry.redhat.io/openshift4/ose-operator-registry-rhel9:$OCP_V
 
 # Configure the entrypoint and command
 ENTRYPOINT ["/bin/opm"]
