@@ -2,6 +2,60 @@
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Release
 metadata:
+ name: prod-release-fbc-4-12-v0-7-14-rc2-2026-03-03
+ namespace: dvo-obsint-tenant
+spec:
+ releasePlan: release-plan-fbc-prod-4-12
+ snapshot: fbc-ocp4-12-20260303-124338-000
+ data:
+  releaseNotes:
+    topic: Deployment Validation Operator FBC for Openshift v4.12
+    synopsis: FBC update
+    description: |
+      This release includes catalog fragments until DVO 0.7.14
+    solution: |
+      Before applying this update, make sure all previously released errata relevant to your system have been applied. For details on how to apply this update, refer to: https://access.redhat.com/articles/11258
+    references: []
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+ name: prod-release-fbc-4-13-v0-7-14-rc2-2026-03-03
+ namespace: dvo-obsint-tenant
+spec:
+ releasePlan: release-plan-fbc-prod-4-13
+ snapshot: fbc-ocp4-13-20260303-122915-000
+ data:
+  releaseNotes:
+    topic: Deployment Validation Operator FBC for Openshift v4.13
+    synopsis: FBC update
+    description: |
+      This release includes catalog fragments until DVO 0.7.14
+    solution: |
+      Before applying this update, make sure all previously released errata relevant to your system have been applied. For details on how to apply this update, refer to: https://access.redhat.com/articles/11258
+    references: []
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+ name: prod-release-fbc-4-14-v0-7-14-rc2-2026-03-03
+ namespace: dvo-obsint-tenant
+spec:
+ releasePlan: release-plan-fbc-prod-4-14
+ snapshot: fbc-ocp4-14-20260303-101205-000
+ data:
+  releaseNotes:
+    topic: Deployment Validation Operator FBC for Openshift v4.14
+    synopsis: FBC update
+    description: |
+      This release includes catalog fragments until DVO 0.7.14
+    solution: |
+      Before applying this update, make sure all previously released errata relevant to your system have been applied. For details on how to apply this update, refer to: https://access.redhat.com/articles/11258
+    references: []
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
  name: prod-release-fbc-4-15-v0-7-14-rc5-2026-02-05
  namespace: dvo-obsint-tenant
 spec:
