@@ -22,7 +22,7 @@ entries:
 - name: deployment-validation-operator.v0.7.14
   replaces: deployment-validation-operator.v0.7.13
 ---
-image: registry.redhat.io/dvo/deployment-validation-operator-bundle:0.7.5
+image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:05ceef5812635579b19d20ec44ca016100c4c05abc93ba5533ec5f5f111decec
 name: deployment-validation-operator.0.7.5
 package: deployment-validation-operator
 properties:
@@ -46,7 +46,7 @@ relatedImages:
   name: deployment-validation-operator
 schema: olm.bundle
 ---
-image: registry.redhat.io/dvo/deployment-validation-operator-bundle:0.7.8
+image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:78c2c906de3af51eeffd5522fc534a51df6421c4e260fb885cd0020293978374
 name: deployment-validation-operator.0.7.8
 package: deployment-validation-operator
 properties:
@@ -70,7 +70,7 @@ relatedImages:
   name: deployment-validation-operator
 schema: olm.bundle
 ---
-image: registry.redhat.io/dvo/deployment-validation-operator-bundle:0.7.9
+image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:9b22e2c8584a908df1cb927b81631938032788f6047ca854ed552d7575835bc4
 name: deployment-validation-operator.0.7.9
 package: deployment-validation-operator
 properties:
