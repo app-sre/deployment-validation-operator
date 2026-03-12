@@ -2,14 +2,14 @@
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Release
 metadata:
- name: prod-release-fbc-4-12-v0-7-14-rc2-2026-03-03
+ name: prod-release-fbc-4-12-v0-7-14-rc6-2026-03-11
  namespace: dvo-obsint-tenant
 spec:
  releasePlan: release-plan-fbc-prod-4-12
- snapshot: fbc-ocp4-12-20260303-124338-000
+ snapshot: fbc-ocp4-12-20260311-090454-000
  data:
   releaseNotes:
-    topic: Deployment Validation Operator FBC for Openshift v4.12
+    topic: Deployment Validation Operator FBC for OpenShift v4.12
     synopsis: FBC update
     description: |
       This release includes catalog fragments until DVO 0.7.14
@@ -20,14 +20,14 @@ spec:
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Release
 metadata:
- name: prod-release-fbc-4-13-v0-7-14-rc2-2026-03-03
+ name: prod-release-fbc-4-13-v0-7-14-rc6-2026-03-11
  namespace: dvo-obsint-tenant
 spec:
  releasePlan: release-plan-fbc-prod-4-13
- snapshot: fbc-ocp4-13-20260303-122915-000
+ snapshot: fbc-ocp4-13-20260311-090455-000
  data:
   releaseNotes:
-    topic: Deployment Validation Operator FBC for Openshift v4.13
+    topic: Deployment Validation Operator FBC for OpenShift v4.13
     synopsis: FBC update
     description: |
       This release includes catalog fragments until DVO 0.7.14
@@ -38,14 +38,14 @@ spec:
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Release
 metadata:
- name: prod-release-fbc-4-14-v0-7-14-rc2-2026-03-03
+ name: prod-release-fbc-4-14-v0-7-14-rc6-2026-03-11
  namespace: dvo-obsint-tenant
 spec:
  releasePlan: release-plan-fbc-prod-4-14
- snapshot: fbc-ocp4-14-20260303-101205-000
+ snapshot: fbc-ocp4-14-20260311-090454-000
  data:
   releaseNotes:
-    topic: Deployment Validation Operator FBC for Openshift v4.14
+    topic: Deployment Validation Operator FBC for OpenShift v4.14
     synopsis: FBC update
     description: |
       This release includes catalog fragments until DVO 0.7.14
@@ -56,14 +56,14 @@ spec:
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Release
 metadata:
- name: prod-release-fbc-4-15-v0-7-14-rc5-2026-02-05
+ name: prod-release-fbc-4-15-v0-7-14-rc6-2026-03-11
  namespace: dvo-obsint-tenant
 spec:
  releasePlan: release-plan-fbc-prod-4-15
- snapshot: fbc-ocp4-15-20260205-174057-000
+ snapshot: fbc-ocp4-15-20260311-090455-000
  data:
   releaseNotes:
-    topic: Deployment Validation Operator FBC for Openshift v4.15
+    topic: Deployment Validation Operator FBC for OpenShift v4.15
     synopsis: FBC update
     description: |
       This release includes catalog fragments until DVO 0.7.14
@@ -74,14 +74,14 @@ spec:
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Release
 metadata:
- name: prod-release-fbc-4-16-v0-7-14-rc5-2026-02-05
+ name: prod-release-fbc-4-16-v0-7-14-rc6-2026-03-11
  namespace: dvo-obsint-tenant
 spec:
  releasePlan: release-plan-fbc-prod-4-16
- snapshot: fbc-ocp4-16-20260205-174054-000
+ snapshot: fbc-ocp4-16-20260311-090454-000
  data:
   releaseNotes:
-    topic: Deployment Validation Operator FBC for Openshift v4.16
+    topic: Deployment Validation Operator FBC for OpenShift v4.16
     synopsis: FBC update
     description: |
       This release includes catalog fragments until DVO 0.7.14
