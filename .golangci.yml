@@ -1,23 +1,46 @@
-run:
-  timeout: 5m
-
+version: "2"
 linters:
-  disable-all: true
+  default: none
   enable:
-  - gofmt
-  - goimports
-  - revive
-  - govet
-  - misspell
-  - unused
-  - gocyclo
-  - unconvert
-  - goconst
-  - gosec
-  - lll
-  - staticcheck
-
-linters-settings:
-  lll:
-    line-length: 120
-    tab-width: 8
+    - goconst
+    - gocyclo
+    - gosec
+    - govet
+    - lll
+    - misspell
+    - revive
+    - staticcheck
+    - unconvert
+    - unused
+  settings:
+    lll:
+      line-length: 120
+      tab-width: 8
+    revive:
+      rules:
+        - name: var-naming
+          arguments:
+            - []
+            - []
+            - - skip-package-name-checks: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
