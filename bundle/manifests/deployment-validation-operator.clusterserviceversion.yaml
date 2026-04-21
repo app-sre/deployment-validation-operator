@@ -109,10 +109,10 @@ spec:
                   timeoutSeconds: 3
                 resources:
                   limits:
-                    memory: 400Mi
+                    memory: 600Mi
                   requests:
                     cpu: 50m
-                    memory: 200Mi
+                    memory: 400Mi
                 securityContext:
                   readOnlyRootFilesystem: true
                 volumeMounts:
