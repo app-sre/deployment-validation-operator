@@ -67,12 +67,12 @@ func readMatchExpressions(object *unstructured.Unstructured) []metav1.LabelSelec
 			meMap := matchExpression.(map[string]interface{})
 			labelSelectorReq := metav1.LabelSelectorRequirement{}
 			for k, v := range meMap {
-				switch {
-				case k == "key":
+				switch k {
+				case "key":
 					labelSelectorReq.Key = v.(string)
-				case k == "operator":
+				case "operator":
 					labelSelectorReq.Operator = metav1.LabelSelectorOperator(v.(string))
-				case k == "values":
+				case "values":
 					stringValues := []string{}
 					for _, value := range v.([]interface{}) {
 						stringValues = append(stringValues, value.(string))
