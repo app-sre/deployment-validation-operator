@@ -5,15 +5,15 @@
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Release
 metadata:
- name: staging-release-snapshot-1311-01-rc1
+ name: staging-release-v0-7-15-rc1-2026-04-23
  namespace: dvo-obsint-tenant
 spec:
  releasePlan: release-plan-staging
- snapshot: deployment-validation-operator-4x9kk
+ snapshot: deployment-validation-operator-20260423-070603-000
  data:
   releaseNotes:
-   topic: Test Release
-   synopsis: Test to debug Release process
-   description: Test to debug Release process
+   topic: Staging Release
+   synopsis: Staging Release previous to creating the Prod Release
+   description: Test the Release process
    solution: ""
    references: []
