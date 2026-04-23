@@ -6,5 +6,5 @@ metadata:
 spec:
   imageDigestMirrors:
     - mirrors:
-        - quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator@sha256:9b7dc41f779c51c44ab83bdc184b03b75db5f31c141f7b67d028842560edbaca
-      source: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:9b7dc41f779c51c44ab83bdc184b03b75db5f31c141f7b67d028842560edbaca
+        - quay.io/redhat-user-workloads/dvo-obsint-tenant/deployment-validation-operator/deployment-validation-operator@sha256:3c014410a11ea662e4762e3f4181238b5b0fd062887c5d0f32e0551c7d68e1fe
+      source: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:3c014410a11ea662e4762e3f4181238b5b0fd062887c5d0f32e0551c7d68e1fe
