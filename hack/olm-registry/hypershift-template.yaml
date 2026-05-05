@@ -75,22 +75,6 @@ objects:
                               openshift.io/cluster-monitoring: "true"
                       - complianceType: MustHave
                         objectDefinition:
-                          apiVersion: operators.coreos.com/v1alpha1
-                          kind: CatalogSource
-                          metadata:
-                            name: deployment-validation-operator-catalog
-                            namespace: openshift-deployment-validation-operator
-                          spec:
-                            sourceType: grpc
-                            image: ${REGISTRY_IMG}@${IMAGE_DIGEST}
-                            displayName: Deployment Validation Operator
-                            publisher: Red Hat
-                            grpcPodConfig:
-                              securityContextConfig: restricted
-                              nodeSelector:
-                                kubernetes.io/arch: amd64
-                      - complianceType: MustHave
-                        objectDefinition:
                           apiVersion: operators.coreos.com/v1
                           kind: OperatorGroup
                           metadata:
@@ -120,8 +104,8 @@ objects:
                               - name: "NAMESPACE_IGNORE_PATTERN"
                                 value: "^(openshift.*|kube-.*|default|dedicated-admin|redhat-.*|acm|addon-dba-operator|codeready-.*|prow)$"
                             name: deployment-validation-operator
-                            source: deployment-validation-operator-catalog
-                            sourceNamespace: openshift-deployment-validation-operator
+                            source: community-operators
+                            sourceNamespace: openshift-marketplace
                       - complianceType: MustHave
                         objectDefinition:
                           apiVersion: networking.k8s.io/v1
@@ -139,21 +123,6 @@ objects:
                               - Ingress
                       - complianceType: MustHave
                         objectDefinition:
-                          apiVersion: networking.k8s.io/v1
-                          kind: NetworkPolicy
-                          metadata:
-                            name: allow-from-openshift-olm
-                            namespace: openshift-deployment-validation-operator
-                          spec:
-                            ingress: 
-                              - {}
-                            podSelector:
-                              matchLabels:
-                                olm.catalogSource: deployment-validation-operator-catalog
-                            policyTypes:
-                              - Ingress
-                      - complianceType: MustHave
-                        objectDefinition:                      
                           apiVersion: v1
                           kind: Service
                           metadata:
