@@ -132,8 +132,6 @@ spec:
                 volumeMounts:
                 - mountPath: /config
                   name: dvo-config
-              nodeSelector:
-                kubernetes.io/arch: amd64
               restartPolicy: Always
               serviceAccountName: deployment-validation-operator
               terminationGracePeriodSeconds: 30
