@@ -7,5 +7,3 @@ schema: olm.channel
 package: deployment-validation-operator
 name: alpha
 entries:
-- name: deployment-validation-operator.TBD
-  skipRange: ">=0.0.1 <0.7.5"
