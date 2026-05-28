@@ -8,7 +8,7 @@ package: deployment-validation-operator
 name: alpha
 entries:
   - name: deployment-validation-operator.v0.7.15
-    skipRange: '>=0.7.0 <0.7.15'
+    skipRange: ">=0.0.1 <0.7.5"
 ---
 schema: olm.bundle
 name: deployment-validation-operator.v0.7.15
@@ -19,6 +19,3 @@ properties:
     value:
       packageName: deployment-validation-operator
       version: 0.7.15
-  - type: olm.bundle.object
-    value:
-      data: placeholder
