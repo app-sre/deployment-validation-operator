@@ -10,7 +10,7 @@ entries:
   - name: deployment-validation-operator.v0.7.15
     skipRange: ">=0.0.1 <0.7.5"
 ---
-image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:7e7cdfc00fe15c0c4f4faf9837f2190904afea0ec22bfccfa568f99cd21cf1ec
+image: quay.io/redhat-services-prod/openshift/dvo-managed-clusters-bundle@sha256:940c9e9e0ee17d8b20629fd9956a0b8997150c6ab19e1ca7be384b403ac4439a
 name: deployment-validation-operator.v0.7.15
 package: deployment-validation-operator
 properties:
@@ -28,8 +28,8 @@ properties:
   value:
     data: eyJhcGlWZXJzaW9uIjoidjEiLCJraW5kIjoiU2VydmljZSIsIm1ldGFkYXRhIjp7ImNyZWF0aW9uVGltZXN0YW1wIjpudWxsLCJsYWJlbHMiOnsibmFtZSI6ImRlcGxveW1lbnQtdmFsaWRhdGlvbi1vcGVyYXRvciJ9LCJuYW1lIjoiZGVwbG95bWVudC12YWxpZGF0aW9uLW9wZXJhdG9yLW1ldHJpY3MifSwic3BlYyI6eyJwb3J0cyI6W3sibmFtZSI6Imh0dHAtbWV0cmljcyIsInBvcnQiOjgzODMsInByb3RvY29sIjoiVENQIiwidGFyZ2V0UG9ydCI6ODM4M31dLCJzZWxlY3RvciI6eyJuYW1lIjoiZGVwbG95bWVudC12YWxpZGF0aW9uLW9wZXJhdG9yIn19LCJzdGF0dXMiOnsibG9hZEJhbGFuY2VyIjp7fX19
 relatedImages:
-- image: registry.redhat.io/dvo/deployment-validation-operator-bundle@sha256:7e7cdfc00fe15c0c4f4faf9837f2190904afea0ec22bfccfa568f99cd21cf1ec
+- image: quay.io/redhat-services-prod/openshift/dvo-managed-clusters-bundle@sha256:940c9e9e0ee17d8b20629fd9956a0b8997150c6ab19e1ca7be384b403ac4439a
   name: ""
-- image: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:3c014410a11ea662e4762e3f4181238b5b0fd062887c5d0f32e0551c7d68e1fe
+- image: quay.io/redhat-services-prod/openshift/dvo-operator@sha256:88437b35173fe2e8a4d9f148ec17c754bee4df3f723b3a5676955eef4f363d31
   name: ""
 schema: olm.bundle
