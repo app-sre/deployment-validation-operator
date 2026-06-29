@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/go-toolset:1781041517 AS builder
+FROM registry.access.redhat.com/ubi8/go-toolset:1782087700 AS builder
 
 USER root
 
