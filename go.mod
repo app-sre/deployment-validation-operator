@@ -1,6 +1,6 @@
 module github.com/app-sre/deployment-validation-operator
 
-go 1.25.10
+go 1.25.7
 
 toolchain go1.25.11
 
