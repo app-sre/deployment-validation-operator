@@ -5,7 +5,7 @@ metadata:
     capabilities: Basic Install
     categories: Application Runtime, Monitoring, Security
     certified: 'false'
-    containerImage: quay.io/redhat-services-prod/openshift/dvo-operator@sha256:88437b35173fe2e8a4d9f148ec17c754bee4df3f723b3a5676955eef4f363d31
+    containerImage: quay.io/redhat-services-prod/openshift/dvo-operator@sha256:099b3af427b8e1eb44765283a640446c3225151baa06eed789623206151a60cd
     createdAt: '2026-05-15T13:13:48Z'
     description: The deployment validation operator
     repository: https://github.com/app-sre/deployment-validation-operator
@@ -105,7 +105,7 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
-                image: quay.io/redhat-services-prod/openshift/dvo-operator@sha256:88437b35173fe2e8a4d9f148ec17c754bee4df3f723b3a5676955eef4f363d31
+                image: quay.io/redhat-services-prod/openshift/dvo-operator@sha256:099b3af427b8e1eb44765283a640446c3225151baa06eed789623206151a60cd
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
@@ -188,7 +188,7 @@ spec:
   - name: repository
     url: https://github.com/app-sre/deployment-validation-operator
   - name: containerImage
-    url: quay.io/redhat-services-prod/openshift/dvo-operator@sha256:88437b35173fe2e8a4d9f148ec17c754bee4df3f723b3a5676955eef4f363d31
+    url: quay.io/redhat-services-prod/openshift/dvo-operator@sha256:099b3af427b8e1eb44765283a640446c3225151baa06eed789623206151a60cd
   maturity: alpha
   provider:
     name: Red Hat
