@@ -167,7 +167,7 @@ spec:
       - name: input
         value: $(params.prefetch-input)
       - name: SOURCE_ARTIFACT
-        value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        value: $(tasks.fbc-inject-lifecycle.results.SOURCE_ARTIFACT)
       - name: ociStorage
         value: $(params.output-image).prefetch
       - name: ociArtifactExpiresAfter
@@ -175,7 +175,7 @@ spec:
       - name: enable-package-registry-proxy
         value: $(params.enable-package-registry-proxy)
       runAfter:
-      - clone-repository
+      - fbc-inject-lifecycle
       taskRef:
         params:
         - name: name
@@ -231,7 +231,7 @@ spec:
         - name: name
           value: buildah-remote-oci-ta
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-buildah-remote-oci-ta:0.10@sha256:c77892be9e7217b9baa9abdbaf432c16ee49c30601b6b25cfbc9d704295c58ef
+          value: quay.io/konflux-ci/tekton-catalog/task-buildah-remote-oci-ta:0.10@sha256:3cda9a4cf830879f52d07d764966c427067713d6ae192600c29968f00c19433c
         - name: kind
           value: task
         resolver: bundles
@@ -292,7 +292,7 @@ spec:
         - name: name
           value: apply-tags
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-apply-tags:0.3@sha256:3ab844157eccd68e95e4852adc06c3c4ea674edb7865a474b0a898227f2893d6
+          value: quay.io/konflux-ci/tekton-catalog/task-apply-tags:0.3@sha256:6387614ae4f9efa8abb7c4175db0ce5d958bc2b90665b4704880e46fbe0535bf
         - name: kind
           value: task
         resolver: bundles
@@ -309,7 +309,7 @@ spec:
         - name: name
           value: validate-fbc
         - name: bundle
-          value: quay.io/konflux-ci/tekton-catalog/task-validate-fbc:0.1@sha256:855ac0d3e01755cfcc9854d4e47fed2a655fd7ca259adf4e403ab5b658333313
+          value: quay.io/konflux-ci/tekton-catalog/task-validate-fbc:0.2@sha256:f430ab31b170583495ce81beef15a54c8a0910b6eec0836ced4736d43c1aa91c
         - name: kind
           value: task
         resolver: bundles
@@ -368,6 +368,29 @@ spec:
         operator: in
         values:
         - "false"
+    - name: fbc-inject-lifecycle
+      taskRef:
+        resolver: bundles
+        params:
+        - name: kind
+          value: task
+        - name: name
+          value: fbc-inject-lifecycle-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-fbc-inject-lifecycle-oci-ta:0.1@sha256:9b6d61e5e887a8f30940c1fed0e118b8974c382d0a6328db99705a44365f6b0b
+      params:
+      - name: DOCKERFILE
+        value: $(params.dockerfile)
+      - name: CONTEXT
+        value: $(params.path-context)
+      - name: SOURCE_ARTIFACT
+        value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+      - name: ociStorage
+        value: $(params.output-image).lifecycle
+      - name: ociArtifactExpiresAfter
+        value: $(params.image-expires-after)
+      runAfter:
+      - clone-repository
     workspaces:
     - name: git-auth
       optional: true
