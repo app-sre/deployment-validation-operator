@@ -8,7 +8,7 @@ WORKDIR /workdir
 ENV FIPS_ENABLED=1
 RUN make go-build
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:1785906706
+FROM registry.access.redhat.com/ubi9/ubi-minimal:1786380947
 
 ENV OPERATOR=/usr/local/bin/deployment-validation-operator \
     USER_UID=1001 \
