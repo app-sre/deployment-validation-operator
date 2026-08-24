@@ -8,7 +8,7 @@ WORKDIR /workdir
 ENV FIPS_ENABLED=1
 RUN make go-build
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:1786380947
+FROM registry.access.redhat.com/ubi9/ubi-minimal:1786987606
 
 ENV OPERATOR=/usr/local/bin/deployment-validation-operator \
     USER_UID=1001 \
@@ -30,7 +30,7 @@ LABEL name="dvo/deployment-validation-rhel8-operator" \
       io.openshift.tags="dvo,deployment-validation-operator" \
       cpe="cpe:/a:redhat:deployment_validator_operator:0.7::el8" \
       version="0.7" \
-      release="16"
+      release="17"
 
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
 
