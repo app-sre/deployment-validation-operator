@@ -409,10 +409,10 @@ objects:
           resources:
             limits:
               cpu: 200m
-              memory: 200Mi
+              memory: 1Gi
             requests:
               cpu: 100m
-              memory: 100Mi
+              memory: 800Mi
           volumeMounts:
           # Grafana configuration
           - mountPath: /etc/grafana/provisioning/datasources
