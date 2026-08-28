@@ -1,0 +1,146 @@
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  name: prod-release-fbc-4-12-v0-7-17rc1-2026-08-25
+  namespace: dvo-obsint-tenant
+spec:
+  releasePlan: release-plan-fbc-prod-4-12
+  snapshot: fbc-ocp4-12-20260825-124207-000
+  data:
+    releaseNotes:
+      topic: Deployment Validation Operator FBC for OpenShift v4.12
+      synopsis: FBC update
+      description: |
+        This release includes catalog fragments until DVO 0.7.17
+      solution: |
+        Before applying this update, make sure all previously released errata relevant to your system have been applied. For details on how to apply this update, refer to: https://access.redhat.com/articles/11258
+      references: []
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  name: prod-release-fbc-4-14-v0-7-17rc1-2026-08-25
+  namespace: dvo-obsint-tenant
+spec:
+  releasePlan: release-plan-fbc-prod-4-14
+  snapshot: fbc-ocp4-14-20260825-124215-000
+  data:
+    releaseNotes:
+      topic: Deployment Validation Operator FBC for OpenShift v4.14
+      synopsis: FBC update
+      description: |
+        This release includes catalog fragments until DVO 0.7.17
+      solution: |
+        Before applying this update, make sure all previously released errata relevant to your system have been applied. For details on how to apply this update, refer to: https://access.redhat.com/articles/11258
+      references: []
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  name: prod-release-fbc-4-16-v0-7-17rc1-2026-08-25
+  namespace: dvo-obsint-tenant
+spec:
+  releasePlan: release-plan-fbc-prod-4-16
+  snapshot: fbc-ocp4-16-20260825-124207-000
+  data:
+    releaseNotes:
+      topic: Deployment Validation Operator FBC for OpenShift v4.16
+      synopsis: FBC update
+      description: |
+        This release includes catalog fragments until DVO 0.7.17
+      solution: |
+        Before applying this update, make sure all previously released errata relevant to your system have been applied. For details on how to apply this update, refer to: https://access.redhat.com/articles/11258
+      references: []
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  name: prod-release-fbc-4-18-v0-7-17rc1-2026-08-25
+  namespace: dvo-obsint-tenant
+spec:
+  releasePlan: release-plan-fbc-prod-4-18
+  snapshot: fbc-ocp4-18-20260825-124212-000
+  data:
+    releaseNotes:
+      topic: Deployment Validation Operator FBC for OpenShift v4.18
+      synopsis: FBC update
+      description: |
+        This release includes catalog fragments until DVO 0.7.17
+      solution: |
+        Before applying this update, make sure all previously released errata relevant to your system have been applied. For details on how to apply this update, refer to: https://access.redhat.com/articles/11258
+      references: []
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  name: prod-release-fbc-4-19-v0-7-17rc1-2026-08-25
+  namespace: dvo-obsint-tenant
+spec:
+  releasePlan: release-plan-fbc-prod-4-19
+  snapshot: fbc-ocp4-19-20260825-124213-000
+  data:
+    releaseNotes:
+      topic: Deployment Validation Operator FBC for OpenShift v4.19
+      synopsis: FBC update
+      description: |
+        This release includes catalog fragments until DVO 0.7.17
+      solution: |
+        Before applying this update, make sure all previously released errata relevant to your system have been applied. For details on how to apply this update, refer to: https://access.redhat.com/articles/11258
+      references: []
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  name: prod-release-fbc-4-20-v0-7-17rc1-2026-08-25
+  namespace: dvo-obsint-tenant
+spec:
+  releasePlan: release-plan-fbc-prod-4-20
+  snapshot: fbc-ocp4-20-20260825-150140-000
+  data:
+    releaseNotes:
+      topic: Deployment Validation Operator FBC for OpenShift v4.20
+      synopsis: FBC update
+      description: |
+        This release includes catalog fragments until DVO 0.7.17
+      solution: |
+        Before applying this update, make sure all previously released errata relevant to your system have been applied. For details on how to apply this update, refer to: https://access.redhat.com/articles/11258
+      references: []
+---
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  name: prod-release-fbc-4-21-v0-7-17rc1-2026-08-25
+  namespace: dvo-obsint-tenant
+spec:
+  releasePlan: release-plan-fbc-prod-4-21
+  snapshot: fbc-ocp4-21-20260825-124214-000
+  data:
+    releaseNotes:
+      topic: Deployment Validation Operator FBC for OpenShift v4.21
+      synopsis: FBC update
+      description: |
+        This release includes catalog fragments until DVO 0.7.17
+      solution: |
+        Before applying this update, make sure all previously released errata relevant to your system have been applied. For details on how to apply this update, refer to: https://access.redhat.com/articles/11258
+      references: []
+# This release was triggered manually
+#
+# ---
+# apiVersion: appstudio.redhat.com/v1alpha1
+# kind: Release
+# metadata:
+#   name: prod-release-fbc-4-22-v0-7-17rc1-2026-08-25
+#   namespace: dvo-obsint-tenant
+# spec:
+#   releasePlan: release-plan-fbc-prod-4-22
+#   snapshot: 
+#   data:
+#     releaseNotes:
+#       topic: Deployment Validation Operator FBC for OpenShift v4.22
+#       synopsis: FBC update
+#       description: |
+#         This release includes catalog fragments until DVO 0.7.17
+#       solution: |
+#         Before applying this update, make sure all previously released errata relevant to your system have been applied. For details on how to apply this update, refer to: https://access.redhat.com/articles/11258
+#       references: []
