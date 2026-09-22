@@ -30,7 +30,7 @@ LABEL name="dvo/deployment-validation-rhel8-operator" \
       io.openshift.tags="dvo,deployment-validation-operator" \
       cpe="cpe:/a:redhat:deployment_validator_operator:0.7::el8" \
       version="0.7" \
-      release="17"
+      release="18"
 
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
 
