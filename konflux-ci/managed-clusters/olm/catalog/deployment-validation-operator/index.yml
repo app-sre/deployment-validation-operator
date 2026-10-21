@@ -7,7 +7,7 @@ schema: olm.channel
 package: deployment-validation-operator
 name: alpha
 entries:
-  - name: deployment-validation-operator.v0.7.17
+  - name: deployment-validation-operator.v0.7.18
     replaces: deployment-validation-operator.v0.7.16
   - name: deployment-validation-operator.v0.7.16
     replaces: deployment-validation-operator.v0.7.15
@@ -148,21 +148,21 @@ relatedImages:
   name: ""
 schema: olm.bundle
 ---
-image: quay.io/redhat-services-prod/openshift/dvo-managed-clusters-bundle@sha256:9c3e148699324c6090c9597369a896f9c2ae7f9165d70cb32e59a1dbffcdf127
-name: deployment-validation-operator.v0.7.17
+image: quay.io/redhat-services-prod/openshift/dvo-managed-clusters-bundle@sha256:05d725b8ad56e9c4d6da8a2c8c1bfa3f5dfacb1c52f2c47efe3a53759e88f8b9
+name: deployment-validation-operator.v0.7.18
 package: deployment-validation-operator
 properties:
 - type: olm.package
   value:
     packageName: deployment-validation-operator
-    version: 0.7.17
+    version: 0.7.18
 - type: olm.csv.metadata
   value:
     annotations:
       capabilities: Basic Install
       categories: Application Runtime, Monitoring, Security
       certified: "false"
-      containerImage: quay.io/redhat-services-prod/openshift/dvo-operator@sha256:29732da3a7857f5a7acaa9e24edd92a4fe9dc5a53c0f5f98f6a3f3627913d379
+      containerImage: quay.io/redhat-services-prod/openshift/dvo-operator@sha256:747b96da97035aade3fb2742d39af8348a0ed8ce7e89e846f31cff0939bb884d
       createdAt: "2026-05-15T13:13:48Z"
       description: The deployment validation operator
       features.operators.openshift.io/cnf: "false"
@@ -204,13 +204,13 @@ properties:
     - name: repository
       url: https://github.com/app-sre/deployment-validation-operator
     - name: containerImage
-      url: quay.io/redhat-services-prod/openshift/dvo-operator@sha256:29732da3a7857f5a7acaa9e24edd92a4fe9dc5a53c0f5f98f6a3f3627913d379
+      url: quay.io/redhat-services-prod/openshift/dvo-operator@sha256:747b96da97035aade3fb2742d39af8348a0ed8ce7e89e846f31cff0939bb884d
     maturity: alpha
     provider:
       name: Red Hat
 relatedImages:
-- image: quay.io/redhat-services-prod/openshift/dvo-managed-clusters-bundle@sha256:9c3e148699324c6090c9597369a896f9c2ae7f9165d70cb32e59a1dbffcdf127
+- image: quay.io/redhat-services-prod/openshift/dvo-managed-clusters-bundle@sha256:05d725b8ad56e9c4d6da8a2c8c1bfa3f5dfacb1c52f2c47efe3a53759e88f8b9
   name: ""
-- image: quay.io/redhat-services-prod/openshift/dvo-operator@sha256:29732da3a7857f5a7acaa9e24edd92a4fe9dc5a53c0f5f98f6a3f3627913d379
+- image: quay.io/redhat-services-prod/openshift/dvo-operator@sha256:747b96da97035aade3fb2742d39af8348a0ed8ce7e89e846f31cff0939bb884d
   name: ""
 schema: olm.bundle
