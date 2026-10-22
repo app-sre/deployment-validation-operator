@@ -426,6 +426,9 @@ spec:
         value: $(params.output-image).lifecycle
       - name: ociArtifactExpiresAfter
         value: $(params.image-expires-after)
+      - name: BUILD_ARGS
+        value:
+          - $(params.build-args[*])
       runAfter:
       - clone-repository
     workspaces:
