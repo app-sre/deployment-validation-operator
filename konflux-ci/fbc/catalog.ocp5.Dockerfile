@@ -5,7 +5,7 @@ ARG OCP_V=latest
 FROM registry.redhat.io/openshift5/ose-operator-registry-rhel9:$OCP_V as builder
 
 # Copy FBC root into image at /configs and pre-populate serve cache
-ADD bundle.object/catalog /configs
+ADD csv.metadata/catalog /configs
 RUN ["/bin/opm", "serve", "/configs", "--cache-dir=/tmp/cache", "--cache-only"]
 
 ARG OCP_V
