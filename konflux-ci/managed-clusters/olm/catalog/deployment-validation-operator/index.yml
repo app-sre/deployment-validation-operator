@@ -9,6 +9,7 @@ name: alpha
 entries:
   - name: deployment-validation-operator.v0.7.18
     replaces: deployment-validation-operator.v0.7.16
+    skip: deployment-validation-operator.v0.7.17
   - name: deployment-validation-operator.v0.7.16
     replaces: deployment-validation-operator.v0.7.15
   - name: deployment-validation-operator.v0.7.15
