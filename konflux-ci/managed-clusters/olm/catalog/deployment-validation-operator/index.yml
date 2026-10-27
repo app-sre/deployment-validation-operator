@@ -9,11 +9,12 @@ name: alpha
 entries:
   - name: deployment-validation-operator.v0.7.18
     replaces: deployment-validation-operator.v0.7.16
-    skip: deployment-validation-operator.v0.7.17
+    skips:
+      - deployment-validation-operator.v0.7.17
   - name: deployment-validation-operator.v0.7.16
     replaces: deployment-validation-operator.v0.7.15
   - name: deployment-validation-operator.v0.7.15
-    skipRange: ">=0.0.1 <0.7.5"
+    skipRange: ">=0.0.1 <0.7.15"
 ---
 image: quay.io/redhat-services-prod/openshift/dvo-managed-clusters-bundle@sha256:940c9e9e0ee17d8b20629fd9956a0b8997150c6ab19e1ca7be384b403ac4439a
 name: deployment-validation-operator.v0.7.15
