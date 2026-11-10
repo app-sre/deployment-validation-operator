@@ -1,0 +1,13 @@
+---
+# ART bundle metadata. All images are built by ART and mapped in
+# bundle-art/image-references, so no external-images section is required.
+# The updates block anchors the version-bearing strings ART's rebase keeps in sync.
+updates:
+  - file: "manifests/deployment-validation-operator.clusterserviceversion.yaml" # relative to this file
+    update_list:
+      - search: "name: deployment-validation-operator.v0.7.19"
+        replace: "name: deployment-validation-operator.v0.7.19"
+      - search: "version: 0.7.19"
+        replace: "version: 0.7.19"
+      - search: "replaces: deployment-validation-operator.v0.7.18"
+        replace: "replaces: deployment-validation-operator.v0.7.18"

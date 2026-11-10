@@ -1,0 +1,7 @@
+---
+# OLM package definition for the downstream (ART) bundle.
+packageName: deployment-validation-operator
+defaultChannel: alpha
+channels:
+- name: alpha
+  currentCSV: deployment-validation-operator.v0.7.19
