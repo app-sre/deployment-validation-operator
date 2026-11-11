@@ -1,0 +1,13 @@
+---
+# ART bundle image-references. olm_bundle_konflux maps each ART (distgit)
+# image name -> the pullspec used in the CSV, replacing every occurrence of
+# from.name with the pinned registry.redhat.io pullspec. from.name MUST appear
+# literally in the CSV.
+kind: ImageStream
+apiVersion: image.openshift.io/v1
+spec:
+  tags:
+  - name: deployment-validation-rhel8-operator
+    from:
+      kind: DockerImage
+      name: registry.redhat.io/dvo/deployment-validation-rhel8-operator@sha256:747b96da97035aade3fb2742d39af8348a0ed8ce7e89e846f31cff0939bb884d
