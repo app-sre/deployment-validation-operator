@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/go-toolset:1794208304 AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1795320529 AS builder
 
 USER root
 
@@ -8,7 +8,7 @@ WORKDIR /workdir
 ENV FIPS_ENABLED=1
 RUN make go-build
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:1794186410
+FROM registry.access.redhat.com/ubi9/ubi-minimal:1795198241
 
 ENV OPERATOR=/usr/local/bin/deployment-validation-operator \
     USER_UID=1001 \
